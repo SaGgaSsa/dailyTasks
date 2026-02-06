@@ -1,0 +1,157 @@
+'use client'
+
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { MoreHorizontal, CheckSquare } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { IncidenceWithDetails } from '@/types'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { MarkdownText } from '@/components/ui/markdown-text'
+
+interface TaskCardProps {
+    task: IncidenceWithDetails
+    onClick?: () => void
+}
+
+const priorityColors = {
+    LOW: 'bg-green-500/10 text-green-400 border-green-500/20',
+    MEDIUM: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    HIGH: 'bg-red-500/10 text-red-400 border-red-500/20',
+}
+
+const typeColors: Record<string, string> = {
+    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
+}
+
+export function TaskCard({ task, onClick }: TaskCardProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: task.id, data: { task } })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    }
+
+    const completedItems = task.subTasks.filter(i => i.isCompleted).length
+    const totalItems = task.subTasks.length
+
+    return (
+        <Card
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            onClick={(e) => {
+                if (onClick) onClick();
+            }}
+            className={`mb-3 cursor-pointer bg-[#191919] border-zinc-800/50 hover:bg-zinc-800/80 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-zinc-700 z-50 opacity-100' : ''}`}
+        >
+            <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0 text-zinc-400">
+                <div className="flex gap-2 items-center">
+                    <Badge
+                        variant="outline"
+                        className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight ${typeColors[task.type] || 'bg-zinc-500/10 text-zinc-400'}`}
+                    >
+                        {task.type} {task.externalId}
+                    </Badge>
+                    <Badge
+                        variant="secondary"
+                        className={`text-[9px] font-medium px-1.5 py-0 ${priorityColors[task.priority as keyof typeof priorityColors] || ''} border`}
+                    >
+                        {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                    </Badge>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-zinc-600 hover:text-zinc-400">
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                </Button>
+            </CardHeader>
+            <CardContent className="p-3 pt-2.5">
+                {/* Main Content: Title */}
+                <div className="mb-2">
+                    <h3 className="text-sm font-semibold text-zinc-100 leading-snug line-clamp-2">
+                        {task.title}
+                    </h3>
+                </div>
+
+                {/* Description Snippet with Markdown */}
+                {task.description && (
+                    <div className="mb-3 line-clamp-3">
+                        <MarkdownText
+                            content={task.description}
+                            className="text-[11px] text-zinc-400 prose-p:leading-normal prose-a:text-blue-400"
+                        />
+                    </div>
+                )}
+
+                {/* Sub-meta: Technology & Hours */}
+                <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal text-ellipsis overflow-hidden whitespace-nowrap">
+                        {task.technology}
+                    </Badge>
+                    {task.estimatedTime && (
+                        <div className="flex items-center gap-1 text-zinc-500 whitespace-nowrap">
+                            <span className="text-[10px]">{task.estimatedTime}h</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footnotes: Subtasks and Assignees */}
+                <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-zinc-500">
+                            <CheckSquare className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">
+                                {completedItems}/{totalItems}
+                            </span>
+                        </div>
+
+                        <div className="flex -space-x-2 overflow-hidden">
+                            <TooltipProvider>
+                                {task.assignees.map((assignee) => (
+                                    <Tooltip key={assignee.id}>
+                                        <TooltipTrigger asChild>
+                                            <Avatar className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800">
+                                                <AvatarImage src={assignee.avatarUrl || ''} />
+                                                <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
+                                                    {assignee.username?.substring(0, 2)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="text-xs">{assignee.username}: {assignee.name}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ))}
+                            </TooltipProvider>
+                        </div>
+                    </div>
+                    {totalItems > 0 && (
+                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500/50 transition-all duration-300"
+                                style={{ width: `${(completedItems / totalItems) * 100}%` }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}

@@ -1,0 +1,102 @@
+'use server'
+
+import { db } from '@/lib/db'
+import { revalidatePath } from 'next/cache'
+import bcrypt from 'bcryptjs'
+import { UserRole, User } from '@prisma/client'
+
+export async function getUsers() {
+  return await db.user.findMany({
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+}
+
+// Omit generated fields and relations
+type UpsertUserData = Partial<User> & {
+  password?: string // password is optional on edit
+}
+
+export async function upsertUser(data: UpsertUserData) {
+  try {
+    const { id, name, email, username, password, role } = data
+
+    if (!username) {
+      throw new Error('Username is required')
+    }
+
+    // Username validation
+    if (!/^[a-zA-Z]{3}$/.test(username)) {
+      throw new Error('El usuario debe tener exactamente 3 letras (ej: SAG).')
+    }
+
+    const upperUsername = username.toUpperCase()
+
+    if (id) {
+      // Update
+      const updateData: any = {
+        name,
+        email,
+        username: upperUsername,
+        role: role as UserRole,
+      }
+      if (password && password.trim() !== '') {
+        updateData.password = await bcrypt.hash(password, 10)
+      }
+      await db.user.update({
+        where: { id },
+        data: updateData,
+      })
+    } else {
+      // Create
+      if (!name || !email) {
+        throw new Error('Missing required fields')
+      }
+      if (!password) {
+        throw new Error('Password is required for new users')
+      }
+      const hashedPassword = await bcrypt.hash(password, 10)
+      const newUser = await db.user.create({
+        data: {
+          name,
+          email,
+          username: upperUsername,
+          password: hashedPassword,
+          role: role as UserRole || 'DEV',
+        },
+      })
+
+      // Create default workspace
+      const workspace = await db.workspace.create({
+        data: {
+          name: 'Incidencias',
+          ownerId: newUser.id,
+          members: {
+            create: [
+              { userId: newUser.id }
+            ]
+          }
+        }
+      })
+    }
+    revalidatePath('/dashboard/users')
+    return { success: true }
+  } catch (error) {
+    console.error('Error upserting user:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to save user' }
+  }
+}
+
+export async function deleteUser(id: string) {
+  try {
+    await db.user.delete({
+      where: { id },
+    })
+    revalidatePath('/dashboard/users')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting user:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete user' }
+  }
+}

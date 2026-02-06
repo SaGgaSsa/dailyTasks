@@ -1,0 +1,43 @@
+[
+  {
+    "title": "Implementar autenticación de usuarios",
+    "description": "Crear sistema de login y registro para la aplicación",
+    "status": "pendiente",
+    "userEmail": "sebastian.galarza@sisa.com.ar",
+    "estimatedHours": 8.5
+  },
+  {
+    "title": "Diseñar base de datos",
+    "description": "Crear el esquema de la base de datos relacional",
+    "status": "analysis",
+    "userEmail": "sebastian.galarza@sisa.com.ar",
+    "estimatedHours": 4.0
+  },
+  {
+    "title": "Desarrollar API REST",
+    "description": "Crear endpoints para gestión de tareas",
+    "status": "desarrollo",
+    "userEmail": "sebastian.galarza@sisa.com.ar",
+    "estimatedHours": 12.0
+  },
+  {
+    "title": "Pruebas unitarias",
+    "description": "Implementar pruebas para los endpoints",
+    "status": "testing",
+    "userEmail": "sebastian.galarza@sisa.com.ar",
+    "estimatedHours": 6.0
+  },
+  {
+    "title": "Despliegue en producción",
+    "description": "Configurar entorno de producción",
+    "status": "done",
+    "userEmail": "sebastian.galarza@sisa.com.ar",
+    "estimatedHours": 2.0
+  },
+  {
+    "title": "Tarea sin asignar",
+    "description": "Esta tarea no tiene usuario asignado",
+    "status": "pendiente",
+    "estimatedHours": 3.5
+  }
+]

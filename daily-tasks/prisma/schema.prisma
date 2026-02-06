@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  password      String
+  name          String?
+  username      String          @unique // Always uppercase
+  role          UserRole        @default(DEV)
+  avatarUrl     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  assignedIncidences Incidence[] @relation("IncidenceAssignees")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  DEV
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskType {
+  I_MODAPL
+  I_CASO
+  I_CONS
+}
+
+enum TechStack {
+  SISA
+  WEB
+  ANDROID
+  ANGULAR
+  SPRING
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Incidence {
+  id            String    @id @default(uuid())
+  type          TaskType
+  externalId    Int       // Número de trámite
+  title         String    // Descripción corta
+  description   String?   @db.Text // Texto largo
+  status        TaskStatus @default(BACKLOG)
+  priority      Priority   @default(MEDIUM)
+  technology    TechStack
+  estimatedTime Int?      // En horas
+  
+  position      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  assignees     User[]    @relation("IncidenceAssignees")
+  subTasks      SubTask[]
+
+  @@unique([type, externalId])
+  @@map("incidences")
+}
+
+model SubTask {
+  id          String    @id @default(uuid())
+  title       String
+  isCompleted Boolean   @default(false)
+  incidenceId String
+  incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@map("sub_tasks")
+}
