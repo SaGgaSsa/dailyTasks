@@ -42,7 +42,9 @@ export const authConfig = {
           email: user.email,
           name: user.name || '',
           username: user.username,
-          role: user.role
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          image: user.avatarUrl
         } as any
       }
     }),
@@ -62,6 +64,8 @@ export const authConfig = {
         token.name = user.name
         token.username = user.username
         token.role = user.role
+        token.avatarUrl = user.avatarUrl
+        token.image = user.avatarUrl
       }
       return token
     },
@@ -72,6 +76,8 @@ export const authConfig = {
         session.user.name = token.name as string
         session.user.username = token.username as string
         session.user.role = token.role as string
+        session.user.avatarUrl = token.avatarUrl as string
+        session.user.image = token.avatarUrl as string
       }
       return session
     },

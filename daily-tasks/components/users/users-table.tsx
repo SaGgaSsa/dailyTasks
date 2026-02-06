@@ -13,7 +13,7 @@ import { Edit, Trash } from 'lucide-react'
 import { deleteUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 
-import { User } from '@/app/generated/prisma/client'
+import { User } from '@prisma/client'
 
 interface UsersTableProps {
     data: User[]

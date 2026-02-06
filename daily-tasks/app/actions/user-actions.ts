@@ -66,19 +66,6 @@ export async function upsertUser(data: UpsertUserData) {
           role: role as UserRole || 'DEV',
         },
       })
-
-      // Create default workspace
-      const workspace = await db.workspace.create({
-        data: {
-          name: 'Incidencias',
-          ownerId: newUser.id,
-          members: {
-            create: [
-              { userId: newUser.id }
-            ]
-          }
-        }
-      })
     }
     revalidatePath('/dashboard/users')
     return { success: true }

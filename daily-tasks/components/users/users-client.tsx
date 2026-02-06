@@ -6,9 +6,9 @@ import { UserSheet } from './user-sheet'
 import { UsersTable } from './users-table'
 import { Button } from '@/components/ui/button'
 
-import { User } from '@/app/generated/prisma/client'
+import { User } from '@prisma/client'
 
-export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
+export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 

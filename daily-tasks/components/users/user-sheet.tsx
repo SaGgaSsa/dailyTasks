@@ -23,7 +23,7 @@ import {
 import { upsertUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 
-import { User, Role } from '@/app/generated/prisma/client'
+import { User, UserRole } from '@prisma/client'
 
 interface UserSheetProps {
     open: boolean
@@ -71,7 +71,7 @@ export function UserSheet({ open, onOpenChange, initialData }: UserSheetProps) {
             const res = await upsertUser({
                 id: initialData?.id,
                 ...formData,
-                role: formData.role as Role,
+                role: formData.role as UserRole,
             })
 
             if (res.success) {
