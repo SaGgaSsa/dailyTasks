@@ -31,12 +31,14 @@ export function Sidebar({ userId }: SidebarProps) {
   return (
     <div className={`bg-[#0A0A0A] border-r border-zinc-800 transition-all duration-300 flex flex-col ${isOpen ? 'w-64' : 'w-16'}`}>
       <div className="p-4 flex items-center gap-3">
-        <div className="bg-zinc-100 p-1.5 rounded-lg">
-          <Terminal className="h-5 w-5 text-zinc-900" />
-        </div>
-        {isOpen && (
-          <span className="font-bold text-lg tracking-tight text-white">Engineering</span>
-        )}
+        <Link href="/" className="flex items-center gap-3">
+          <div className="bg-zinc-100 p-1.5 rounded-lg">
+            <Terminal className="h-5 w-5 text-zinc-900" />
+          </div>
+          {isOpen && (
+            <span className="font-bold text-lg tracking-tight text-white">DailyTasks</span>
+          )}
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -55,7 +57,7 @@ export function Sidebar({ userId }: SidebarProps) {
                 className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
               >
                 <LayoutDashboard className="h-4 w-4" />
-                {isOpen && <span>{isAdmin ? 'Planning Backlog' : 'Kanban Board'}</span>}
+                {isOpen && <span>Incidencias</span>}
               </Button>
             </Link>
 

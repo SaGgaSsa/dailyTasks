@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 
 import { User } from '@prisma/client'
 
-export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
+export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 

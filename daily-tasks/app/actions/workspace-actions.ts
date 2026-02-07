@@ -50,7 +50,7 @@ export async function createWorkspace(name: string, userId: string) {
 
     revalidatePath('/dashboard')
     return workspace
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating workspace:', error)
 
     // Si el error ya es una instancia de Error (ej: nuestras validaciones), relánzalo tal cual

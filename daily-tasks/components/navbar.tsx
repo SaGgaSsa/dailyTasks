@@ -57,20 +57,19 @@ export function Navbar() {
         </Button>
 
         {/* Search bar */}
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-start ml-4">
-          <div className="w-full max-w-md lg:max-w-lg">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Buscar en Daily Tasks..."
-                className="w-full appearance-none bg-background pl-8 shadow-none md:w-40 lg:w-64"
-              />
-            </div>
+        <div className="flex-1 max-w-md lg:max-w-lg ml-4 hidden md:block">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input
+              type="search"
+              placeholder="Buscar en Daily Tasks..."
+              className="w-full appearance-none bg-background pl-8 shadow-none md:w-40 lg:w-64"
+            />
           </div>
+        </div>
 
-            {/* Right side items */}
-          <div className="flex items-center space-x-2">
+        {/* Right side items */}
+        <div className="flex items-center space-x-2 ml-auto">
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-4 w-4" />
@@ -135,7 +134,6 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
       </div>
     </header>
   )

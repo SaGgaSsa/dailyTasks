@@ -3,6 +3,24 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './lib/db'
 
+interface JWTPayload {
+  id: string
+  email: string
+  name: string
+  username: string
+  role: string
+  avatarUrl: string | null
+}
+
+interface AuthUser {
+  id: string
+  email: string
+  name: string
+  username: string
+  role: string
+  avatarUrl: string | null
+}
+
 export const authConfig = {
   providers: [
     CredentialsProvider({
@@ -45,7 +63,7 @@ export const authConfig = {
           role: user.role,
           avatarUrl: user.avatarUrl,
           image: user.avatarUrl
-        } as any
+        } as AuthUser
       }
     }),
   ],
@@ -57,7 +75,7 @@ export const authConfig = {
     error: '/auth/login'
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }: { token: JWTPayload; user?: AuthUser }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -65,31 +83,28 @@ export const authConfig = {
         token.username = user.username
         token.role = user.role
         token.avatarUrl = user.avatarUrl
-        token.image = user.avatarUrl
       }
       return token
     },
-    async session({ session, token }: any) {
+    async session({ session, token }: { session: { user: JWTPayload }; token: JWTPayload }) {
       if (token) {
-        session.user.id = token.id as string
-        session.user.email = token.email as string
-        session.user.name = token.name as string
-        session.user.username = token.username as string
-        session.user.role = token.role as string
-        session.user.avatarUrl = token.avatarUrl as string
-        session.user.image = token.avatarUrl as string
+        session.user.id = token.id
+        session.user.email = token.email
+        session.user.name = token.name
+        session.user.username = token.username
+        session.user.role = token.role
+        session.user.avatarUrl = token.avatarUrl
+        session.user.image = token.avatarUrl
       }
       return session
     },
-    async authorized({ auth, request }: any) {
-      const { pathname } = request.nextUrl
+    async authorized({ auth, request }: { auth: { user: JWTPayload } | null; request: { nextUrl: URL } }) {
+      const pathname = request.nextUrl.pathname
 
-      // Permitir acceso a rutas de auth y API pública
       if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
         return true
       }
 
-      // Para rutas protegidas, verificar autenticación
       return !!auth?.user
     }
   },

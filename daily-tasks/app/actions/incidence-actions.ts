@@ -54,9 +54,9 @@ export async function createIncidence(data: CreateIncidenceData) {
 
         revalidatePath('/dashboard')
         return { success: true }
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error creating incidence:', error)
-        if (error.code === 'P2002') {
+        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
             return { success: false, error: 'Ya existe una incidencia con este tipo y número.' }
         }
         return { success: false, error: 'Error al crear la incidencia.' }
@@ -70,7 +70,7 @@ export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<Inc
     if (!session?.user) return []
 
     try {
-        const where: any = {}
+        const where: Record<string, unknown> = {}
 
         if (viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
@@ -144,7 +144,7 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
             description: data.description,
@@ -158,7 +158,7 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
             }
         }
 
-        let updatedIncidence
+        let updatedIncidence: Incidence | null = null
 
         if (data.subTasks) {
             await db.$transaction([

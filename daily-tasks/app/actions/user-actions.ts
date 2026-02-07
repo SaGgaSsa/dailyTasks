@@ -36,7 +36,7 @@ export async function upsertUser(data: UpsertUserData) {
 
     if (id) {
       // Update
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         name,
         email,
         username: upperUsername,
@@ -97,11 +97,11 @@ export async function createUser(formData: FormData) {
   const username = formData.get('username') as string
 
   // Adapt to UpsertUserData
-  const result = await upsertUser({
+    const result = await upsertUser({
     name,
     email,
     password,
-    role: role as any,
+    role: role as UserRole | undefined,
     username
   })
 
