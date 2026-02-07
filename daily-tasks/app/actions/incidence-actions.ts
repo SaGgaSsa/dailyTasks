@@ -197,7 +197,7 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
         })
 
         revalidatePath('/dashboard')
-        return { success: true, data: updatedIncidence }
+        return { success: true, data: updatedIncidence as unknown as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }
