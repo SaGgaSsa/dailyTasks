@@ -130,6 +130,12 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
         setIsSheetOpen(true)
     }
 
+    function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
+        setTasks(prev => prev.map(task => 
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+    }
+
     return (
         <DndContext
             sensors={sensors}
@@ -138,7 +144,7 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex h-full gap-6 overflow-x-auto pb-4">
+            <div className="flex h-full min-h-0 gap-6 overflow-x-auto overflow-y-hidden pb-4">
                 {COLUMNS.map((col) => (
                     <BoardColumn
                         key={col.id}
@@ -157,6 +163,7 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
+                onTaskUpdate={handleTaskUpdate}
             />
 
             <DragOverlay dropAnimation={{

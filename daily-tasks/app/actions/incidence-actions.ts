@@ -158,6 +158,8 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
             }
         }
 
+        let updatedIncidence
+
         if (data.subTasks) {
             await db.$transaction([
                 db.subTask.deleteMany({ where: { incidenceId: id } }),
@@ -181,8 +183,21 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
             })
         }
 
+        // Fetch updated incidence with relations
+        updatedIncidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignees: true,
+                subTasks: {
+                    orderBy: {
+                        createdAt: 'asc'
+                    }
+                }
+            }
+        })
+
         revalidatePath('/dashboard')
-        return { success: true }
+        return { success: true, data: updatedIncidence as unknown as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }

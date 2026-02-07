@@ -5,13 +5,14 @@ import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Plus, MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { IncidenceForm } from './incidence-form'
 import { TaskStatus, TaskType } from '@/types/enums'
-import { MarkdownText } from '@/components/ui/markdown-text'
 
 interface PlanningViewProps {
     initialTasks: IncidenceWithDetails[]
+    isSheetOpen?: boolean
+    onSheetOpenChange?: (open: boolean) => void
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -28,32 +29,32 @@ const typeColors: Record<TaskType, string> = {
     I_CONS: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 }
 
-export function PlanningView({ initialTasks }: PlanningViewProps) {
-    const [tasks] = useState<IncidenceWithDetails[]>(initialTasks)
+export function PlanningView({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange }: PlanningViewProps) {
+    const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
-    const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const [internalSheetOpen, setInternalSheetOpen] = useState(false)
+    
+    // Usar el estado externo si se proporciona, de lo contrario usar el interno
+    const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
+    const setIsSheetOpen = onSheetOpenChange || setInternalSheetOpen
+
+    function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
+        setTasks(prev => prev.map(task =>
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+    }
 
     return (
-        <div className="flex flex-col h-full gap-4">
-            <div className="flex justify-between items-center px-1">
-                <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    Backlog de Ingeniería
-                </h2>
-                <Button onClick={() => setIsSheetOpen(true)} className="bg-zinc-100 text-zinc-900 hover:bg-white font-bold h-9 shadow-lg">
-                    <Plus className="mr-2 h-4 w-4" /> Nueva Incidencia
-                </Button>
-            </div>
-
+        <div className="flex flex-col h-full">
             <div className="flex-1 overflow-auto border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-[#0F0F0F] border-b border-zinc-900 z-10">
                         <tr>
                             <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Requerimiento</th>
+                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripción</th>
                             <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Stack</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Team</th>
+                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnología</th>
+                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
                             <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
                         </tr>
                     </thead>
@@ -73,15 +74,42 @@ export function PlanningView({ initialTasks }: PlanningViewProps) {
                                     </Badge>
                                 </td>
                                 <td className="p-4">
-                                    <div className="flex flex-col gap-1.5 max-w-lg">
-                                        <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors">
+                                    <div className="flex items-center gap-3 max-w-lg">
+                                        <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
                                             {task.title}
                                         </span>
-                                        {task.description && (
-                                            <div className="line-clamp-1 opacity-50 text-[11px]">
-                                                <MarkdownText content={task.description} />
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-3 text-[11px] text-zinc-500 shrink-0">
+                                            {task.estimatedTime && (
+                                                <span className="flex items-center gap-1">
+                                                    <span className="text-zinc-400">{task.estimatedTime}h</span>
+                                                    <span>estimadas</span>
+                                                </span>
+                                            )}
+                                            {task.subTasks.length > 0 && (
+                                                (() => {
+                                                    const completed = task.subTasks.filter(st => st.isCompleted).length;
+                                                    const total = task.subTasks.length;
+                                                    const isAllCompleted = completed === total;
+                                                    return (
+                                                        <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
+                                                            {isAllCompleted ? (
+                                                                <>
+                                                                    <CheckCircle2 className="h-3 w-3" />
+                                                                    <span>completado</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="text-zinc-400">
+                                                                        {completed}/{total}
+                                                                    </span>
+                                                                    <span>pendientes</span>
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="p-4">
@@ -126,6 +154,7 @@ export function PlanningView({ initialTasks }: PlanningViewProps) {
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
+                onTaskUpdate={handleTaskUpdate}
             />
         </div>
     )
