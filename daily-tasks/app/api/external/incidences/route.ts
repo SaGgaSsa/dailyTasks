@@ -4,6 +4,23 @@ import { TaskType, TechStack, Priority, TaskStatus } from '@/types/enums'
 
 export async function POST(request: NextRequest) {
   try {
+    // Validar header de seguridad
+    const apiSecret = request.headers.get('x-api-secret')
+
+    if (!apiSecret) {
+      return NextResponse.json(
+        { error: 'Header x-api-secret es requerido' },
+        { status: 401 }
+      )
+    }
+
+    if (apiSecret !== process.env.EXTERNAL_API_SECRET) {
+      return NextResponse.json(
+        { error: 'Credenciales inválidas' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
 
     const { type, externalId, title, technology } = body

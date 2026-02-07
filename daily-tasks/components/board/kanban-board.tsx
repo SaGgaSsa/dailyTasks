@@ -24,7 +24,7 @@ import { BoardColumn } from './board-column'
 import { TaskCard } from './task-card'
 import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
-import { updateIncidenceStatus, getIncidence } from '@/app/actions/incidence-actions'
+import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
 import { TaskStatus } from '@/types/enums'
 import { toast } from 'sonner'
 
@@ -147,19 +147,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
         }
     }
 
-    async function handleActivate(task: IncidenceWithDetails) {
-        const result = await updateIncidenceStatus(task.id, TaskStatus.TODO, 0)
-        if (!result.success && result.error) {
-            toast.error(result.error)
-        } else {
-            toast.success('Incidencia movida a Desarrollo')
-            const updated = await getIncidence(task.id)
-            if (updated) {
-                handleTaskUpdate(updated)
-            }
-        }
-    }
-
     return (
         <DndContext
             sensors={sensors}
@@ -176,7 +163,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
                         title={col.title}
                         tasks={tasks.filter((t) => t.status === col.id)}
                         onCardClick={handleCardClick}
-                        onActivate={handleActivate}
                     />
                 ))}
             </div>

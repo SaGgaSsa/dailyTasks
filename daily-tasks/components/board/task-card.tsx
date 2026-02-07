@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MoreHorizontal, CheckSquare, Play } from 'lucide-react'
+import { MoreHorizontal, CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -15,12 +15,10 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
-import { TaskStatus } from '@/types/enums'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
     onClick?: () => void
-    onActivate?: () => void
 }
 
 const priorityColors = {
@@ -35,7 +33,7 @@ const typeColors: Record<string, string> = {
     I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
 }
 
-export function TaskCard({ task, onClick, onActivate }: TaskCardProps) {
+export function TaskCard({ task, onClick }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -80,20 +78,7 @@ export function TaskCard({ task, onClick, onActivate }: TaskCardProps) {
                         {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
                     </Badge>
                 </div>
-                {task.status === TaskStatus.BACKLOG && onActivate && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 -mr-1 text-green-400 hover:text-green-300 hover:bg-green-950/50"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onActivate()
-                        }}
-                        title="Activar - Mover a Desarrollo"
-                    >
-                        <Play className="h-3.5 w-3.5" />
-                    </Button>
-                )}
+
                 <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-zinc-600 hover:text-zinc-400">
                     <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>

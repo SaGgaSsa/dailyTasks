@@ -190,6 +190,18 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
+        const currentIncidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignees: true,
+                subTasks: true,
+            }
+        })
+
+        if (!currentIncidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
         const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
@@ -204,8 +216,6 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
                 set: data.assigneeIds.map(userId => ({ id: userId }))
             }
         }
-
-        let updatedIncidence: Incidence | null = null
 
         if (data.subTasks) {
             await db.$transaction([
@@ -230,8 +240,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
             })
         }
 
-        // Fetch updated incidence with relations
-        updatedIncidence = await db.incidence.findUnique({
+        const updatedIncidenceWithRelations = await db.incidence.findUnique({
             where: { id },
             include: {
                 assignees: true,
@@ -241,10 +250,41 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
                     }
                 }
             }
-        })
+        }) as IncidenceWithDetails | null
+
+        const hasEstimatedTime = updatedIncidenceWithRelations && updatedIncidenceWithRelations.estimatedTime && updatedIncidenceWithRelations.estimatedTime > 0
+        const hasAssignees = updatedIncidenceWithRelations && updatedIncidenceWithRelations.assignees.length > 0
+        const hasSubTasks = updatedIncidenceWithRelations && updatedIncidenceWithRelations.subTasks.length > 0
+        const allConditionsMet = hasEstimatedTime && hasAssignees && hasSubTasks
+
+        const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
+        const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
+                                   currentIncidence.status === TaskStatus.IN_PROGRESS || 
+                                   currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
+
+        if (isBacklogToTodo || isActiveToBacklog) {
+            await db.incidence.update({
+                where: { id },
+                data: {
+                    status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
+                }
+            })
+        }
+
+        const finalIncidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignees: true,
+                subTasks: {
+                    orderBy: {
+                        createdAt: 'asc'
+                    }
+                }
+            }
+        }) as IncidenceWithDetails | null
 
         revalidatePath('/dashboard')
-        return { success: true, data: updatedIncidence as unknown as IncidenceWithDetails }
+        return { success: true, data: finalIncidence as unknown as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }
