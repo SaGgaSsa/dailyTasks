@@ -14,13 +14,13 @@ import {
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/lib/use-theme'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { theme, setTheme } = useTheme()
+  const { mounted, toggleTheme, resolvedTheme, isDark } = useTheme()
   const { data: session } = useSession()
 
   const toggleMobileMenu = () => {
@@ -94,15 +94,17 @@ export function Navbar() {
                   <div className="text-sm font-medium">{session?.user?.name || 'Usuario Demo'}</div>
                   <div className="text-xs text-muted-foreground">{session?.user?.email || 'desarrollador@ejemplo.com'}</div>
                 </div>
-                <DropdownMenuItem onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                <DropdownMenuItem onSelect={toggleTheme}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {theme === 'dark' ? (
+                    {!mounted ? (
+                      <circle cx="12" cy="12" r="5" />
+                    ) : isDark ? (
                       <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
                     ) : (
                       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     )}
                   </svg>
-                  {theme === 'dark' ? 'Cambiar a Claro' : 'Cambiar a Oscuro'}
+                  {!mounted ? 'Cambiar tema' : isDark ? 'Cambiar a Claro' : 'Cambiar a Oscuro'}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -82,7 +82,7 @@ export function Sidebar({ userId }: SidebarProps) {
                   className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
                 >
                   <Users className="h-4 w-4" />
-                  {isOpen && <span>Equipo</span>}
+                  {isOpen && <span>Colaborador</span>}
                 </Button>
               </Link>
 

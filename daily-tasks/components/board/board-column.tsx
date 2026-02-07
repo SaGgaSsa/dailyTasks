@@ -22,8 +22,8 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
     })
 
     return (
-        <div className="flex flex-col w-80 shrink-0 bg-zinc-900/30 rounded-xl overflow-hidden">
-            <div className="p-4 py-3 flex items-center justify-between">
+        <div className="flex flex-col flex-1 min-w-[300px] h-full bg-zinc-900/30 rounded-xl overflow-hidden">
+            <div className="p-4 py-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                     <h3 className="font-medium text-xs text-zinc-400 uppercase tracking-wider">{title}</h3>
                     <span className="text-zinc-600 text-[11px] font-medium">
@@ -35,7 +35,7 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
 
             <div
                 ref={setNodeRef}
-                className="flex-1 px-3 min-h-[150px]"
+                className="flex-1 px-3 overflow-y-auto min-h-0"
             >
                 <SortableContext
                     items={tasks.map((t) => t.id)}

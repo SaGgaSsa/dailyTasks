@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeSync } from "@/components/theme-sync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,6 +21,29 @@ export const metadata: Metadata = {
   description: "Gestión de tareas tipo Jira/Notion",
 };
 
+// Script para prevenir flash de tema incorrecto
+const themeScript = `
+  (function() {
+    function getThemePreference() {
+      const savedTheme = localStorage.getItem('dailytasks-theme');
+      if (savedTheme && ['dark', 'light'].includes(savedTheme)) {
+        return savedTheme;
+      }
+      return 'dark';
+    }
+    const theme = getThemePreference();
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    }
+    root.style.colorScheme = theme;
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,16 +51,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
+            defaultTheme="dark"
+            enableSystem={false}
+            storageKey="dailytasks-theme"
+            disableTransitionOnChange={false}
           >
+            <ThemeSync />
             {children}
             <Toaster />
           </ThemeProvider>
