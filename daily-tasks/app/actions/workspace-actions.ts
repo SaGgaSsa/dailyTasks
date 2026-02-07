@@ -59,7 +59,7 @@ export async function createWorkspace(name: string, userId: string) {
     }
 
     // Si es un error de clave foránea, proporcionar un mensaje más descriptivo
-    if (error.code === 'P2003') {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: unknown }).code === 'P2003') {
       throw new Error('Failed to create workspace: User not found')
     }
 

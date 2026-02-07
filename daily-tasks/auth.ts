@@ -27,4 +27,4 @@ declare module 'next-auth' {
 }
 
 export { authConfig }
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig as any)

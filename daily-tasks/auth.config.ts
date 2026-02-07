@@ -3,15 +3,6 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './lib/db'
 
-interface JWTPayload {
-  id: string
-  email: string
-  name: string
-  username: string
-  role: string
-  avatarUrl: string | null
-}
-
 interface AuthUser {
   id: string
   email: string
@@ -19,6 +10,7 @@ interface AuthUser {
   username: string
   role: string
   avatarUrl: string | null
+  image: string | null
 }
 
 export const authConfig = {
@@ -75,7 +67,7 @@ export const authConfig = {
     error: '/auth/login'
   },
   callbacks: {
-    async jwt({ token, user }: { token: JWTPayload; user?: AuthUser }) {
+    async jwt({ token, user }: { token: Record<string, unknown>; user?: AuthUser }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -86,19 +78,21 @@ export const authConfig = {
       }
       return token
     },
-    async session({ session, token }: { session: { user: JWTPayload }; token: JWTPayload }) {
+    async session({ session, token }: { session: Record<string, unknown>; token: Record<string, unknown> }) {
       if (token) {
-        session.user.id = token.id
-        session.user.email = token.email
-        session.user.name = token.name
-        session.user.username = token.username
-        session.user.role = token.role
-        session.user.avatarUrl = token.avatarUrl
-        session.user.image = token.avatarUrl
+        session.user = {
+          id: token.id as string,
+          email: token.email as string,
+          name: token.name as string,
+          username: token.username as string,
+          role: token.role as string,
+          avatarUrl: token.avatarUrl as string | null,
+          image: token.avatarUrl as string | null,
+        }
       }
       return session
     },
-    async authorized({ auth, request }: { auth: { user: JWTPayload } | null; request: { nextUrl: URL } }) {
+    async authorized({ auth, request }: { auth: { user: AuthUser } | null; request: { nextUrl: URL } }) {
       const pathname = request.nextUrl.pathname
 
       if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
@@ -111,4 +105,4 @@ export const authConfig = {
   secret: process.env.NEXTAUTH_SECRET,
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig as any)
