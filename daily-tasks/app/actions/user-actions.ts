@@ -76,7 +76,7 @@ export async function upsertUser(data: UpsertUserData) {
   }
 }
 
-export async function deleteUser(id: string) {
+export async function deleteUser(id: number) {
   try {
     await db.user.delete({
       where: { id },
@@ -113,6 +113,51 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUserPassword(formData: FormData) {
-  // TODO: Implement password update
   return { success: false, error: 'Not implemented' }
+}
+
+export async function getUserDetails(userId: number) {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        assignedIncidences: {
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+        },
+        _count: {
+          select: {
+            assignedIncidences: true,
+            ownedWorkspaces: true,
+            workspaces: true,
+          },
+        },
+      },
+    })
+
+    if (!user) {
+      return null
+    }
+
+    const totalTasks = user._count.assignedIncidences
+    const pendingTasks = user.assignedIncidences.filter(
+      (i) => i.status !== 'DONE'
+    ).length
+    const completedTasks = user.assignedIncidences.filter(
+      (i) => i.status === 'DONE'
+    ).length
+
+    return {
+      ...user,
+      metrics: {
+        totalTasks,
+        pendingTasks,
+        completedTasks,
+      },
+      recentIncidences: user.assignedIncidences,
+    }
+  } catch (error) {
+    console.error('Error getting user details:', error)
+    return null
+  }
 }

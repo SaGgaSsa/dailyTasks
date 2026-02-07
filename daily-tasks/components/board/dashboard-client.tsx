@@ -15,13 +15,37 @@ interface DashboardClientProps {
     isAdmin: boolean
 }
 
-export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
+export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks: initialKanbanTasks, isAdmin }: DashboardClientProps) {
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
+    const [backlogTasks, setBacklogTasks] = useState(initialBacklogTasks)
+    const [kanbanTasks, setKanbanTasks] = useState(initialKanbanTasks)
+
+    const handleBacklogUpdate = (updatedTask: IncidenceWithDetails) => {
+        setBacklogTasks(prev => prev.map(task =>
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+    }
+
+    const handleKanbanUpdate = (updatedTask: IncidenceWithDetails) => {
+        setKanbanTasks(prev => prev.map(task =>
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+    }
+
+    const handleTaskUpdate = (updatedTask: IncidenceWithDetails) => {
+        // Update both lists
+        setBacklogTasks(prev => prev.map(task =>
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+        setKanbanTasks(prev => prev.map(task =>
+            task.id === updatedTask.id ? updatedTask : task
+        ))
+    }
 
     if (!isAdmin) {
-        return <KanbanBoard initialTasks={kanbanTasks} />
+        return <KanbanBoard initialTasks={kanbanTasks} onTaskUpdate={handleKanbanUpdate} />
     }
 
     return (
@@ -63,13 +87,17 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
             <div className="flex-1 min-h-0 overflow-hidden">
                 {viewMode === 'BACKLOG' ? (
                     <Backlog 
-                        initialTasks={backlogTasks} 
+                        initialTasks={backlogTasks}
                         isSheetOpen={isSheetOpen}
                         onSheetOpenChange={setIsSheetOpen}
                         onTaskSelect={setSelectedTask}
+                        onTaskUpdate={handleTaskUpdate}
                     />
                 ) : (
-                    <KanbanBoard initialTasks={kanbanTasks} />
+                    <KanbanBoard 
+                        initialTasks={kanbanTasks}
+                        onTaskUpdate={handleKanbanUpdate}
+                    />
                 )}
             </div>
 
@@ -81,6 +109,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
+                onTaskUpdate={handleTaskUpdate}
             />
         </div>
     )

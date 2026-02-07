@@ -10,14 +10,14 @@ import { Folder, ChevronsUpDown, Plus } from 'lucide-react'
 import { createWorkspace } from '@/app/actions/workspace-actions'
 
 interface Workspace {
-  id: string
+  id: number
   name: string
 }
 
 interface WorkspaceSwitcherProps {
   workspaces: Workspace[]
-  defaultWorkspaceId: string
-  userId?: string
+  defaultWorkspaceId: number
+  userId?: number
 }
 
 export function WorkspaceSwitcher({ workspaces, defaultWorkspaceId, userId }: WorkspaceSwitcherProps) {
@@ -34,11 +34,11 @@ export function WorkspaceSwitcher({ workspaces, defaultWorkspaceId, userId }: Wo
     }
   }, [defaultWorkspaceId])
 
-  const handleSelect = (workspaceId: string) => {
+  const handleSelect = (workspaceId: number) => {
     setSelectedWorkspaceId(workspaceId)
     // Set preference in localStorage
     if (typeof window !== 'undefined') {
-      localStorage.setItem('active-workspace-id', workspaceId)
+      localStorage.setItem('active-workspace-id', String(workspaceId))
     }
     // Refresh the page
     router.refresh()

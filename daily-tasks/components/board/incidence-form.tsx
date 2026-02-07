@@ -66,7 +66,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
     const [priority, setPriority] = useState<Priority>(Priority.MEDIUM)
     const [technology, setTechnology] = useState<TechStack>(TechStack.SISA)
     const [estimatedTime, setEstimatedTime] = useState('')
-    const [assigneeIds, setAssigneeIds] = useState<string[]>([])
+    const [assigneeIds, setAssigneeIds] = useState<number[]>([])
     const [subTasks, setSubTasks] = useState<{ title: string; isCompleted: boolean }[]>([])
     const [newSubTask, setNewSubTask] = useState('')
     const [description, setDescription] = useState('')
@@ -150,7 +150,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
     }
 
     // Handle assignees change for auto-save
-    const handleAssigneesChange = (newAssignees: string[]) => {
+    const handleAssigneesChange = (newAssignees: number[]) => {
         setAssigneeIds(newAssignees)
         if (isEditMode) {
             handleAutoSave({ assigneeIds: newAssignees })
@@ -245,7 +245,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
     }
 
     // Toggle assignee
-    const toggleAssignee = (userId: string) => {
+    const toggleAssignee = (userId: number) => {
         const newAssignees = assigneeIds.includes(userId)
             ? assigneeIds.filter(id => id !== userId)
             : [...assigneeIds, userId]
@@ -342,8 +342,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
                         <Input
                             id="title"
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            onBlur={() => handleTextBlur('title', title)}
+                            onChange={(e) => {
+                                setTitle(e.target.value)
+                                if (isEditMode) {
+                                    handleAutoSave({ title: e.target.value })
+                                }
+                            }}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100"
                             placeholder="Descripción breve de la incidencia"
                         />
@@ -508,8 +512,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
                         <Textarea
                             id="description"
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            onBlur={() => handleTextBlur('description', description)}
+                            onChange={(e) => {
+                                setDescription(e.target.value)
+                                if (isEditMode) {
+                                    handleAutoSave({ description: e.target.value })
+                                }
+                            }}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100 min-h-[120px] resize-none"
                             placeholder="Añade comentarios o notas técnicas..."
                         />

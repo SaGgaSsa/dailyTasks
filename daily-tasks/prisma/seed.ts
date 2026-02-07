@@ -10,11 +10,11 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const db = new PrismaClient({ adapter });
 
-const ID_USER_SAG = "00000000-0000-0000-0000-000000000001";
-const ID_USER_DEV = "00000000-0000-0000-0000-000000000002";
+const ID_USER_SAG = 140;
+const ID_USER_DEV = 141;
 
 const rawData = [
-  { tpo: TaskType.I_MODAPL, nro: 1745, desc: 'Facturación - Facturación', item: 'Cuadro Tarifario - Desarrollar metodo de carga masiva', asignado: 'NMC', hs: 2, status: TaskStatus.BACKLOG },
+  { tpo: TaskType.I_MODAPL, nro: 1745, desc: 'Facturación - Facturación', item: 'Cuadro Tarifario - Desarrollar metodo de carga masiva', asignado: 'SAG', hs: 2, status: TaskStatus.BACKLOG },
   { tpo: TaskType.I_CASO, nro: 4553, desc: 'Longitud Ruta Med', item: 'Desarrollar', asignado: 'NMC', hs: 2, status: TaskStatus.TODO },
   { tpo: TaskType.I_MODAPL, nro: 1744, desc: 'Mediciones - Modificaciones NewJass CI', item: 'Poder Calorifico - Desarrollar ABM para los renglones con validación de cabecera', asignado: 'NMC', hs: 16, status: TaskStatus.IN_PROGRESS },
   { tpo: TaskType.I_MODAPL, nro: 1744, desc: 'Mediciones - Modificaciones NewJass CI', item: 'Toque en la pantalla del Em Ser', asignado: 'SAG', hs: 4, status: TaskStatus.IN_PROGRESS },
@@ -30,11 +30,10 @@ const rawData = [
 ];
 
 async function main() {
-  console.log("🚀 Iniciando Seed ALM...");
+  console.log("🚀 Iniciando Seed Daily Tasks...");
 
   const hashedPassword = await bcrypt.hash('123456', 10);
 
-  // 1. Crear Usuarios
   console.log("👤 Creando usuarios...");
   await db.user.upsert({
     where: { id: ID_USER_SAG },
@@ -43,6 +42,7 @@ async function main() {
       username: "SAG",
       role: UserRole.ADMIN,
       password: hashedPassword,
+      technologies: [TechStack.SISA, TechStack.WEB, TechStack.ANDROID, TechStack.ANGULAR, TechStack.SPRING],
     },
     create: {
       id: ID_USER_SAG,
@@ -51,6 +51,7 @@ async function main() {
       name: "Sebastian Galarza",
       role: UserRole.ADMIN,
       password: hashedPassword,
+      technologies: [TechStack.SISA, TechStack.WEB, TechStack.ANDROID, TechStack.ANGULAR, TechStack.SPRING],
     },
   });
 
@@ -62,6 +63,7 @@ async function main() {
       name: "Dev Sisa",
       role: UserRole.DEV,
       password: hashedPassword,
+      technologies: [TechStack.WEB, TechStack.ANGULAR],
     },
     create: {
       id: ID_USER_DEV,
@@ -70,10 +72,10 @@ async function main() {
       name: "Dev Sisa",
       role: UserRole.DEV,
       password: hashedPassword,
+      technologies: [TechStack.WEB, TechStack.ANGULAR],
     },
   });
 
-  // 2. Procesar y Agrupar Datos
   console.log("📊 Cargando incidencias y subtasks...");
   await db.incidence.deleteMany();
 
@@ -82,7 +84,7 @@ async function main() {
     externalId: number,
     title: string,
     items: string[],
-    assignees: Set<string>,
+    assignees: Set<number>,
     totalHs: number,
     status: TaskStatus
   }> = {};
@@ -95,7 +97,7 @@ async function main() {
         externalId: row.nro,
         title: row.desc,
         items: [],
-        assignees: new Set<string>(),
+        assignees: new Set<number>(),
         totalHs: 0,
         status: row.status as TaskStatus
       };
@@ -113,7 +115,7 @@ async function main() {
   for (const key in groupedTasks) {
     const task = groupedTasks[key];
 
-    const incidence = await db.incidence.create({
+    await db.incidence.create({
       data: {
         type: task.type,
         externalId: task.externalId,
@@ -135,7 +137,7 @@ Para más información, consultar la [documentación técnica](https://wiki.sisa
     });
   }
 
-  console.log("✅ Seed ALM finalizado con éxito.");
+  console.log("✅ Seed Daily Tasks finalizado.");
 }
 
 main()

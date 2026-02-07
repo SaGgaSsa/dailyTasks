@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
-export async function createWorkspace(name: string, userId: string) {
+export async function createWorkspace(name: string, userId: number) {
   try {
     // Regla 1: Longitud mínima
     if (name.trim().length < 3) {
@@ -53,22 +53,19 @@ export async function createWorkspace(name: string, userId: string) {
   } catch (error) {
     console.error('Error creating workspace:', error)
 
-    // Si el error ya es una instancia de Error (ej: nuestras validaciones), relánzalo tal cual
     if (error instanceof Error) {
       throw error;
     }
 
-    // Si es un error de clave foránea, proporcionar un mensaje más descriptivo
     if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: unknown }).code === 'P2003') {
       throw new Error('Failed to create workspace: User not found')
     }
 
-    // Solo si es un error desconocido (ej: fallo de DB raro), lanza el genérico
     throw new Error('Failed to create workspace')
   }
 }
 
-export async function getUserWorkspaces(userId: string) {
+export async function getUserWorkspaces(userId: number) {
   try {
     const workspaces = await db.workspace.findMany({
       where: {

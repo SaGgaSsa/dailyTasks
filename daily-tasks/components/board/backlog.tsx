@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
 
@@ -13,6 +13,7 @@ interface BacklogProps {
     isSheetOpen?: boolean
     onSheetOpenChange?: (open: boolean) => void
     onTaskSelect?: (task: IncidenceWithDetails | null) => void
+    onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -29,18 +30,26 @@ const typeColors: Record<TaskType, string> = {
     I_CONS: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 }
 
-export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange, onTaskSelect }: BacklogProps) {
+export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange, onTaskSelect, onTaskUpdate }: BacklogProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
     
-    // Usar el estado externo si se proporciona, de lo contrario usar el interno
+    // Usar el estado externo si se proporciona, de lo contrario usar el internos
     const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
     const setIsSheetOpen = onSheetOpenChange || setInternalSheetOpen
+
+    // Update local state when initialTasks changes (from parent)
+    useEffect(() => {
+        setTasks(initialTasks)
+    }, [initialTasks])
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => prev.map(task =>
             task.id === updatedTask.id ? updatedTask : task
         ))
+        if (onTaskUpdate) {
+            onTaskUpdate(updatedTask)
+        }
     }
 
     return (
@@ -128,12 +137,11 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                 <td className="p-4">
                                     <div className="flex -space-x-1.5 overflow-hidden">
                                         {task.assignees.map((user) => (
-                                            <Avatar key={user.id} className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800">
-                                                <AvatarImage src={user.avatarUrl || ''} />
-                                                <AvatarFallback className="text-[9px] bg-zinc-800 text-zinc-400">
-                                                    {user.username.substring(0, 2)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <UserAvatar 
+                                                key={user.id} 
+                                                username={user.username} 
+                                                className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]" 
+                                            />
                                         ))}
                                     </div>
                                 </td>

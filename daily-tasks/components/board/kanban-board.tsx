@@ -29,6 +29,7 @@ import { TaskStatus } from '@/types/enums'
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
+    onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
 }
 
 const COLUMNS = [
@@ -37,7 +38,7 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -134,6 +135,9 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
         setTasks(prev => prev.map(task => 
             task.id === updatedTask.id ? updatedTask : task
         ))
+        if (onTaskUpdate) {
+            onTaskUpdate(updatedTask)
+        }
     }
 
     return (

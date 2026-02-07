@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IncidenceWithDetails } from '@/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import {
     Tooltip,
     TooltipContent,
@@ -127,12 +127,10 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                                 {task.assignees.map((assignee) => (
                                     <Tooltip key={assignee.id}>
                                         <TooltipTrigger asChild>
-                                            <Avatar className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800">
-                                                <AvatarImage src={assignee.avatarUrl || ''} />
-                                                <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
-                                                    {assignee.username?.substring(0, 2)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <UserAvatar 
+                                                username={assignee.username} 
+                                                className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
+                                            />
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             <p className="text-xs">{assignee.username}: {assignee.name}</p>

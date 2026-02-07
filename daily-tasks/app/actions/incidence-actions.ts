@@ -15,17 +15,18 @@ interface CreateIncidenceData {
     tech: TechStack
     priority: Priority
     estimatedTime?: number
-    assigneeIds?: string[]
+    assigneeIds?: number[]
 }
 
 interface UpdateIncidenceData {
     status?: TaskStatus
     priority?: Priority
     description?: string
-    comment?: string // We can keep comment for internal notes or merge into description
+    comment?: string
     estimatedTime?: number
     title?: string
-    assigneeIds?: string[]
+    technology?: TechStack
+    assigneeIds?: number[]
     subTasks?: { title: string, isCompleted: boolean }[]
 }
 
@@ -98,7 +99,7 @@ export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<Inc
     }
 }
 
-export async function updateIncidenceStatus(incidenceId: string, newStatus: TaskStatus, newPosition: number) {
+export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
@@ -117,7 +118,7 @@ export async function updateIncidenceStatus(incidenceId: string, newStatus: Task
 
         // Business Rule: Dev can move if assigned
         if (session.user.role !== 'ADMIN') {
-            const isAssigned = incidence.assignees.some(a => a.id === session.user.id)
+            const isAssigned = incidence.assignees.some(a => a.id === Number(session.user.id))
             if (!isAssigned) {
                 return { success: false, error: 'Solo los desarrolladores asignados pueden mover esta tarea.' }
             }
@@ -139,7 +140,7 @@ export async function updateIncidenceStatus(incidenceId: string, newStatus: Task
     }
 }
 
-export async function updateIncidence(id: string, data: UpdateIncidenceData) {
+export async function updateIncidence(id: number, data: UpdateIncidenceData) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
@@ -149,7 +150,8 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
             priority: data.priority,
             description: data.description,
             estimatedTime: data.estimatedTime,
-            title: data.title
+            title: data.title,
+            technology: data.technology,
         }
 
         if (data.assigneeIds) {
@@ -204,7 +206,7 @@ export async function updateIncidence(id: string, data: UpdateIncidenceData) {
     }
 }
 
-export async function toggleSubTask(subTaskId: string) {
+export async function toggleSubTask(subTaskId: number) {
     try {
         const subTask = await db.subTask.findUnique({ where: { id: subTaskId } })
         if (!subTask) return { success: false, error: 'No encontrada' }

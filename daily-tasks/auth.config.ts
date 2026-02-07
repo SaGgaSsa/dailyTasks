@@ -4,13 +4,11 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './lib/db'
 
 interface AuthUser {
-  id: string
+  id: number
   email: string
   name: string
   username: string
   role: string
-  avatarUrl: string | null
-  image: string | null
 }
 
 export const authConfig = {
@@ -53,8 +51,6 @@ export const authConfig = {
           name: user.name || '',
           username: user.username,
           role: user.role,
-          avatarUrl: user.avatarUrl,
-          image: user.avatarUrl
         } as AuthUser
       }
     }),
@@ -74,20 +70,17 @@ export const authConfig = {
         token.name = user.name
         token.username = user.username
         token.role = user.role
-        token.avatarUrl = user.avatarUrl
       }
       return token
     },
     async session({ session, token }: { session: Record<string, unknown>; token: Record<string, unknown> }) {
       if (token) {
         session.user = {
-          id: token.id as string,
+          id: String(token.id),
           email: token.email as string,
           name: token.name as string,
           username: token.username as string,
           role: token.role as string,
-          avatarUrl: token.avatarUrl as string | null,
-          image: token.avatarUrl as string | null,
         }
       }
       return session

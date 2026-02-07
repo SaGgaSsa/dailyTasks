@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -103,12 +103,7 @@ export function Sidebar({ userId }: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-zinc-800">
         <div className={`flex items-center gap-3 ${!isOpen ? 'justify-center' : ''}`}>
-          <Avatar className="h-8 w-8 border border-zinc-700">
-            <AvatarImage src={session?.user?.image || ''} alt="User" />
-            <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-              {session?.user?.username?.substring(0, 2) || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar username={session?.user?.username} size="sm" />
           {isOpen && (
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-zinc-200 truncate">{session?.user?.name || session?.user?.username}</span>

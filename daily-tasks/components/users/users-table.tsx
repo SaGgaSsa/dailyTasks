@@ -18,7 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { Edit, Trash, AlertTriangle } from 'lucide-react'
+import { Edit, Trash, AlertTriangle, Eye } from 'lucide-react'
 import { deleteUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 
@@ -27,9 +27,10 @@ import { User } from '@prisma/client'
 interface UsersTableProps {
     data: User[]
     onEdit: (user: User) => void
+    onViewDetail: (user: User) => void
 }
 
-export function UsersTable({ data, onEdit }: UsersTableProps) {
+export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
     const [userToDelete, setUserToDelete] = useState<User | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
@@ -80,13 +81,16 @@ export function UsersTable({ data, onEdit }: UsersTableProps) {
                             </TableRow>
                         ) : (
                             data.map((user) => (
-                                <TableRow key={user.id}>
+                                <TableRow key={user.id} className="cursor-pointer" onClick={() => onViewDetail(user)}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell>{user.username}</TableCell>
                                     <TableCell>{user.role}</TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <Button variant="ghost" size="icon" onClick={() => onViewDetail(user)}>
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
                                             <Button variant="ghost" size="icon" onClick={() => onEdit(user)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
