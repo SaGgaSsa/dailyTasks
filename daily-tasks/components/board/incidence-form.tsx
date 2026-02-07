@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Check, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Check, Plus, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -257,10 +257,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
             <SheetContent className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto">
                 <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
-                        <SheetTitle className="text-zinc-100">
+                        <SheetTitle className="text-zinc-100 pt-1">
                             {isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'}
                         </SheetTitle>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 pt-1">
                             {/* Save status indicator */}
                             {isEditMode && saveStatus !== 'idle' && (
                                 <span className={`text-xs ${saveStatus === 'saving' ? 'text-yellow-400' : 'text-green-400'}`}>
@@ -274,21 +274,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
                                 onClick={handleSave}
                                 disabled={isLoading}
                                 className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                                title="Guardar"
                             >
                                 {isLoading ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                     <Check className="h-4 w-4" />
                                 )}
-                            </Button>
-                            {/* Close button */}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => onOpenChange(false)}
-                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                            >
-                                <X className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
