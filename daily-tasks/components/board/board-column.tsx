@@ -14,9 +14,10 @@ interface BoardColumnProps {
     title: string
     tasks: IncidenceWithDetails[]
     onCardClick: (task: IncidenceWithDetails) => void
+    onActivate?: (task: IncidenceWithDetails) => void
 }
 
-export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps) {
+export function BoardColumn({ id, title, tasks, onCardClick, onActivate }: BoardColumnProps) {
     const { setNodeRef } = useDroppable({
         id,
     })
@@ -42,7 +43,12 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
                     strategy={verticalListSortingStrategy}
                 >
                     {tasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onClick={() => onCardClick(task)} />
+                        <TaskCard 
+                            key={task.id} 
+                            task={task} 
+                            onClick={() => onCardClick(task)}
+                            onActivate={onActivate ? () => onActivate(task) : undefined}
+                        />
                     ))}
                 </SortableContext>
             </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
@@ -16,6 +17,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks: initialKanbanTasks, isAdmin }: DashboardClientProps) {
+    const router = useRouter()
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -42,6 +44,10 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
         setKanbanTasks(prev => prev.map(task =>
             task.id === updatedTask.id ? updatedTask : task
         ))
+    }
+
+    const handleIncidenceCreated = () => {
+        router.refresh()
     }
 
     if (!isAdmin) {
@@ -110,6 +116,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                 }}
                 initialData={selectedTask}
                 onTaskUpdate={handleTaskUpdate}
+                onIncidenceCreated={handleIncidenceCreated}
             />
         </div>
     )

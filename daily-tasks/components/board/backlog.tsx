@@ -5,7 +5,7 @@ import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { MoreHorizontal, CheckCircle2 } from 'lucide-react'
+import { MoreHorizontal, CheckCircle2, Inbox } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
 
 interface BacklogProps {
@@ -67,91 +67,107 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900">
-                        {tasks.map((task) => (
-                            <tr
-                                key={task.id}
-                                className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
-                                onClick={() => {
-                                    if (onTaskSelect) {
-                                        onTaskSelect(task)
-                                    }
-                                    setIsSheetOpen(true)
-                                }}
-                            >
-                                <td className="p-4">
-                                    <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[task.type]}`}>
-                                        {task.type} {task.externalId}
-                                    </Badge>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3 max-w-lg">
-                                        <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
-                                            {task.title}
-                                        </span>
-                                        <div className="flex items-center gap-3 text-[11px] text-zinc-500 shrink-0">
-                                            {task.estimatedTime && (
-                                                <span className="flex items-center gap-1">
-                                                    <span className="text-zinc-400">{task.estimatedTime}h</span>
-                                                    <span>estimadas</span>
-                                                </span>
-                                            )}
-                                            {task.subTasks.length > 0 && (
-                                                (() => {
-                                                    const completed = task.subTasks.filter(st => st.isCompleted).length;
-                                                    const total = task.subTasks.length;
-                                                    const isAllCompleted = completed === total;
-                                                    return (
-                                                        <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
-                                                            {isAllCompleted ? (
-                                                                <>
-                                                                    <CheckCircle2 className="h-3 w-3" />
-                                                                    <span>completado</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span className="text-zinc-400">
-                                                                        {completed}/{total}
-                                                                    </span>
-                                                                    <span>pendientes</span>
-                                                                </>
-                                                            )}
-                                                        </span>
-                                                    );
-                                                })()
-                                            )}
+                        {tasks.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="p-12 text-center">
+                                    <div className="flex flex-col items-center justify-center gap-3">
+                                        <div className="p-4 rounded-full bg-zinc-900/50">
+                                            <Inbox className="h-8 w-8 text-zinc-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-zinc-400 font-medium">Sin incidencias en el backlog</p>
+                                            <p className="text-zinc-500 text-sm mt-1">Crea una nueva incidencia para comenzar</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="p-4">
-                                    <div className="flex justify-center">
-                                        <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
-                                            {task.status}
-                                        </Badge>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
-                                        {task.technology}
-                                    </span>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex -space-x-1.5 overflow-hidden">
-                                        {task.assignees.map((user) => (
-                                            <UserAvatar 
-                                                key={user.id} 
-                                                username={user.username} 
-                                                className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]" 
-                                            />
-                                        ))}
-                                    </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </td>
                             </tr>
-                        ))}
+                        ) : (
+                            tasks.map((task) => (
+                                <tr
+                                    key={task.id}
+                                    className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
+                                    onClick={() => {
+                                        if (onTaskSelect) {
+                                            onTaskSelect(task)
+                                        }
+                                        setIsSheetOpen(true)
+                                    }}
+                                >
+                                    <td className="p-4">
+                                        <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[task.type]}`}>
+                                            {task.type} {task.externalId}
+                                        </Badge>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3 max-w-lg">
+                                            <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
+                                                {task.title}
+                                            </span>
+                                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 shrink-0">
+                                                {task.estimatedTime && (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="text-zinc-400">{task.estimatedTime}h</span>
+                                                        <span>estimadas</span>
+                                                    </span>
+                                                )}
+                                                {task.subTasks.length > 0 && (
+                                                    (() => {
+                                                        const completed = task.subTasks.filter(st => st.isCompleted).length;
+                                                        const total = task.subTasks.length;
+                                                        const isAllCompleted = completed === total;
+                                                        return (
+                                                            <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
+                                                                {isAllCompleted ? (
+                                                                    <>
+                                                                        <CheckCircle2 className="h-3 w-3" />
+                                                                        <span>completado</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className="text-zinc-400">
+                                                                            {completed}/{total}
+                                                                        </span>
+                                                                        <span>pendientes</span>
+                                                                    </>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
+                                                {task.status}
+                                            </Badge>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
+                                            {task.technology}
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex -space-x-1.5 overflow-hidden">
+                                            {task.assignees.map((user) => (
+                                                <UserAvatar 
+                                                    key={user.id} 
+                                                    username={user.username} 
+                                                    className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]" 
+                                                />
+                                            ))}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

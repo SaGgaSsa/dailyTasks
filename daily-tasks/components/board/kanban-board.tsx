@@ -24,8 +24,9 @@ import { BoardColumn } from './board-column'
 import { TaskCard } from './task-card'
 import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
-import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
+import { updateIncidenceStatus, getIncidence } from '@/app/actions/incidence-actions'
 import { TaskStatus } from '@/types/enums'
+import { toast } from 'sonner'
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
@@ -120,7 +121,13 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
 
         const task = tasks.find((t) => t.id === active.id)
         if (task) {
-            await updateIncidenceStatus(task.id, task.status, tasks.indexOf(task))
+            const result = await updateIncidenceStatus(task.id, task.status, tasks.indexOf(task))
+            if (!result.success && result.error) {
+                toast.error(result.error)
+                setTasks(prev => prev.map(t => 
+                    t.id === task.id ? { ...t, status: task.status } : t
+                ))
+            }
         }
 
         setActiveTask(null)
@@ -140,6 +147,19 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
         }
     }
 
+    async function handleActivate(task: IncidenceWithDetails) {
+        const result = await updateIncidenceStatus(task.id, TaskStatus.TODO, 0)
+        if (!result.success && result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success('Incidencia movida a Desarrollo')
+            const updated = await getIncidence(task.id)
+            if (updated) {
+                handleTaskUpdate(updated)
+            }
+        }
+    }
+
     return (
         <DndContext
             sensors={sensors}
@@ -156,6 +176,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
                         title={col.title}
                         tasks={tasks.filter((t) => t.status === col.id)}
                         onCardClick={handleCardClick}
+                        onActivate={handleActivate}
                     />
                 ))}
             </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check, Plus, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,7 @@ interface IncidenceFormProps {
     onOpenChange: (open: boolean) => void
     initialData?: IncidenceWithDetails | null
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
+    onIncidenceCreated?: () => void
 }
 
 const typeOptions = [
@@ -56,7 +58,8 @@ const techOptions = [
     { value: TechStack.SPRING, label: 'SPRING' },
 ]
 
-export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }: IncidenceFormProps) {
+export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated }: IncidenceFormProps) {
+    const router = useRouter()
     const isEditMode = !!initialData?.id
     
     // Form state
@@ -203,6 +206,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate }:
                 if (result.success) {
                     toast.success('Incidencia creada')
                     onOpenChange(false)
+                    if (!isEditMode) {
+                        if (onIncidenceCreated) {
+                            onIncidenceCreated()
+                        } else {
+                            router.refresh()
+                        }
+                    }
                 } else {
                     toast.error(result.error || 'Error al crear')
                 }

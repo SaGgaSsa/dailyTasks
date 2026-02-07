@@ -99,24 +99,69 @@ export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<Inc
     }
 }
 
-export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
-
+export async function getIncidence(id: number): Promise<IncidenceWithDetails | null> {
     try {
         const incidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignees: true,
+                subTasks: {
+                    orderBy: {
+                        createdAt: 'asc'
+                    }
+                }
+            }
+        })
+        return incidence as unknown as IncidenceWithDetails
+    } catch (error) {
+        console.error('Error getting incidence:', error)
+        return null
+    }
+}
+
+export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
+
+        const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
-            include: { assignees: true }
+            include: {
+                assignees: true,
+                subTasks: true,
+            }
         })
 
-        if (!incidence) return { success: false, error: 'Incidencia no encontrada' }
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
 
-        // Business Rule: Only Admin can move to DONE
+        const isBacklogToTodo = incidence.status === TaskStatus.BACKLOG && newStatus === TaskStatus.TODO
+
+        if (isBacklogToTodo) {
+            const errors: string[] = []
+
+            if (!incidence.estimatedTime || incidence.estimatedTime <= 0) {
+                errors.push('Debe asignar horas estimadas')
+            }
+
+            if (incidence.assignees.length === 0) {
+                errors.push('Debe asignar al menos un colaborador')
+            }
+
+            if (incidence.subTasks.length === 0) {
+                errors.push('Debe crear al menos un ítem en el checklist')
+            }
+
+            if (errors.length > 0) {
+                return { success: false, error: `No puede mover a desarrollo: ${errors.join(', ')}` }
+            }
+        }
+
         if (newStatus === TaskStatus.DONE && session.user.role !== 'ADMIN') {
             return { success: false, error: 'Solo los administradores pueden marcar como finalizado.' }
         }
 
-        // Business Rule: Dev can move if assigned
         if (session.user.role !== 'ADMIN') {
             const isAssigned = incidence.assignees.some(a => a.id === Number(session.user.id))
             if (!isAssigned) {
