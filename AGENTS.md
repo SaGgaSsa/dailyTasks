@@ -289,3 +289,16 @@ daily-tasks/
 - Environment variables: DATABASE_URL, NEXTAUTH_SECRET, etc. in `.env`
 - Run `npm run lint` before committing code
 - Use `npm run build` to verify type safety and build correctness
+
+### 6. Version Control (Git Automation)
+- **Auto-Commit:** After successfully completing a task or a significant step within a task, ALWAYS perform a git commit.
+- **Command:** Use `git add .` followed by `git commit -m "..."`.
+- **Message Format:** Use **Conventional Commits** convention:
+  - `feat: ...` for new features.
+  - `fix: ...` for bug fixes.
+  - `refactor: ...` for code cleanup without logic changes.
+  - `style: ...` for formatting/UI changes.
+  - `docs: ...` for documentation updates.
+  - `chore: ...` for config/dependencies.
+- **Example:** `git commit -m "feat: add drag and drop to kanban board"`
+- **Constraint:** Do not commit if the code is broken or creating errors. Fix errors first.

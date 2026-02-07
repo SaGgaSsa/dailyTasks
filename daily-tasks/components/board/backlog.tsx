@@ -58,12 +58,12 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-[#0F0F0F] border-b border-zinc-900 z-10">
                         <tr>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripción</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnología</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
-                            <th className="p-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripción</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnología</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900">
@@ -93,12 +93,12 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                         setIsSheetOpen(true)
                                     }}
                                 >
-                                    <td className="p-4">
+                                    <td className="p-2">
                                         <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[task.type]}`}>
                                             {task.type} {task.externalId}
                                         </Badge>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-2">
                                         <div className="flex items-center gap-3 max-w-lg">
                                             <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
                                                 {task.title}
@@ -137,19 +137,19 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-2">
                                         <div className="flex justify-center">
                                             <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
                                                 {task.status}
                                             </Badge>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-center">
+                                    <td className="p-2 text-center">
                                         <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
                                             {task.technology}
                                         </span>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-2">
                                         <div className="flex -space-x-1.5 overflow-hidden">
                                             {task.assignees.map((user) => (
                                                 <UserAvatar 
@@ -160,7 +160,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                             ))}
                                         </div>
                                     </td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-2 text-right">
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>

@@ -18,7 +18,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-1 p-6 h-full overflow-hidden">
+      <div className="flex-1 p-2 h-full overflow-hidden">
         <DashboardClient
           backlogTasks={backlogTasks}
           kanbanTasks={kanbanTasks}
