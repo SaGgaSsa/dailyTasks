@@ -33,7 +33,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal, Edit, Trash2, Key } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { deleteUser, updateUserPassword } from '../actions/user-actions'
+import { deleteUser, updateUserPassword } from '@/app/actions/user-actions'
 
 interface User {
   id: string
@@ -173,9 +173,9 @@ export function UserTable({ users }: UserTableProps) {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   )
                 })}

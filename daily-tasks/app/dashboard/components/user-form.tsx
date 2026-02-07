@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useFormState } from 'react-dom'
-import { createUser } from '../actions/user-actions'
+import { createUser } from '@/app/actions/user-actions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Alert, AlertDescription } from '../../components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface UserFormProps {
   open: boolean

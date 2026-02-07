@@ -87,3 +87,31 @@ export async function deleteUser(id: string) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to delete user' }
   }
 }
+
+export async function createUser(formData: FormData) {
+  const name = formData.get('name') as string
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const role = formData.get('role') as string
+  const username = formData.get('username') as string
+
+  // Adapt to UpsertUserData
+  const result = await upsertUser({
+    name,
+    email,
+    password,
+    role: role as any,
+    username
+  })
+
+  if (result.success) {
+    return { success: 'Usuario creado correctamente', error: null }
+  } else {
+    return { success: null, error: result.error || 'Error al crear usuario' }
+  }
+}
+
+export async function updateUserPassword(formData: FormData) {
+  // TODO: Implement password update
+  return { success: false, error: 'Not implemented' }
+}

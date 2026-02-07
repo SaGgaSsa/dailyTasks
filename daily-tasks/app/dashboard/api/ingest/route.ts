@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '../../../lib/db'
+import { db } from "@/lib/db"
 
 // Mapeo de status de texto a ENUM de Prisma
 const statusMap: Record<string, 'PENDING' | 'ANALYSIS' | 'DEVELOPMENT' | 'TESTING' | 'DONE'> = {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   try {
     // Validar header de seguridad
     const apiSecret = request.headers.get('x-api-secret')
-    
+
     if (!apiSecret) {
       return NextResponse.json(
         { error: 'Header x-api-secret es requerido' },
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Parsear el body
     const body = await request.json()
-    
+
     if (!Array.isArray(body)) {
       return NextResponse.json(
         { error: 'El payload debe ser un array de tareas' },
@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
           assigneeId = user.id
         }
 
-        // Crear tarea
+        // TODO: Update to use db.incidence (Schema change: Task -> Incidence)
+        // Missing required fields: type, externalId, technology
+        /*
         const task = await db.task.create({
           data: {
             title: taskData.title,
@@ -120,9 +122,12 @@ export async function POST(request: NextRequest) {
             assigneeId
           }
         })
-
+        
         response.created++
         response.details.created.push(task.id)
+        */
+        throw new Error("Ingest endpoint temporarily disabled due to schema migration (Task -> Incidence).");
+
 
       } catch (error) {
         response.failed++
@@ -146,7 +151,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error en endpoint de ingesta:', error)
-    
+
     return NextResponse.json(
       {
         success: false,
