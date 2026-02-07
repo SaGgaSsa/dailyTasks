@@ -65,14 +65,14 @@ export async function createIncidence(data: CreateIncidenceData) {
 
 
 
-export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION'): Promise<IncidenceWithDetails[]> {
+export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
 
     try {
         const where: any = {}
 
-        if (viewType === 'EXECUTION') {
+        if (viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
             // Optional: filter where user is assigned? 
             // The user said: "Filtra donde assignees incluye al usuario actual (o mostrar todas las activas si se prefiere transparencia)"

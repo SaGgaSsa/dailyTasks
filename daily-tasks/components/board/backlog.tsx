@@ -6,13 +6,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MoreHorizontal, CheckCircle2 } from 'lucide-react'
-import { IncidenceForm } from './incidence-form'
 import { TaskStatus, TaskType } from '@/types/enums'
 
-interface PlanningViewProps {
+interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
     isSheetOpen?: boolean
     onSheetOpenChange?: (open: boolean) => void
+    onTaskSelect?: (task: IncidenceWithDetails | null) => void
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -29,9 +29,8 @@ const typeColors: Record<TaskType, string> = {
     I_CONS: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 }
 
-export function PlanningView({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange }: PlanningViewProps) {
+export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange, onTaskSelect }: BacklogProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
-    const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
     
     // Usar el estado externo si se proporciona, de lo contrario usar el interno
@@ -64,7 +63,9 @@ export function PlanningView({ initialTasks, isSheetOpen: externalSheetOpen, onS
                                 key={task.id}
                                 className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
                                 onClick={() => {
-                                    setSelectedTask(task)
+                                    if (onTaskSelect) {
+                                        onTaskSelect(task)
+                                    }
                                     setIsSheetOpen(true)
                                 }}
                             >
@@ -147,15 +148,7 @@ export function PlanningView({ initialTasks, isSheetOpen: externalSheetOpen, onS
                 </table>
             </div>
 
-            <IncidenceForm
-                open={isSheetOpen}
-                onOpenChange={(open) => {
-                    setIsSheetOpen(open)
-                    if (!open) setSelectedTask(null)
-                }}
-                initialData={selectedTask}
-                onTaskUpdate={handleTaskUpdate}
-            />
+            {/* El formulario se maneja desde el padre DashboardClient */}
         </div>
     )
 }
