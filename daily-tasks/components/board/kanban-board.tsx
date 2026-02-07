@@ -25,7 +25,7 @@ import { TaskCard } from './task-card'
 import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
 import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
-import { TaskStatus } from '@prisma/client'
+import { TaskStatus } from '@/types/enums'
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]

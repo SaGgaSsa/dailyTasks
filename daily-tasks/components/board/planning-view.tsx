@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plus, MoreHorizontal } from 'lucide-react'
 import { IncidenceForm } from './incidence-form'
-import { TaskStatus, TaskType } from '@prisma/client'
+import { TaskStatus, TaskType } from '@/types/enums'
 import { MarkdownText } from '@/components/ui/markdown-text'
 
 interface PlanningViewProps {

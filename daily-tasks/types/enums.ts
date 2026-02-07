@@ -1,0 +1,38 @@
+export enum TaskStatus {
+    BACKLOG = "BACKLOG",
+    TODO = "TODO",
+    IN_PROGRESS = "IN_PROGRESS",
+    REVIEW = "REVIEW",
+    DONE = "DONE",
+}
+
+export enum TaskType {
+    I_MODAPL = "I_MODAPL",
+    I_CASO = "I_CASO",
+    I_CONS = "I_CONS",
+}
+
+export enum TechStack {
+    SISA = "SISA",
+    WEB = "WEB",
+    ANDROID = "ANDROID",
+    ANGULAR = "ANGULAR",
+    SPRING = "SPRING",
+}
+
+export enum Priority {
+    LOW = "LOW",
+    MEDIUM = "MEDIUM",
+    HIGH = "HIGH",
+}
+
+export enum UserRole {
+    ADMIN = "ADMIN",
+    DEV = "DEV",
+}
+
+export enum WorkspaceRole {
+    OWNER = "OWNER",
+    ADMIN = "ADMIN",
+    MEMBER = "MEMBER",
+}

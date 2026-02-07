@@ -3,7 +3,8 @@
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
-import { UserRole, User } from '@prisma/client'
+import { User } from '@prisma/client'
+import { UserRole } from '@/types/enums'
 
 export async function getUsers() {
   return await db.user.findMany({

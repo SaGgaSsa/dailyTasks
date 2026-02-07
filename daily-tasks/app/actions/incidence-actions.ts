@@ -2,7 +2,9 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority, TechStack, Incidence, TaskStatus, TaskType, UserRole } from '@prisma/client'
+import { Incidence } from '@prisma/client'
+import { Priority, TechStack, TaskStatus, TaskType, UserRole } from '@/types/enums'
+import { IncidenceWithDetails } from '@/types'
 import { auth } from '@/auth'
 
 interface CreateIncidenceData {
@@ -61,7 +63,9 @@ export async function createIncidence(data: CreateIncidenceData) {
     }
 }
 
-export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION') {
+
+
+export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION'): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
 
@@ -87,7 +91,7 @@ export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION') {
             },
             orderBy: { position: 'asc' }
         })
-        return incidences
+        return incidences as unknown as IncidenceWithDetails[]
     } catch (error) {
         console.error('Error getting incidences:', error)
         return []

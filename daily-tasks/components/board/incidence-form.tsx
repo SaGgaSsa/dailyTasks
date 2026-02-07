@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation'
 import { getUsers } from '@/app/actions/user-actions'
 import { Checkbox } from '@/components/ui/checkbox'
 import { IncidenceWithDetails } from '@/types'
-import { TaskStatus, TaskType, TechStack, Priority } from '@prisma/client'
+import { TaskStatus, TaskType, TechStack, Priority } from '@/types/enums'
 import { createIncidence, updateIncidence } from '@/app/actions/incidence-actions'
 import { MarkdownText } from '@/components/ui/markdown-text'
 
