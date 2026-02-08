@@ -225,14 +225,11 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             if (count === 1) {
                 const assignment = assignments[0]
                 return (
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center">
                         <UserAvatar
                             username={assignment.user.username}
                             className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
                         />
-                        <span className="text-xs text-zinc-400 truncate max-w-[60px]">
-                            {assignment.user.username}
-                        </span>
                     </div>
                 )
             }
