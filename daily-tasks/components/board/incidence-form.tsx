@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Check, Plus, Trash2, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,28 +58,39 @@ const techOptions = [
     { value: TechStack.SPRING, label: 'SPRING' },
 ]
 
+interface FormData {
+    type: TaskType
+    externalId: string
+    title: string
+    description: string
+    priority: Priority
+    technology: TechStack
+    estimatedTime: string
+    assigneeIds: number[]
+    subTasks: { title: string; isCompleted: boolean }[]
+}
+
 export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated }: IncidenceFormProps) {
     const router = useRouter()
     const isEditMode = !!initialData?.id
-    
-    // Form state
-    const [type, setType] = useState<TaskType>(TaskType.I_MODAPL)
-    const [externalId, setExternalId] = useState('')
-    const [title, setTitle] = useState('')
-    const [priority, setPriority] = useState<Priority>(Priority.MEDIUM)
-    const [technology, setTechnology] = useState<TechStack>(TechStack.SISA)
-    const [estimatedTime, setEstimatedTime] = useState('')
-    const [assigneeIds, setAssigneeIds] = useState<number[]>([])
-    const [subTasks, setSubTasks] = useState<{ title: string; isCompleted: boolean }[]>([])
-    const [newSubTask, setNewSubTask] = useState('')
-    const [description, setDescription] = useState('')
-    
-    // UI state
+
+    const [formData, setFormData] = useState<FormData>({
+        type: TaskType.I_MODAPL,
+        externalId: '',
+        title: '',
+        description: '',
+        priority: Priority.MEDIUM,
+        technology: TechStack.SISA,
+        estimatedTime: '',
+        assigneeIds: [],
+        subTasks: [],
+    })
+
     const [users, setUsers] = useState<User[]>([])
     const [isLoading, setIsLoading] = useState(false)
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+    const [isSaving, setIsSaving] = useState(false)
+    const [newSubTask, setNewSubTask] = useState('')
 
-    // Load users on mount
     useEffect(() => {
         const loadUsers = async () => {
             const userList = await getUsers()
@@ -88,205 +99,175 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         loadUsers()
     }, [])
 
-    // Reset form when opening/closing or changing initialData
     useEffect(() => {
         if (open && initialData) {
-            setType(initialData.type)
-            setExternalId(initialData.externalId?.toString() || '')
-            setTitle(initialData.title || '')
-            setPriority(initialData.priority)
-            setTechnology(initialData.technology)
-            setEstimatedTime(initialData.estimatedTime?.toString() || '')
-            setAssigneeIds(initialData.assignees.map(a => a.id))
-            setSubTasks(initialData.subTasks.map(st => ({ title: st.title, isCompleted: st.isCompleted })))
-            setDescription(initialData.description || '')
+            setFormData({
+                type: initialData.type,
+                externalId: initialData.externalId?.toString() || '',
+                title: initialData.title || '',
+                description: initialData.description || '',
+                priority: initialData.priority,
+                technology: initialData.technology,
+                estimatedTime: initialData.estimatedTime?.toString() || '',
+                assigneeIds: initialData.assignees.map(a => a.id),
+                subTasks: initialData.subTasks.map(st => ({ title: st.title, isCompleted: st.isCompleted })),
+            })
         } else if (open && !initialData) {
-            // Reset for new incidence
-            setType(TaskType.I_MODAPL)
-            setExternalId('')
-            setTitle('')
-            setPriority(Priority.MEDIUM)
-            setTechnology(TechStack.SISA)
-            setEstimatedTime('')
-            setAssigneeIds([])
-            setSubTasks([])
-            setNewSubTask('')
-            setDescription('')
+            setFormData({
+                type: TaskType.I_MODAPL,
+                externalId: '',
+                title: '',
+                description: '',
+                priority: Priority.MEDIUM,
+                technology: TechStack.SISA,
+                estimatedTime: '',
+                assigneeIds: [],
+                subTasks: [],
+            })
         }
     }, [open, initialData])
 
-    // Auto-save function for edit mode
-    const handleAutoSave = useCallback(async (fieldData: Partial<Parameters<typeof updateIncidence>[1]>) => {
-        if (!isEditMode || !initialData?.id) return
-        
-        setSaveStatus('saving')
-        try {
-            const result = await updateIncidence(initialData.id, fieldData)
-            if (result.success) {
-                setSaveStatus('saved')
-                if (onTaskUpdate && result.data) {
-                    onTaskUpdate(result.data)
-                }
-                router.refresh()
-                setTimeout(() => setSaveStatus('idle'), 1500)
-            } else {
-                toast.error(result.error || 'Error al guardar')
-                setSaveStatus('idle')
-            }
-        } catch (error) {
-            console.error('Auto-save error:', error)
-            setSaveStatus('idle')
-        }
-    }, [isEditMode, initialData?.id, onTaskUpdate, router])
-
-    // Handle text input blur for auto-save
-    const handleTextBlur = (field: string, value: string | number | undefined) => {
-        if (!isEditMode) return
-        handleAutoSave({ [field]: value })
+    const updateFormData = (updates: Partial<FormData>) => {
+        setFormData(prev => ({ ...prev, ...updates }))
     }
 
-    // Handle select change for auto-save
-    const handleSelectChange = (field: string, value: string) => {
-        if (isEditMode) {
-            handleAutoSave({ [field]: value })
-        }
+    const handleAddSubTask = () => {
+        if (!newSubTask.trim()) return
+        updateFormData({
+            subTasks: [...formData.subTasks, { title: newSubTask, isCompleted: false }]
+        })
+        setNewSubTask('')
     }
 
-    // Handle assignees change for auto-save
-    const handleAssigneesChange = (newAssignees: number[]) => {
-        setAssigneeIds(newAssignees)
-        if (isEditMode) {
-            handleAutoSave({ assigneeIds: newAssignees })
-        }
+    const handleToggleSubTask = (index: number) => {
+        const updated = formData.subTasks.map((st, i) =>
+            i === index ? { ...st, isCompleted: !st.isCompleted } : st
+        )
+        updateFormData({ subTasks: updated })
     }
 
-    // Handle create/save
+    const handleRemoveSubTask = (index: number) => {
+        const updated = formData.subTasks.filter((_, i) => i !== index)
+        updateFormData({ subTasks: updated })
+    }
+
+    const handleToggleAssignee = (userId: number) => {
+        const newAssignees = formData.assigneeIds.includes(userId)
+            ? formData.assigneeIds.filter(id => id !== userId)
+            : [...formData.assigneeIds, userId]
+        updateFormData({ assigneeIds: newAssignees })
+    }
+
     const handleSave = async () => {
-        if (!type || !externalId || !title) {
+        if (!formData.type || !formData.externalId || !formData.title) {
             toast.error('Tipo, Número y Descripción son requeridos')
-            return
+            return false
         }
 
-        setIsLoading(true)
+        setIsSaving(true)
         try {
             if (isEditMode && initialData?.id) {
-                // Update mode - force save all fields
                 const result = await updateIncidence(initialData.id, {
-                    title,
-                    description,
-                    priority,
-                    estimatedTime: estimatedTime ? parseFloat(estimatedTime) : undefined,
-                    assigneeIds,
-                    subTasks: subTasks.length > 0 ? subTasks : undefined,
+                    title: formData.title,
+                    description: formData.description,
+                    priority: formData.priority,
+                    estimatedTime: formData.estimatedTime ? parseInt(formData.estimatedTime) : undefined,
+                    assigneeIds: formData.assigneeIds,
+                    subTasks: formData.subTasks.length > 0 ? formData.subTasks : undefined,
                 })
-                
+
                 if (result.success) {
                     toast.success('Incidencia actualizada')
                     if (onTaskUpdate && result.data) {
                         onTaskUpdate(result.data)
                     }
                     router.refresh()
-                    onOpenChange(false)
+                    return true
                 } else {
                     toast.error(result.error || 'Error al actualizar')
+                    return false
                 }
             } else {
-                // Create mode
                 const result = await createIncidence({
-                    type,
-                    externalId: parseInt(externalId),
-                    title,
-                    description,
-                    priority,
-                    tech: technology,
-                    estimatedTime: estimatedTime ? parseFloat(estimatedTime) : undefined,
-                    assigneeIds,
+                    type: formData.type,
+                    externalId: parseInt(formData.externalId),
+                    title: formData.title,
+                    description: formData.description,
+                    priority: formData.priority,
+                    tech: formData.technology,
+                    estimatedTime: formData.estimatedTime ? parseInt(formData.estimatedTime) : undefined,
+                    assigneeIds: formData.assigneeIds,
                 })
-                
+
                 if (result.success) {
                     toast.success('Incidencia creada')
-                    onOpenChange(false)
-                    if (!isEditMode) {
-                        if (onIncidenceCreated) {
-                            onIncidenceCreated()
-                        } else {
-                            router.refresh()
-                        }
-                    }
+                    router.refresh()
+                    return true
                 } else {
                     toast.error(result.error || 'Error al crear')
+                    return false
                 }
             }
         } catch (error) {
             console.error('Save error:', error)
             toast.error('Error inesperado')
+            return false
         } finally {
-            setIsLoading(false)
+            setIsSaving(false)
         }
     }
 
-    // Subtask handlers
-    const addSubTask = () => {
-        if (!newSubTask.trim()) return
-        const updatedSubTasks = [...subTasks, { title: newSubTask, isCompleted: false }]
-        setSubTasks(updatedSubTasks)
-        setNewSubTask('')
-        if (isEditMode) {
-            handleAutoSave({ subTasks: updatedSubTasks })
-        }
+    const handleClose = async () => {
+        onOpenChange(false)
     }
 
-    const toggleSubTask = (index: number) => {
-        const updatedSubTasks = subTasks.map((st, i) => 
-            i === index ? { ...st, isCompleted: !st.isCompleted } : st
-        )
-        setSubTasks(updatedSubTasks)
-        if (isEditMode) {
-            handleAutoSave({ subTasks: updatedSubTasks })
+    const handleSaveAndClose = async () => {
+        const success = await handleSave()
+        if (success) {
+            onOpenChange(false)
         }
-    }
-
-    const removeSubTask = (index: number) => {
-        const updatedSubTasks = subTasks.filter((_, i) => i !== index)
-        setSubTasks(updatedSubTasks)
-        if (isEditMode) {
-            handleAutoSave({ subTasks: updatedSubTasks })
-        }
-    }
-
-    // Toggle assignee
-    const toggleAssignee = (userId: number) => {
-        const newAssignees = assigneeIds.includes(userId)
-            ? assigneeIds.filter(id => id !== userId)
-            : [...assigneeIds, userId]
-        handleAssigneesChange(newAssignees)
     }
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto">
+        <Sheet open={open} onOpenChange={(open) => {
+            if (!open) {
+                handleClose()
+            }
+        }}>
+            <SheetContent
+                onInteractOutside={(e) => {
+                    e.preventDefault()
+                    handleSaveAndClose()
+                }}
+                className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
+            >
                 <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
                         <SheetTitle className="text-zinc-100 pt-1">
                             {isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'}
                         </SheetTitle>
                         <div className="flex items-center gap-2 pt-1">
-                            {/* Save status indicator */}
-                            {isEditMode && saveStatus !== 'idle' && (
-                                <span className={`text-xs ${saveStatus === 'saving' ? 'text-yellow-400' : 'text-green-400'}`}>
-                                    {saveStatus === 'saving' ? 'Guardando...' : 'Guardado'}
-                                </span>
+                            {isSaving && (
+                                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
                             )}
-                            {/* Check/Save button */}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={handleSave}
-                                disabled={isLoading}
+                                onClick={handleClose}
+                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                                title="Descartar cambios"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleSaveAndClose}
+                                disabled={isSaving}
                                 className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                                 title="Guardar"
                             >
-                                {isLoading ? (
+                                {isSaving ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                     <Check className="h-4 w-4" />
@@ -294,20 +275,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             </Button>
                         </div>
                     </div>
-
                 </SheetHeader>
 
                 <div className="flex flex-col space-y-4 py-6 pl-8">
-                    {/* Tipo y Número */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="type" className="text-zinc-300">Tipo</Label>
                             <Select
-                                value={type}
-                                onValueChange={(value) => {
-                                    setType(value as TaskType)
-                                    handleSelectChange('type', value)
-                                }}
+                                value={formData.type}
+                                onValueChange={(value) => updateFormData({ type: value as TaskType })}
                                 disabled={isEditMode}
                             >
                                 <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
@@ -328,9 +304,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             <Input
                                 id="externalId"
                                 type="number"
-                                value={externalId}
-                                onChange={(e) => setExternalId(e.target.value)}
-                                onBlur={() => handleTextBlur('externalId', externalId ? parseInt(externalId) : undefined)}
+                                value={formData.externalId}
+                                onChange={(e) => updateFormData({ externalId: e.target.value })}
                                 disabled={isEditMode}
                                 className="bg-zinc-900 border-zinc-800 text-zinc-100"
                                 placeholder="#"
@@ -338,33 +313,23 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    {/* Descripción (antes Título Corto) */}
                     <div className="space-y-2">
                         <Label htmlFor="title" className="text-zinc-300">Descripción</Label>
                         <Input
                             id="title"
-                            value={title}
-                            onChange={(e) => {
-                                setTitle(e.target.value)
-                                if (isEditMode) {
-                                    handleAutoSave({ title: e.target.value })
-                                }
-                            }}
+                            value={formData.title}
+                            onChange={(e) => updateFormData({ title: e.target.value })}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100"
                             placeholder="Descripción breve de la incidencia"
                         />
                     </div>
 
-                    {/* Prioridad, Tecnología y Horas */}
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="priority" className="text-zinc-300">Prioridad</Label>
                             <Select
-                                value={priority}
-                                onValueChange={(value) => {
-                                    setPriority(value as Priority)
-                                    handleSelectChange('priority', value)
-                                }}
+                                value={formData.priority}
+                                onValueChange={(value) => updateFormData({ priority: value as Priority })}
                             >
                                 <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
                                     <SelectValue />
@@ -382,11 +347,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         <div className="space-y-2">
                             <Label htmlFor="technology" className="text-zinc-300">Tecnología</Label>
                             <Select
-                                value={technology}
-                                onValueChange={(value) => {
-                                    setTechnology(value as TechStack)
-                                    handleSelectChange('technology', value)
-                                }}
+                                value={formData.technology}
+                                onValueChange={(value) => updateFormData({ technology: value as TechStack })}
                             >
                                 <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
                                     <SelectValue />
@@ -409,17 +371,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                 min="0"
                                 max="9999"
                                 step="1"
-                                value={estimatedTime}
+                                value={formData.estimatedTime}
                                 onChange={(e) => {
                                     const value = e.target.value;
                                     if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 9999)) {
-                                        setEstimatedTime(value);
-                                    }
-                                }}
-                                onBlur={(e) => {
-                                    const value = e.target.value;
-                                    if (isEditMode && initialData?.id) {
-                                        handleAutoSave({ estimatedTime: value ? parseInt(value) : undefined });
+                                        updateFormData({ estimatedTime: value });
                                     }
                                 }}
                                 className="bg-zinc-900 border-zinc-800 text-zinc-100 w-24"
@@ -428,7 +384,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    {/* Colaboradores */}
                     <div className="space-y-2">
                         <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
                             <div className="max-h-32 overflow-y-auto space-y-1">
@@ -436,10 +391,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                     <div
                                         key={user.id}
                                         className="flex items-center space-x-2 p-2 hover:bg-zinc-800 rounded cursor-pointer"
-                                        onClick={() => toggleAssignee(user.id)}
+                                        onClick={() => handleToggleAssignee(user.id)}
                                     >
                                         <Checkbox
-                                            checked={assigneeIds.includes(user.id)}
+                                            checked={formData.assigneeIds.includes(user.id)}
                                             onCheckedChange={() => {}}
                                             className="border-zinc-600"
                                         />
@@ -454,16 +409,14 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    {/* Pendientes */}
                     <div className="space-y-2">
                         <Label className="text-zinc-300">Pendientes</Label>
                         <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3 space-y-2">
-                            {/* Add new subtask */}
                             <div className="flex gap-2">
                                 <Input
                                     value={newSubTask}
                                     onChange={(e) => setNewSubTask(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && addSubTask()}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubTask()}
                                     className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm"
                                     placeholder="Nuevo ítem..."
                                 />
@@ -471,23 +424,22 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                     type="button"
                                     size="icon"
                                     variant="ghost"
-                                    onClick={addSubTask}
+                                    onClick={handleAddSubTask}
                                     className="h-9 w-9 text-zinc-400 hover:text-zinc-100"
                                 >
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </div>
                             
-                            {/* Subtask list */}
                             <div className="space-y-1">
-                                {subTasks.map((subTask, index) => (
+                                {formData.subTasks.map((subTask, index) => (
                                     <div
                                         key={index}
                                         className="flex items-center gap-2 p-2 hover:bg-zinc-800 rounded group"
                                     >
                                         <Checkbox
                                             checked={subTask.isCompleted}
-                                            onCheckedChange={() => toggleSubTask(index)}
+                                            onCheckedChange={() => handleToggleSubTask(index)}
                                             className="border-zinc-600"
                                         />
                                         <span className={`text-sm flex-1 ${subTask.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>
@@ -497,14 +449,14 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                             type="button"
                                             size="icon"
                                             variant="ghost"
-                                            onClick={() => removeSubTask(index)}
+                                            onClick={() => handleRemoveSubTask(index)}
                                             className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
                                     </div>
                                 ))}
-                                {subTasks.length === 0 && (
+                                {formData.subTasks.length === 0 && (
                                     <p className="text-zinc-500 text-sm text-center py-2">
                                         No hay ítems en el checklist
                                     </p>
@@ -513,18 +465,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    {/* Comentario */}
                     <div className="space-y-2">
                         <Label htmlFor="description" className="text-zinc-300">Comentario</Label>
                         <Textarea
                             id="description"
-                            value={description}
-                            onChange={(e) => {
-                                setDescription(e.target.value)
-                                if (isEditMode) {
-                                    handleAutoSave({ description: e.target.value })
-                                }
-                            }}
+                            value={formData.description}
+                            onChange={(e) => updateFormData({ description: e.target.value })}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100 min-h-[120px] resize-none"
                             placeholder="Añade comentarios o notas técnicas..."
                         />
