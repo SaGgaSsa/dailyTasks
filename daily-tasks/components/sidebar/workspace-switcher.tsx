@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,14 +10,14 @@ import { Folder, ChevronsUpDown, Plus } from 'lucide-react'
 import { createWorkspace } from '@/app/actions/workspace-actions'
 
 interface Workspace {
-  id: string
+  id: number
   name: string
 }
 
 interface WorkspaceSwitcherProps {
   workspaces: Workspace[]
-  defaultWorkspaceId: string
-  userId?: string
+  defaultWorkspaceId: number
+  userId?: number
 }
 
 export function WorkspaceSwitcher({ workspaces, defaultWorkspaceId, userId }: WorkspaceSwitcherProps) {
@@ -26,18 +26,20 @@ export function WorkspaceSwitcher({ workspaces, defaultWorkspaceId, userId }: Wo
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const isInitialized = useRef(false)
 
-  // Actualiza el estado si la prop defaultWorkspaceId cambia externamente
   useEffect(() => {
-    if (defaultWorkspaceId) {
-      setSelectedWorkspaceId(defaultWorkspaceId);
+    if (!isInitialized.current && defaultWorkspaceId) {
+      isInitialized.current = true
     }
-  }, [defaultWorkspaceId]);
+  }, [defaultWorkspaceId])
 
-  const handleSelect = (workspaceId: string) => {
+  const handleSelect = (workspaceId: number) => {
     setSelectedWorkspaceId(workspaceId)
-    // Set cookie
-    document.cookie = `active-workspace-id=${workspaceId}; path=/;`
+    // Set preference in localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('active-workspace-id', String(workspaceId))
+    }
     // Refresh the page
     router.refresh()
   }
@@ -61,9 +63,10 @@ export function WorkspaceSwitcher({ workspaces, defaultWorkspaceId, userId }: Wo
       setError(null)
       // Select the new workspace
       handleSelect(newWorkspace.id)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating workspace:', error)
-      setError(error.message || 'Error al crear el workspace')
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear el workspace'
+      setError(errorMessage)
     }
   }
 

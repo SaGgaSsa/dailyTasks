@@ -7,17 +7,17 @@ datasource db {
 }
 
 model User {
-  id            String          @id @default(uuid())
-  email         String          @unique
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
   password      String
   name          String?
-  username      String          @unique // Always uppercase
-  role          UserRole        @default(DEV)
-  avatarUrl     String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  username      String        @unique
+  role          UserRole      @default(DEV)
+  technologies  TechStack[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  assignedIncidences Incidence[] @relation("IncidenceAssignees")
+  assignments        Assignment[]
   ownedWorkspaces    Workspace[]     @relation("OwnedWorkspaces")
   workspaces         WorkspaceMember[]
 
@@ -25,12 +25,12 @@ model User {
 }
 
 model Workspace {
-  id        String   @id @default(uuid())
+  id        Int       @id @default(autoincrement())
   name      String
-  ownerId   String
-  owner     User     @relation("OwnedWorkspaces", fields: [ownerId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ownerId   Int
+  owner     User      @relation("OwnedWorkspaces", fields: [ownerId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   members   WorkspaceMember[]
 
@@ -38,14 +38,14 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String        @id @default(uuid())
-  userId      String
-  workspaceId String
-  role        WorkspaceRole @default(MEMBER)
-  joinedAt    DateTime      @default(now())
+  id          Int             @id @default(autoincrement())
+  userId      Int
+  workspaceId Int
+  role        WorkspaceRole   @default(MEMBER)
+  joinedAt    DateTime        @default(now())
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
   @@map("workspace_members")
@@ -91,33 +91,50 @@ enum Priority {
 }
 
 model Incidence {
-  id            String    @id @default(uuid())
+  id            Int       @id @default(autoincrement())
   type          TaskType
-  externalId    Int       // Número de trámite
-  title         String    // Descripción corta
-  description   String?   @db.Text // Texto largo
+  externalId    Int
+  title         String
+  description   String?   @db.Text
   status        TaskStatus @default(BACKLOG)
   priority      Priority   @default(MEDIUM)
   technology    TechStack
-  estimatedTime Int?      // En horas
+  estimatedTime Int?
   
   position      Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  assignees     User[]    @relation("IncidenceAssignees")
-  subTasks      SubTask[]
+  assignments   Assignment[]
 
   @@unique([type, externalId])
   @@map("incidences")
 }
 
+model Assignment {
+  id             Int       @id @default(autoincrement())
+  
+  incidenceId    Int
+  incidence      Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id])
+
+  remainingHours Int?
+  isAssigned     Boolean   @default(true)
+  tasks          SubTask[]
+
+  @@unique([incidenceId, userId])
+  @@map("assignments")
+}
+
 model SubTask {
-  id          String    @id @default(uuid())
+  id          Int       @id @default(autoincrement())
   title       String
   isCompleted Boolean   @default(false)
-  incidenceId String
-  incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
   createdAt   DateTime  @default(now())
 
   @@map("sub_tasks")

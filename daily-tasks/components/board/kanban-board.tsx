@@ -26,9 +26,11 @@ import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
 import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
 import { TaskStatus } from '@/types/enums'
+import { toast } from 'sonner'
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
+    onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
 }
 
 const COLUMNS = [
@@ -37,7 +39,7 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -119,7 +121,13 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
 
         const task = tasks.find((t) => t.id === active.id)
         if (task) {
-            await updateIncidenceStatus(task.id, task.status, tasks.indexOf(task))
+            const result = await updateIncidenceStatus(task.id, task.status, tasks.indexOf(task))
+            if (!result.success && result.error) {
+                toast.error(result.error)
+                setTasks(prev => prev.map(t => 
+                    t.id === task.id ? { ...t, status: task.status } : t
+                ))
+            }
         }
 
         setActiveTask(null)
@@ -134,6 +142,9 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
         setTasks(prev => prev.map(task => 
             task.id === updatedTask.id ? updatedTask : task
         ))
+        if (onTaskUpdate) {
+            onTaskUpdate(updatedTask)
+        }
     }
 
     return (

@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Incidence } from '@prisma/client'
 import { Priority, TechStack, TaskStatus, TaskType, UserRole } from '@/types/enums'
-import { IncidenceWithDetails } from '@/types'
+import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 
 interface CreateIncidenceData {
@@ -14,19 +14,20 @@ interface CreateIncidenceData {
     description?: string
     tech: TechStack
     priority: Priority
-    estimatedTime?: number
-    assigneeIds?: string[]
+    estimatedTime?: number | null
+    assignees?: AssigneeWithHours[]
 }
 
 interface UpdateIncidenceData {
     status?: TaskStatus
     priority?: Priority
     description?: string
-    comment?: string // We can keep comment for internal notes or merge into description
-    estimatedTime?: number
+    comment?: string
+    estimatedTime?: number | null
     title?: string
-    assigneeIds?: string[]
-    subTasks?: { title: string, isCompleted: boolean }[]
+    technology?: TechStack
+    assignees?: AssigneeWithHours[]
+    subTasks?: { title: string; isCompleted: boolean }[]
 }
 
 export async function createIncidence(data: CreateIncidenceData) {
@@ -45,47 +46,44 @@ export async function createIncidence(data: CreateIncidenceData) {
                 technology: data.tech,
                 priority: data.priority,
                 estimatedTime: data.estimatedTime,
-                status: TaskStatus.BACKLOG, // Forced
-                assignees: {
-                    connect: data.assigneeIds?.map(id => ({ id })) || []
-                }
+                status: TaskStatus.BACKLOG,
             }
         })
 
         revalidatePath('/dashboard')
         return { success: true }
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error creating incidence:', error)
-        if (error.code === 'P2002') {
+        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
             return { success: false, error: 'Ya existe una incidencia con este tipo y número.' }
         }
         return { success: false, error: 'Error al crear la incidencia.' }
     }
 }
 
-
-
-export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION'): Promise<IncidenceWithDetails[]> {
+export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
 
     try {
-        const where: any = {}
+        const where: Record<string, unknown> = {}
 
-        if (viewType === 'EXECUTION') {
+        if (viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
-            // Optional: filter where user is assigned? 
-            // The user said: "Filtra donde assignees incluye al usuario actual (o mostrar todas las activas si se prefiere transparencia)"
-            // I'll stick to transparency but hiding Backlog.
         }
 
         const incidences = await db.incidence.findMany({
             where,
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
+                assignments: {
+                    where: { isAssigned: true },
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
                     }
                 }
             },
@@ -98,26 +96,72 @@ export async function getIncidences(viewType: 'PLANNING' | 'EXECUTION'): Promise
     }
 }
 
-export async function updateIncidenceStatus(incidenceId: string, newStatus: TaskStatus, newPosition: number) {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
-
+export async function getIncidence(id: number): Promise<IncidenceWithDetails | null> {
     try {
         const incidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignments: {
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        return incidence as unknown as IncidenceWithDetails
+    } catch (error) {
+        console.error('Error getting incidence:', error)
+        return null
+    }
+}
+
+export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
+
+        const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
-            include: { assignees: true }
+            include: {
+                assignments: {
+                    where: { isAssigned: true }
+                }
+            }
         })
 
-        if (!incidence) return { success: false, error: 'Incidencia no encontrada' }
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
 
-        // Business Rule: Only Admin can move to DONE
+        const isBacklogToTodo = incidence.status === TaskStatus.BACKLOG && newStatus === TaskStatus.TODO
+
+        if (isBacklogToTodo) {
+            const errors: string[] = []
+
+            if (!incidence.estimatedTime || incidence.estimatedTime <= 0) {
+                errors.push('Debe asignar horas estimadas')
+            }
+
+            if (incidence.assignments.length === 0) {
+                errors.push('Debe asignar al menos un colaborador')
+            }
+
+            if (errors.length > 0) {
+                return { success: false, error: `No puede mover a desarrollo: ${errors.join(', ')}` }
+            }
+        }
+
         if (newStatus === TaskStatus.DONE && session.user.role !== 'ADMIN') {
             return { success: false, error: 'Solo los administradores pueden marcar como finalizado.' }
         }
 
-        // Business Rule: Dev can move if assigned
         if (session.user.role !== 'ADMIN') {
-            const isAssigned = incidence.assignees.some(a => a.id === session.user.id)
+            const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
             if (!isAssigned) {
                 return { success: false, error: 'Solo los desarrolladores asignados pueden mover esta tarea.' }
             }
@@ -139,72 +183,135 @@ export async function updateIncidenceStatus(incidenceId: string, newStatus: Task
     }
 }
 
-export async function updateIncidence(id: string, data: UpdateIncidenceData) {
+export async function updateIncidence(id: number, data: UpdateIncidenceData) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
-        const updateData: any = {
+        const currentIncidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignments: true
+            }
+        })
+
+        if (!currentIncidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
             description: data.description,
             estimatedTime: data.estimatedTime,
-            title: data.title
+            title: data.title,
+            technology: data.technology,
         }
 
-        if (data.assigneeIds) {
-            updateData.assignees = {
-                set: data.assigneeIds.map(userId => ({ id: userId }))
+        // Si se proporcionan asignados, manejar la creación/actualización de assignments
+        if (data.assignees) {
+            const currentAssignments = await db.assignment.findMany({
+                where: { incidenceId: id }
+            })
+            
+            const currentUserIds = currentAssignments.map(a => a.userId)
+            const newUserIds = data.assignees.map(a => a.userId)
+            
+            // Desactivar assignments que ya no están seleccionados (isAssigned: false)
+            const toDeactivate = currentUserIds.filter(uid => !newUserIds.includes(uid))
+            if (toDeactivate.length > 0) {
+                await db.assignment.updateMany({
+                    where: {
+                        incidenceId: id,
+                        userId: { in: toDeactivate }
+                    },
+                    data: { isAssigned: false }
+                })
+            }
+            
+            // Crear o actualizar assignments
+            for (const assignee of data.assignees) {
+                await db.assignment.upsert({
+                    where: {
+                        incidenceId_userId: {
+                            incidenceId: id,
+                            userId: assignee.userId
+                        }
+                    },
+                    update: {
+                        remainingHours: assignee.remainingHours,
+                        isAssigned: true
+                    },
+                    create: {
+                        incidenceId: id,
+                        userId: assignee.userId,
+                        remainingHours: assignee.remainingHours,
+                        isAssigned: true
+                    }
+                })
             }
         }
 
-        let updatedIncidence
+        await db.incidence.update({
+            where: { id },
+            data: updateData
+        })
 
-        if (data.subTasks) {
-            await db.$transaction([
-                db.subTask.deleteMany({ where: { incidenceId: id } }),
-                db.incidence.update({
-                    where: { id },
-                    data: {
-                        ...updateData,
-                        subTasks: {
-                            create: data.subTasks.map(st => ({
-                                title: st.title,
-                                isCompleted: st.isCompleted
-                            }))
-                        }
-                    }
-                })
-            ])
-        } else {
-            await db.incidence.update({
-                where: { id },
-                data: updateData
-            })
-        }
-
-        // Fetch updated incidence with relations
-        updatedIncidence = await db.incidence.findUnique({
+        // Verificar si debe cambiar estado automáticamente
+        const updatedIncidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
+                assignments: {
+                    where: { isAssigned: true }
+                }
+            }
+        })
+
+        if (updatedIncidence) {
+            const hasEstimatedTime = updatedIncidence.estimatedTime && updatedIncidence.estimatedTime > 0
+            const hasAssignees = updatedIncidence.assignments.length > 0
+            const allConditionsMet = hasEstimatedTime && hasAssignees
+
+            const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
+            const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
+                                       currentIncidence.status === TaskStatus.IN_PROGRESS || 
+                                       currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
+
+            if (isBacklogToTodo || isActiveToBacklog) {
+                await db.incidence.update({
+                    where: { id },
+                    data: {
+                        status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
+                    }
+                })
+            }
+        }
+
+        const finalIncidence = await db.incidence.findUnique({
+            where: { id },
+            include: {
+                assignments: {
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
                     }
                 }
             }
         })
 
         revalidatePath('/dashboard')
-        return { success: true, data: updatedIncidence as unknown as IncidenceWithDetails }
+        return { success: true, data: finalIncidence as unknown as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }
     }
 }
 
-export async function toggleSubTask(subTaskId: string) {
+export async function toggleSubTask(subTaskId: number) {
     try {
         const subTask = await db.subTask.findUnique({ where: { id: subTaskId } })
         if (!subTask) return { success: false, error: 'No encontrada' }

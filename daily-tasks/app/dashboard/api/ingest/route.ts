@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Buscar usuario si se proporciona email
-        let assigneeId: string | undefined = undefined
+        let assigneeId: number | undefined = undefined
         if (taskData.userEmail) {
           const user = await db.user.findUnique({
             where: { email: taskData.userEmail }

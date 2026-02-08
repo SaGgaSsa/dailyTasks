@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MoreHorizontal, CheckSquare } from 'lucide-react'
+import { MoreHorizontal, CheckSquare, CheckCircle, Clock, User, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IncidenceWithDetails } from '@/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import {
     Tooltip,
     TooltipContent,
@@ -15,6 +15,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
+import { TaskStatus } from '@/types/enums'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
@@ -49,8 +50,14 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         opacity: isDragging ? 0.5 : 1,
     }
 
-    const completedItems = task.subTasks.filter(i => i.isCompleted).length
-    const totalItems = task.subTasks.length
+    const allSubTasks = task.assignments.flatMap(a => a.tasks)
+    const completedItems = allSubTasks.filter(i => i.isCompleted).length
+    const totalItems = allSubTasks.length
+
+    const isBacklog = task.status === TaskStatus.BACKLOG
+    const hasHours = (task.estimatedTime ?? 0) > 0
+    const hasAssignees = task.assignments.length > 0
+    const hasSubTasks = allSubTasks.length > 0
 
     return (
         <Card
@@ -78,6 +85,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                         {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
                     </Badge>
                 </div>
+
                 <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-zinc-600 hover:text-zinc-400">
                     <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
@@ -124,18 +132,16 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
                         <div className="flex -space-x-2 overflow-hidden">
                             <TooltipProvider>
-                                {task.assignees.map((assignee) => (
-                                    <Tooltip key={assignee.id}>
+                                {task.assignments.map((assignment) => (
+                                    <Tooltip key={assignment.userId}>
                                         <TooltipTrigger asChild>
-                                            <Avatar className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800">
-                                                <AvatarImage src={assignee.avatarUrl || ''} />
-                                                <AvatarFallback className="text-[8px] bg-zinc-800 text-zinc-400">
-                                                    {assignee.username?.substring(0, 2)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <UserAvatar 
+                                                username={assignment.user.username} 
+                                                className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
+                                            />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p className="text-xs">{assignee.username}: {assignee.name}</p>
+                                            <p className="text-xs">{assignment.user.username}: {assignment.user.name}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 ))}
@@ -148,6 +154,50 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                                 className="h-full bg-blue-500/50 transition-all duration-300"
                                 style={{ width: `${(completedItems / totalItems) * 100}%` }}
                             />
+                        </div>
+                    )}
+
+                    {/* Indicadores de requisitos (solo en BACKLOG) */}
+                    {isBacklog && (
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-zinc-800">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasHours ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasHours ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasHours ? 'Horas asignadas' : 'Falta estimar horas'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasAssignees ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasAssignees ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasAssignees ? 'Colaborador asignado' : 'Falta asignar colaborador'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasSubTasks ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasSubTasks ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasSubTasks ? 'Checklist creado' : 'Falta crear checklist'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     )}
                 </div>

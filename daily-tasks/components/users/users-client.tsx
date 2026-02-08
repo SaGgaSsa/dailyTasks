@@ -1,20 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Eye } from 'lucide-react'
 import { UserSheet } from './user-sheet'
 import { UsersTable } from './users-table'
+import { UserDetailSheet } from './user-detail-sheet'
 import { Button } from '@/components/ui/button'
 
 import { User } from '@prisma/client'
 
-export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
+interface UsersClientProps {
+    initialUsers: User[]
+}
+
+export function UsersClient({ initialUsers }: UsersClientProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [detailUserId, setDetailUserId] = useState<number | null>(null)
 
     const handleEdit = (user: User) => {
         setSelectedUser(user)
         setIsOpen(true)
+    }
+
+    const handleViewDetail = (user: User) => {
+        setDetailUserId(user.id)
     }
 
     const handleAdd = () => {
@@ -32,12 +42,22 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                 </Button>
             </div>
 
-            <UsersTable data={initialUsers} onEdit={handleEdit} />
+            <UsersTable 
+                data={initialUsers} 
+                onEdit={handleEdit}
+                onViewDetail={handleViewDetail}
+            />
 
             <UserSheet
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 initialData={selectedUser}
+            />
+
+            <UserDetailSheet
+                open={!!detailUserId}
+                onOpenChange={(open) => !open && setDetailUserId(null)}
+                userId={detailUserId}
             />
         </div>
     )

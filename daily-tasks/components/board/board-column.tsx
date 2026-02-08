@@ -42,7 +42,11 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
                     strategy={verticalListSortingStrategy}
                 >
                     {tasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onClick={() => onCardClick(task)} />
+                        <TaskCard 
+                            key={task.id} 
+                            task={task} 
+                            onClick={() => onCardClick(task)}
+                        />
                     ))}
                 </SortableContext>
             </div>

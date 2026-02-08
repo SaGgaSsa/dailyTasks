@@ -3,6 +3,14 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './lib/db'
 
+interface AuthUser {
+  id: number
+  email: string
+  name: string
+  username: string
+  role: string
+}
+
 export const authConfig = {
   providers: [
     CredentialsProvider({
@@ -43,9 +51,7 @@ export const authConfig = {
           name: user.name || '',
           username: user.username,
           role: user.role,
-          avatarUrl: user.avatarUrl,
-          image: user.avatarUrl
-        } as any
+        } as AuthUser
       }
     }),
   ],
@@ -57,43 +63,39 @@ export const authConfig = {
     error: '/auth/login'
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }: { token: Record<string, unknown>; user?: AuthUser }) {
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.username = user.username
         token.role = user.role
-        token.avatarUrl = user.avatarUrl
-        token.image = user.avatarUrl
       }
       return token
     },
-    async session({ session, token }: any) {
+    async session({ session, token }: { session: Record<string, unknown>; token: Record<string, unknown> }) {
       if (token) {
-        session.user.id = token.id as string
-        session.user.email = token.email as string
-        session.user.name = token.name as string
-        session.user.username = token.username as string
-        session.user.role = token.role as string
-        session.user.avatarUrl = token.avatarUrl as string
-        session.user.image = token.avatarUrl as string
+        session.user = {
+          id: String(token.id),
+          email: token.email as string,
+          name: token.name as string,
+          username: token.username as string,
+          role: token.role as string,
+        }
       }
       return session
     },
-    async authorized({ auth, request }: any) {
-      const { pathname } = request.nextUrl
+    async authorized({ auth, request }: { auth: { user: AuthUser } | null; request: { nextUrl: URL } }) {
+      const pathname = request.nextUrl.pathname
 
-      // Permitir acceso a rutas de auth y API pública
       if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
         return true
       }
 
-      // Para rutas protegidas, verificar autenticación
       return !!auth?.user
     }
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig as any)

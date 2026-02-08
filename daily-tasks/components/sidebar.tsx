@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -30,18 +30,20 @@ export function Sidebar({ userId }: SidebarProps) {
 
   return (
     <div className={`bg-[#0A0A0A] border-r border-zinc-800 transition-all duration-300 flex flex-col ${isOpen ? 'w-64' : 'w-16'}`}>
-      <div className="p-4 flex items-center gap-3">
-        <div className="bg-zinc-100 p-1.5 rounded-lg">
-          <Terminal className="h-5 w-5 text-zinc-900" />
-        </div>
-        {isOpen && (
-          <span className="font-bold text-lg tracking-tight text-white">Engineering</span>
-        )}
+      <div className="p-2 flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="bg-zinc-100 p-1.5 rounded-lg">
+            <Terminal className="h-5 w-5 text-zinc-900" />
+          </div>
+          {isOpen && (
+            <span className="font-bold text-lg tracking-tight text-white">DailyTasks</span>
+          )}
+        </Link>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
-        <div className="space-y-6 px-3">
+        <div className="space-y-6 px-2">
           {/* Main Section */}
           <div className="space-y-1">
             {isOpen && (
@@ -55,7 +57,7 @@ export function Sidebar({ userId }: SidebarProps) {
                 className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
               >
                 <LayoutDashboard className="h-4 w-4" />
-                {isOpen && <span>{isAdmin ? 'Planning Backlog' : 'Kanban Board'}</span>}
+                {isOpen && <span>Incidencias</span>}
               </Button>
             </Link>
 
@@ -99,14 +101,9 @@ export function Sidebar({ userId }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-zinc-800">
+      <div className="p-2 border-t border-zinc-800">
         <div className={`flex items-center gap-3 ${!isOpen ? 'justify-center' : ''}`}>
-          <Avatar className="h-8 w-8 border border-zinc-700">
-            <AvatarImage src={session?.user?.image || ''} alt="User" />
-            <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-              {session?.user?.username?.substring(0, 2) || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar username={session?.user?.username} size="sm" />
           {isOpen && (
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-zinc-200 truncate">{session?.user?.name || session?.user?.username}</span>

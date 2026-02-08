@@ -36,7 +36,7 @@ export async function upsertUser(data: UpsertUserData) {
 
     if (id) {
       // Update
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         name,
         email,
         username: upperUsername,
@@ -76,7 +76,7 @@ export async function upsertUser(data: UpsertUserData) {
   }
 }
 
-export async function deleteUser(id: string) {
+export async function deleteUser(id: number) {
   try {
     await db.user.delete({
       where: { id },
@@ -97,11 +97,11 @@ export async function createUser(formData: FormData) {
   const username = formData.get('username') as string
 
   // Adapt to UpsertUserData
-  const result = await upsertUser({
+    const result = await upsertUser({
     name,
     email,
     password,
-    role: role as any,
+    role: role as UserRole | undefined,
     username
   })
 
@@ -113,6 +113,55 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUserPassword(formData: FormData) {
-  // TODO: Implement password update
   return { success: false, error: 'Not implemented' }
+}
+
+export async function getUserDetails(userId: number) {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        assignments: {
+          include: {
+            incidence: true,
+          },
+          orderBy: { incidence: { updatedAt: 'desc' } },
+          take: 5,
+        },
+        _count: {
+          select: {
+            assignments: true,
+            ownedWorkspaces: true,
+            workspaces: true,
+          },
+        },
+      },
+    })
+
+    if (!user) {
+      return null
+    }
+
+    const assignedIncidences = user.assignments.map(a => a.incidence)
+    const totalTasks = user._count.assignments
+    const pendingTasks = assignedIncidences.filter(
+      (i) => i.status !== 'DONE'
+    ).length
+    const completedTasks = assignedIncidences.filter(
+      (i) => i.status === 'DONE'
+    ).length
+
+    return {
+      ...user,
+      metrics: {
+        totalTasks,
+        pendingTasks,
+        completedTasks,
+      },
+      recentIncidences: assignedIncidences,
+    }
+  } catch (error) {
+    console.error('Error getting user details:', error)
+    return null
+  }
 }
