@@ -171,7 +171,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     title: formData.title,
                     description: formData.description,
                     priority: formData.priority,
-                    estimatedTime: formData.estimatedTime ? parseInt(formData.estimatedTime) : undefined,
+                    estimatedTime: formData.estimatedTime && formData.estimatedTime !== '0' ? parseInt(formData.estimatedTime) : undefined,
                     assigneeIds: formData.assigneeIds,
                     subTasks: formData.subTasks.length > 0 ? formData.subTasks : undefined,
                 })
@@ -195,7 +195,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     description: formData.description,
                     priority: formData.priority,
                     tech: formData.technology,
-                    estimatedTime: formData.estimatedTime ? parseInt(formData.estimatedTime) : undefined,
+                    estimatedTime: formData.estimatedTime && formData.estimatedTime !== '0' ? parseInt(formData.estimatedTime) : undefined,
                     assigneeIds: formData.assigneeIds,
                 })
 
