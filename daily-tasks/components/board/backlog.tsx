@@ -216,17 +216,44 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     {
         accessorKey: 'assignees',
         header: () => null,
-        cell: ({ row }) => (
-            <div className="flex -space-x-1.5 overflow-hidden justify-center">
-                {row.original.assignments.map((assignment) => (
-                    <UserAvatar
-                        key={assignment.userId}
-                        username={assignment.user.username}
-                        className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
-                    />
-                ))}
-            </div>
-        ),
+        cell: ({ row }) => {
+            const assignments = row.original.assignments.filter(a => a.isAssigned)
+            const count = assignments.length
+
+            if (count === 0) return null
+
+            if (count === 1) {
+                const assignment = assignments[0]
+                return (
+                    <div className="flex items-center justify-center gap-1">
+                        <UserAvatar
+                            username={assignment.user.username}
+                            className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
+                        />
+                        <span className="text-xs text-zinc-400 truncate max-w-[60px]">
+                            {assignment.user.username}
+                        </span>
+                    </div>
+                )
+            }
+
+            const usernames = assignments.map(a => a.user.username).join(', ')
+
+            return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center justify-center text-zinc-500">
+                                <User className="h-5 w-5" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{usernames}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )
+        },
     },
 ]
 
