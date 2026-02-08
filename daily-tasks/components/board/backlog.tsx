@@ -40,8 +40,8 @@ interface BacklogProps {
     setSearchQuery: (query: string) => void
     techFilter: string[]
     setTechFilter: (filter: string[]) => void
-    statusFilter: string
-    setStatusFilter: (filter: string) => void
+    statusFilter: string[]
+    setStatusFilter: (filter: string[]) => void
     onlyMyAssignments: boolean
     setOnlyMyAssignments: (value: boolean) => void
 }
@@ -288,7 +288,7 @@ export function Backlog({
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
-            const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
+            const matchesStatus = statusFilter.length === 0 || statusFilter.includes(task.status)
 
             const matchesMyAssignments = !onlyMyAssignments ||
                 (session?.user?.id && task.assignments.some(a => a.userId === Number(session.user.id)))

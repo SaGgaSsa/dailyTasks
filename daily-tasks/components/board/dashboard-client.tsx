@@ -10,13 +10,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +31,6 @@ const techOptions = [
 ]
 
 const statusOptions = [
-    { value: 'ALL', label: 'Todos' },
     { value: TaskStatus.BACKLOG, label: 'Backlog' },
     { value: TaskStatus.TODO, label: 'Por Hacer' },
     { value: TaskStatus.IN_PROGRESS, label: 'En Progreso' },
@@ -60,7 +52,14 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
     const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
     
     // Filtros solo para backlog
-    const [statusFilter, setStatusFilter] = useState<string>('ALL')
+    const [statusFilter, setStatusFilter] = useState<string[]>([
+        TaskStatus.BACKLOG,
+        TaskStatus.TODO,
+        TaskStatus.IN_PROGRESS,
+        TaskStatus.REVIEW,
+        TaskStatus.DONE
+    ])
+    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
 
     useEffect(() => {
@@ -169,18 +168,67 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                     {/* Filtros solo para Backlog: Estado y Mis asignaciones */}
                     {viewMode === 'BACKLOG' && (
                         <div className="flex items-center gap-3">
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-32 h-8 text-sm">
-                                    <SelectValue placeholder="Estado" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
-                                    {statusOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Popover open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed">
+                                        <LayoutDashboard className="h-4 w-4" />
+                                        {statusFilter.length > 0 && statusFilter.length < statusOptions.length && (
+                                            <>
+                                                <Separator orientation="vertical" className="mx-2 h-4" />
+                                                <div className="hidden space-x-1 lg:flex">
+                                                    {statusFilter.length > 2 ? (
+                                                        <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                                            {statusFilter.length} seleccionados
+                                                        </Badge>
+                                                    ) : (
+                                                        statusFilter.map(value => (
+                                                            <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
+                                                                {statusOptions.find(o => o.value === value)?.label || value}
+                                                            </Badge>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
+                                    {statusFilter.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setStatusFilter([
+                                                TaskStatus.BACKLOG,
+                                                TaskStatus.TODO,
+                                                TaskStatus.IN_PROGRESS,
+                                                TaskStatus.REVIEW,
+                                                TaskStatus.DONE
+                                            ])}
+                                            className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
+                                        >
+                                            Limpiar filtros
+                                        </Button>
+                                    )}
+                                    <div className="space-y-1">
+                                        {statusOptions.map(opt => (
+                                            <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
+                                                <Checkbox
+                                                    checked={statusFilter.includes(opt.value)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked === true) {
+                                                            setStatusFilter(prev => [...prev, opt.value])
+                                                        } else {
+                                                            setStatusFilter(prev => prev.filter(t => t !== opt.value))
+                                                        }
+                                                    }}
+                                                    className="border-zinc-600"
+                                                />
+                                                <span className="text-sm text-zinc-300">{opt.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
                                     checked={onlyMyAssignments}
