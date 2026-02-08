@@ -130,22 +130,37 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                             </span>
                         </div>
 
-                        <div className="flex -space-x-2 overflow-hidden">
-                            <TooltipProvider>
-                                {task.assignments.map((assignment) => (
-                                    <Tooltip key={assignment.userId}>
-                                        <TooltipTrigger asChild>
-                                            <UserAvatar 
-                                                username={assignment.user.username} 
-                                                className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
-                                            />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p className="text-xs">{assignment.user.username}: {assignment.user.name}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ))}
-                            </TooltipProvider>
+                        <div className="flex items-center">
+                            {(() => {
+                                const activeAssignments = task.assignments.filter(a => a.isAssigned)
+                                const count = activeAssignments.length
+
+                                if (count === 0) return null
+
+                                if (count === 1) {
+                                    const assignment = activeAssignments[0]
+                                    return (
+                                        <UserAvatar 
+                                            username={assignment.user.username} 
+                                            className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
+                                        />
+                                    )
+                                }
+
+                                const usernames = activeAssignments.map(a => a.user.username).join(', ')
+                                return (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <User className="h-4 w-4 text-zinc-500" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p className="text-xs">{usernames}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )
+                            })()}
                         </div>
                     </div>
                     {totalItems > 0 && (
