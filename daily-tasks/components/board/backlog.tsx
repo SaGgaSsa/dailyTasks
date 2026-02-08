@@ -357,8 +357,9 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
             </div>
 
             <div className="flex-1 overflow-visible border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner [&>table]:h-full">
-                <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
+                <div className="overflow-y-auto max-h-full">
+                    <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
                         {table.getHeaderGroups().map(headerGroup => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map(header => (
@@ -414,6 +415,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                         )}
                     </TableBody>
                 </Table>
+                </div>
             </div>
         </div>
     )
