@@ -3,19 +3,15 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { UserAvatar } from '@/components/ui/user-avatar'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import {
   LayoutDashboard,
   BookOpen,
   Users,
   Settings,
-  ShieldCheck,
   Terminal
 } from 'lucide-react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 
 interface SidebarProps {
   userId?: string
@@ -102,23 +98,11 @@ export function Sidebar({ userId }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-2 border-t border-zinc-800 flex-shrink-0">
-        <div className={`flex items-center gap-3 ${!isOpen ? 'justify-center' : ''}`}>
-          <UserAvatar username={session?.user?.username} size="sm" />
-          {isOpen && (
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-zinc-200 truncate">{session?.user?.name || session?.user?.username}</span>
-              <span className="text-[10px] text-zinc-500 flex items-center gap-1">
-                {isAdmin ? <ShieldCheck className="h-3 w-3 text-yellow-500/50" /> : <Terminal className="h-3 w-3 text-blue-500/50" />}
-                {isAdmin ? 'Architect' : 'Developer'}
-              </span>
-            </div>
-          )}
-        </div>
         {isOpen && (
           <Button
             variant="ghost"
             size="sm"
-            className="w-full mt-4 text-[10px] text-zinc-600 hover:text-zinc-400 px-0 h-6"
+            className="w-full text-zinc-600 hover:text-zinc-400 px-0 h-6"
             onClick={() => setIsOpen(false)}
           >
             Colapsar Menú
@@ -128,7 +112,7 @@ export function Sidebar({ userId }: SidebarProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full mt-4 text-zinc-600 hover:text-zinc-400 px-0 h-6"
+            className="w-full text-zinc-600 hover:text-zinc-400 px-0 h-6"
             onClick={() => setIsOpen(true)}
           >
             --{'>'}
