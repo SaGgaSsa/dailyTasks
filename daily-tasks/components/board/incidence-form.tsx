@@ -204,6 +204,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 if (result.success) {
                     toast.success(`${formData.type} ${formData.externalId} creada`)
                     router.refresh()
+                    onOpenChange(false)
                     return true
                 } else {
                     toast.error(result.error || 'Error al crear')
