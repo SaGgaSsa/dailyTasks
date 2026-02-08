@@ -166,18 +166,19 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
         setIsSaving(true)
         try {
+            const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
             if (isEditMode && initialData?.id) {
                 const result = await updateIncidence(initialData.id, {
                     title: formData.title,
                     description: formData.description,
                     priority: formData.priority,
-                    estimatedTime: formData.estimatedTime && formData.estimatedTime !== '0' ? parseInt(formData.estimatedTime) : undefined,
+                    estimatedTime: hoursValue > 0 ? hoursValue : null,
                     assigneeIds: formData.assigneeIds,
                     subTasks: formData.subTasks.length > 0 ? formData.subTasks : undefined,
                 })
 
                 if (result.success) {
-                    toast.success('Incidencia actualizada')
+                    toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
                     if (onTaskUpdate && result.data) {
                         onTaskUpdate(result.data)
                     }
@@ -188,6 +189,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     return false
                 }
             } else {
+                const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
                 const result = await createIncidence({
                     type: formData.type,
                     externalId: parseInt(formData.externalId),
@@ -195,12 +197,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     description: formData.description,
                     priority: formData.priority,
                     tech: formData.technology,
-                    estimatedTime: formData.estimatedTime && formData.estimatedTime !== '0' ? parseInt(formData.estimatedTime) : undefined,
+                    estimatedTime: hoursValue > 0 ? hoursValue : null,
                     assigneeIds: formData.assigneeIds,
                 })
 
                 if (result.success) {
-                    toast.success('Incidencia creada')
+                    toast.success(`${formData.type} ${formData.externalId} creada`)
                     router.refresh()
                     return true
                 } else {

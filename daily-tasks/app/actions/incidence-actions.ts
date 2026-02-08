@@ -14,7 +14,7 @@ interface CreateIncidenceData {
     description?: string
     tech: TechStack
     priority: Priority
-    estimatedTime?: number
+    estimatedTime?: number | null
     assigneeIds?: number[]
 }
 
@@ -23,7 +23,7 @@ interface UpdateIncidenceData {
     priority?: Priority
     description?: string
     comment?: string
-    estimatedTime?: number
+    estimatedTime?: number | null
     title?: string
     technology?: TechStack
     assigneeIds?: number[]
