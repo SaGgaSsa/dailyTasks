@@ -24,6 +24,7 @@ import { upsertUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 
 import { User, UserRole } from '@prisma/client'
+import { TechStack } from '@/types/enums'
 
 interface UserSheetProps {
     open: boolean
@@ -40,7 +41,8 @@ export function UserSheet({ open, onOpenChange, initialData }: UserSheetProps) {
         email: '',
         username: '',
         password: '',
-        role: 'DEV', // Default role
+        role: 'DEV',
+        technologies: [] as string[],
     })
 
     useEffect(() => {
@@ -51,6 +53,7 @@ export function UserSheet({ open, onOpenChange, initialData }: UserSheetProps) {
                 username: initialData.username || '',
                 password: '',
                 role: initialData.role || 'DEV',
+                technologies: initialData.technologies || [],
             })
         } else {
             setFormData({
@@ -59,6 +62,7 @@ export function UserSheet({ open, onOpenChange, initialData }: UserSheetProps) {
                 username: '',
                 password: '',
                 role: 'DEV',
+                technologies: [],
             })
         }
     }, [initialData, open])
@@ -70,8 +74,12 @@ export function UserSheet({ open, onOpenChange, initialData }: UserSheetProps) {
         try {
             const res = await upsertUser({
                 id: initialData?.id,
-                ...formData,
+                name: formData.name,
+                email: formData.email,
+                username: formData.username,
+                password: formData.password || 'sisa0314',
                 role: formData.role as UserRole,
+                technologies: formData.technologies as TechStack[],
             })
 
             if (res.success) {

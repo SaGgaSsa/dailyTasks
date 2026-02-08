@@ -2,118 +2,150 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import bcrypt from 'bcryptjs'
-import { User } from '@prisma/client'
-import { UserRole } from '@/types/enums'
+import { TaskStatus, TaskType, TechStack, Priority } from '@/types/enums'
+import { UserRole } from '@prisma/client'
 
 export async function getUsers() {
-  return await db.user.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+    try {
+        const users = await db.user.findMany({
+            orderBy: { username: 'asc' }
+        })
+        return users
+    } catch (error) {
+        console.error('Error getting users:', error)
+        return []
+    }
 }
 
-// Omit generated fields and relations
-type UpsertUserData = Partial<User> & {
-  password?: string // password is optional on edit
+interface UpsertUserData {
+    id?: number
+    username: string
+    name: string
+    email: string
+    password: string
+    role: UserRole
+    technologies: TechStack[]
 }
 
 export async function upsertUser(data: UpsertUserData) {
-  try {
-    const { id, name, email, username, password, role } = data
-
-    if (!username) {
-      throw new Error('Username is required')
+    try {
+        if (data.id) {
+            await db.user.update({
+                where: { id: data.id },
+                data: {
+                    username: data.username,
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    technologies: data.technologies,
+                }
+            })
+            revalidatePath('/dashboard')
+            return { success: true }
+        } else {
+            await db.user.create({
+                data: {
+                    username: data.username,
+                    name: data.name,
+                    email: data.email,
+                    password: data.password,
+                    role: data.role,
+                    technologies: data.technologies,
+                }
+            })
+            revalidatePath('/dashboard')
+            return { success: true }
+        }
+    } catch (error) {
+        console.error('Error upserting user:', error)
+        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
+            return { success: false, error: 'El usuario ya existe' }
+        }
+        return { success: false, error: 'Error al guardar el usuario' }
     }
-
-    // Username validation
-    if (!/^[a-zA-Z]{3}$/.test(username)) {
-      throw new Error('El usuario debe tener exactamente 3 letras (ej: SAG).')
-    }
-
-    const upperUsername = username.toUpperCase()
-
-    if (id) {
-      // Update
-      const updateData: Record<string, unknown> = {
-        name,
-        email,
-        username: upperUsername,
-        role: role as UserRole,
-      }
-      if (password && password.trim() !== '') {
-        updateData.password = await bcrypt.hash(password, 10)
-      }
-      await db.user.update({
-        where: { id },
-        data: updateData,
-      })
-    } else {
-      // Create
-      if (!name || !email) {
-        throw new Error('Missing required fields')
-      }
-      if (!password) {
-        throw new Error('Password is required for new users')
-      }
-      const hashedPassword = await bcrypt.hash(password, 10)
-      const newUser = await db.user.create({
-        data: {
-          name,
-          email,
-          username: upperUsername,
-          password: hashedPassword,
-          role: role as UserRole || 'DEV',
-        },
-      })
-    }
-    revalidatePath('/dashboard/users')
-    return { success: true }
-  } catch (error) {
-    console.error('Error upserting user:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to save user' }
-  }
-}
-
-export async function deleteUser(id: number) {
-  try {
-    await db.user.delete({
-      where: { id },
-    })
-    revalidatePath('/dashboard/users')
-    return { success: true }
-  } catch (error) {
-    console.error('Error deleting user:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete user' }
-  }
 }
 
 export async function createUser(formData: FormData) {
-  const name = formData.get('name') as string
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const role = formData.get('role') as string
-  const username = formData.get('username') as string
+    const username = formData.get('username') as string
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const role = formData.get('role') as UserRole
+    const technologies = formData.getAll('technologies') as TechStack[]
 
-  // Adapt to UpsertUserData
-    const result = await upsertUser({
-    name,
-    email,
-    password,
-    role: role as UserRole | undefined,
-    username
-  })
+    try {
+        await db.user.create({
+            data: {
+                username,
+                name,
+                email,
+                password,
+                role,
+                technologies,
+            }
+        })
+        revalidatePath('/dashboard')
+        return { success: 'Usuario creado correctamente', error: null }
+    } catch (error) {
+        console.error('Error creating user:', error)
+        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
+            return { success: null, error: 'El usuario ya existe' }
+        }
+        return { success: null, error: 'Error al crear el usuario' }
+    }
+}
 
-  if (result.success) {
-    return { success: 'Usuario creado correctamente', error: null }
-  } else {
-    return { success: null, error: result.error || 'Error al crear usuario' }
-  }
+export async function getUserByUsername(username: string) {
+    try {
+        const user = await db.user.findUnique({
+            where: { username }
+        })
+        return user
+    } catch (error) {
+        console.error('Error getting user by username:', error)
+        return null
+    }
+}
+
+export async function getUserById(id: number) {
+    try {
+        const user = await db.user.findUnique({
+            where: { id }
+        })
+        return user
+    } catch (error) {
+        console.error('Error getting user by id:', error)
+        return null
+    }
 }
 
 export async function updateUserPassword(formData: FormData) {
-  return { success: false, error: 'Not implemented' }
+    const userId = Number(formData.get('userId'))
+    const newPassword = formData.get('newPassword') as string
+    
+    try {
+        await db.user.update({
+            where: { id: userId },
+            data: { password: newPassword }
+        })
+        return { success: true }
+    } catch (error) {
+        console.error('Error updating user password:', error)
+        return { success: false, error: 'Error al actualizar la contraseña' }
+    }
+}
+
+export async function deleteUser(userId: number) {
+    try {
+        await db.user.delete({
+            where: { id: userId }
+        })
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error deleting user:', error)
+        return { success: false, error: 'Error al eliminar el usuario' }
+    }
 }
 
 export async function getUserDetails(userId: number) {
@@ -131,8 +163,6 @@ export async function getUserDetails(userId: number) {
         _count: {
           select: {
             assignments: true,
-            ownedWorkspaces: true,
-            workspaces: true,
           },
         },
       },
