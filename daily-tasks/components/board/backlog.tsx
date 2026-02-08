@@ -69,7 +69,7 @@ const priorityLabels: Record<string, string> = {
 const columns: ColumnDef<IncidenceWithDetails>[] = [
     {
         accessorKey: 'type',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">ID</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tramite</div>,
         cell: ({ row }) => (
             <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 whitespace-nowrap ${typeColors[row.original.type]}`}>
                 {row.original.type} {row.original.externalId}
@@ -78,10 +78,9 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'title',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-full">Descripcion | Horas | Pendientes</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion | Horas | Pendientes</div>,
         cell: ({ row }) => {
             const title = row.original.title
-            const displayTitle = title.length > 40 ? title.substring(0, 40) + '...' : title
             
             // Calcular horas restantes
             const estimatedHours = row.original.estimatedTime || 0
@@ -101,13 +100,13 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             return (
                 <div className="flex items-center gap-4 min-w-0">
                     <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
-                        {displayTitle}
+                        {title}
                     </span>
-                    <span className="text-xs text-zinc-400 whitespace-nowrap">
+                    <span className="text-xs text-zinc-400 whitespace-nowrap shrink-0">
                         {hoursLeft}h
                     </span>
                     {totalTasks > 0 && (
-                        <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${isAllCompleted ? 'text-green-400' : 'text-zinc-400'}`}>
+                        <span className={`text-xs flex items-center gap-1 whitespace-nowrap shrink-0 ${isAllCompleted ? 'text-green-400' : 'text-zinc-400'}`}>
                             {isAllCompleted ? (
                                 <>
                                     <CheckCircle2 className="h-3 w-3" />
@@ -127,7 +126,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'priority',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Prioridad</div>,
+        header: () => null,
         cell: ({ row }) => {
             const priority = row.original.priority
             const colors = {
@@ -144,7 +143,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'status',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Estado</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Estado</div>,
         cell: ({ row }) => (
             <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
                 {row.original.status === 'BACKLOG' ? 'Backlog' :
@@ -157,7 +156,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         id: 'actions',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap text-center">Req</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Req</div>,
         cell: ({ row }) => {
             const task = row.original
             const hasHours = (task.estimatedTime ?? 0) > 0
@@ -216,9 +215,9 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'assignees',
-        header: () => <div className="w-16"></div>,
+        header: () => null,
         cell: ({ row }) => (
-            <div className="flex -space-x-1.5 overflow-hidden">
+            <div className="flex -space-x-1.5 overflow-hidden justify-center">
                 {row.original.assignments.map((assignment) => (
                     <UserAvatar
                         key={assignment.userId}
@@ -292,27 +291,35 @@ export function Backlog({
     return (
         <div className="flex flex-col gap-3">
             <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
-                <Table>
+                <Table className="table-fixed w-full">
                     <TableHeader>
                         {table.getHeaderGroups().map(headerGroup => (
                             <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                    <TableHead key={header.id} className="bg-[#0F0F0F]">
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                    </TableHead>
-                                ))}
+                                {headerGroup.headers.map(header => {
+                                    const widthClass = header.column.id === 'type' ? 'w-24' :
+                                        header.column.id === 'title' ? 'w-full' :
+                                        header.column.id === 'priority' ? 'w-20' :
+                                        header.column.id === 'status' ? 'w-24' :
+                                        header.column.id === 'actions' ? 'w-20' :
+                                        header.column.id === 'assignees' ? 'w-16' : ''
+                                    return (
+                                        <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass}`}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                        </TableHead>
+                                    )
+                                })}
                             </TableRow>
                         ))}
                     </TableHeader>
                     <TableBody className="divide-y divide-zinc-900">
                         {filteredTasks.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={columns.length} className="p-12 text-center">
+                                <TableCell colSpan={columns.length} className="p-12 text-center w-full">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <div className="p-4 rounded-full bg-zinc-900/50">
                                             <Inbox className="h-8 w-8 text-zinc-600" />
@@ -336,11 +343,19 @@ export function Backlog({
                                         setIsSheetOpen(true)
                                     }}
                                 >
-                                    {row.getVisibleCells().map(cell => (
-                                        <TableCell key={cell.id} className="py-3">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
+                                    {row.getVisibleCells().map(cell => {
+                                        const widthClass = cell.column.id === 'type' ? 'w-24' :
+                                            cell.column.id === 'title' ? 'w-full' :
+                                            cell.column.id === 'priority' ? 'w-20' :
+                                            cell.column.id === 'status' ? 'w-24' :
+                                            cell.column.id === 'actions' ? 'w-20' :
+                                            cell.column.id === 'assignees' ? 'w-16' : ''
+                                        return (
+                                            <TableCell key={cell.id} className={`py-3 ${widthClass}`}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
+                                        )
+                                    })}
                                 </TableRow>
                             ))
                         )}
