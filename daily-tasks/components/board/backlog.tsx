@@ -110,30 +110,30 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                             <span>estimadas</span>
                         </span>
                     )}
-                    {row.original.subTasks.length > 0 && (
-                        (() => {
-                            const completed = row.original.subTasks.filter(st => st.isCompleted).length
-                            const total = row.original.subTasks.length
-                            const isAllCompleted = completed === total
-                            return (
-                                <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
-                                    {isAllCompleted ? (
-                                        <>
-                                            <CheckCircle2 className="h-3 w-3" />
-                                            <span>completado</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span className="text-zinc-400">
-                                                {completed}/{total}
-                                            </span>
-                                            <span>pendientes</span>
-                                        </>
-                                    )}
-                                </span>
-                            )
-                        })()
-                    )}
+                    {(() => {
+                        const allTasks = row.original.assignments.flatMap(a => a.tasks)
+                        if (allTasks.length === 0) return null
+                        const completed = allTasks.filter(st => st.isCompleted).length
+                        const total = allTasks.length
+                        const isAllCompleted = completed === total
+                        return (
+                            <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
+                                {isAllCompleted ? (
+                                    <>
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        <span>completado</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-zinc-400">
+                                            {completed}/{total}
+                                        </span>
+                                        <span>pendientes</span>
+                                    </>
+                                )}
+                            </span>
+                        )
+                    })()}
                 </div>
             </div>
         ),
@@ -184,22 +184,31 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                         </Tooltip>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className={task.assignees.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
-                                    {task.assignees.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                <div className={task.assignments.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                    {task.assignments.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>{task.assignees.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                                <p>{task.assignments.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
                             </TooltipContent>
                         </Tooltip>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className={task.subTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
-                                    {task.subTasks.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+                                <div className={(() => {
+                                    const allTasks = task.assignments.flatMap(a => a.tasks)
+                                    return allTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'
+                                })()}>
+                                    {(() => {
+                                        const allTasks = task.assignments.flatMap(a => a.tasks)
+                                        return allTasks.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />
+                                    })()}
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>{task.subTasks.length > 0 ? 'Checklist creado' : 'Falta crear checklist'}</p>
+                                <p>{(() => {
+                                    const allTasks = task.assignments.flatMap(a => a.tasks)
+                                    return allTasks.length > 0 ? 'Checklist creado' : 'Falta crear checklist'
+                                })()}</p>
                             </TooltipContent>
                         </Tooltip>
                     </div>
@@ -221,10 +230,10 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</div>,
         cell: ({ row }) => (
             <div className="flex -space-x-1.5 overflow-hidden">
-                {row.original.assignees.map((user) => (
+                {row.original.assignments.map((assignment) => (
                     <UserAvatar
-                        key={user.id}
-                        username={user.username}
+                        key={assignment.userId}
+                        username={assignment.user.username}
                         className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
                     />
                 ))}
@@ -275,7 +284,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
             const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
 
             const matchesMyAssignments = !onlyMyAssignments ||
-                (session?.user?.id && task.assignees.some(a => a.id === Number(session.user.id)))
+                (session?.user?.id && task.assignments.some(a => a.userId === Number(session.user.id)))
 
             return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
         })
@@ -356,65 +365,66 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                 </div>
             </div>
 
-            <div className="flex-1 overflow-visible border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner [&>table]:h-full">
-                <div className="overflow-y-auto max-h-full">
+            {/* TODO: [UI-FIX] El Sticky Header no funciona. Falta configurar altura del contenedor o z-index. Ver AI_TASKS.md */}
+            <div className="flex-1 border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner overflow-hidden">
+                <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
                     <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                    <TableHead key={header.id}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody className="divide-y divide-zinc-900">
-                        {filteredTasks.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="p-12 text-center">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <div className="p-4 rounded-full bg-zinc-900/50">
-                                            <Inbox className="h-8 w-8 text-zinc-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            table.getRowModel().rows.map(row => (
-                                <TableRow
-                                    key={row.id}
-                                    className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
-                                    onClick={() => {
-                                        if (taskSelect) {
-                                            taskSelect(row.original)
-                                        }
-                                        setIsSheetOpen(true)
-                                    }}
-                                >
-                                    {row.getVisibleCells().map(cell => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
+                        <TableHeader>
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map(header => (
+                                        <TableHead key={header.id} className="sticky top-0 z-20 bg-[#0F0F0F] shadow-sm">
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                        </TableHead>
                                     ))}
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ))}
+                        </TableHeader>
+                        <TableBody className="divide-y divide-zinc-900">
+                            {filteredTasks.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="p-12 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="p-4 rounded-full bg-zinc-900/50">
+                                                <Inbox className="h-8 w-8 text-zinc-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                                                <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                table.getRowModel().rows.map(row => (
+                                    <TableRow
+                                        key={row.id}
+                                        className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
+                                        onClick={() => {
+                                            if (taskSelect) {
+                                                taskSelect(row.original)
+                                            }
+                                            setIsSheetOpen(true)
+                                        }}
+                                    >
+                                        {row.getVisibleCells().map(cell => (
+                                            <TableCell key={cell.id}>
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 </div>
             </div>
         </div>

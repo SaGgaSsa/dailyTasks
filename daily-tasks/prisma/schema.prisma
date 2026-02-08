@@ -17,7 +17,7 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  assignedIncidences Incidence[] @relation("IncidenceAssignees")
+  assignments        Assignment[]
   ownedWorkspaces    Workspace[]     @relation("OwnedWorkspaces")
   workspaces         WorkspaceMember[]
 
@@ -105,19 +105,35 @@ model Incidence {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  assignees     User[]    @relation("IncidenceAssignees")
-  subTasks      SubTask[]
+  assignments   Assignment[]
 
   @@unique([type, externalId])
   @@map("incidences")
+}
+
+model Assignment {
+  id             Int       @id @default(autoincrement())
+  
+  incidenceId    Int
+  incidence      Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id])
+
+  remainingHours Int?
+  tasks          SubTask[]
+
+  @@unique([incidenceId, userId])
+  @@map("assignments")
 }
 
 model SubTask {
   id          Int       @id @default(autoincrement())
   title       String
   isCompleted Boolean   @default(false)
-  incidenceId Int
-  incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
   createdAt   DateTime  @default(now())
 
   @@map("sub_tasks")

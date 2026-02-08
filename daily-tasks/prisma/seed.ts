@@ -13,6 +13,7 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   const password = await hash('123456', 12)
 
+  // Crear usuario admin
   const sag = await prisma.user.upsert({
     where: { username: 'SAG' },
     update: {},
@@ -27,7 +28,34 @@ async function main() {
     },
   })
 
-  console.log({ sag })
+  // Crear desarrolladores de ejemplo
+  const dev1 = await prisma.user.upsert({
+    where: { username: 'dev1' },
+    update: {},
+    create: {
+      username: 'dev1',
+      name: 'Desarrollador Uno',
+      email: 'dev1@sisa.com.ar',
+      password,
+      role: 'DEV',
+      technologies: ['ANGULAR', 'SPRING'],
+    },
+  })
+
+  const dev2 = await prisma.user.upsert({
+    where: { username: 'dev2' },
+    update: {},
+    create: {
+      username: 'dev2',
+      name: 'Desarrollador Dos',
+      email: 'dev2@sisa.com.ar',
+      password,
+      role: 'DEV',
+      technologies: ['SISA', 'WEB'],
+    },
+  })
+
+  console.log('Seed completed:', { sag, dev1, dev2 })
 }
 
 main()

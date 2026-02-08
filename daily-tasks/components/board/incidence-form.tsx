@@ -24,7 +24,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { IncidenceWithDetails } from '@/types'
-import { TaskType, Priority, TechStack } from '@/types/enums'
+import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
 import { createIncidence, updateIncidence } from '@/app/actions/incidence-actions'
 import { getUsers } from '@/app/actions/user-actions'
 import { User } from '@prisma/client'
@@ -58,6 +58,11 @@ const techOptions = [
     { value: TechStack.SPRING, label: 'SPRING' },
 ]
 
+interface AssigneeFormData {
+    userId: number
+    remainingHours: string
+}
+
 interface FormData {
     type: TaskType
     externalId: string
@@ -66,13 +71,14 @@ interface FormData {
     priority: Priority
     technology: TechStack
     estimatedTime: string
-    assigneeIds: number[]
+    assignees: AssigneeFormData[]
     subTasks: { title: string; isCompleted: boolean }[]
 }
 
 export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated }: IncidenceFormProps) {
     const router = useRouter()
     const isEditMode = !!initialData?.id
+    const isBacklog = !initialData || initialData.status === TaskStatus.BACKLOG
 
     const [formData, setFormData] = useState<FormData>({
         type: TaskType.I_MODAPL,
@@ -82,7 +88,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         priority: Priority.MEDIUM,
         technology: TechStack.SISA,
         estimatedTime: '',
-        assigneeIds: [],
+        assignees: [],
         subTasks: [],
     })
 
@@ -110,8 +116,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 priority: initialData.priority,
                 technology: initialData.technology,
                 estimatedTime: initialData.estimatedTime?.toString() || '',
-                assigneeIds: initialData.assignees.map(a => a.id),
-                subTasks: initialData.subTasks.map(st => ({ title: st.title, isCompleted: st.isCompleted })),
+                assignees: initialData.assignments.map(a => ({
+                    userId: a.userId,
+                    remainingHours: a.remainingHours?.toString() || ''
+                })),
+                subTasks: initialData.assignments.flatMap(assignment => 
+                    assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
+                ),
             }
             setFormData(data)
             setOriginalFormData(data)
@@ -124,7 +135,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 priority: Priority.MEDIUM,
                 technology: TechStack.SISA,
                 estimatedTime: '',
-                assigneeIds: [],
+                assignees: [],
                 subTasks: [],
             })
             setOriginalFormData(null)
@@ -156,10 +167,24 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }
 
     const handleToggleAssignee = (userId: number) => {
-        const newAssignees = formData.assigneeIds.includes(userId)
-            ? formData.assigneeIds.filter(id => id !== userId)
-            : [...formData.assigneeIds, userId]
-        updateFormData({ assigneeIds: newAssignees })
+        const exists = formData.assignees.find(a => a.userId === userId)
+        if (exists) {
+            updateFormData({
+                assignees: formData.assignees.filter(a => a.userId !== userId)
+            })
+        } else {
+            updateFormData({
+                assignees: [...formData.assignees, { userId, remainingHours: '' }]
+            })
+        }
+    }
+
+    const handleUpdateAssigneeHours = (userId: number, hours: string) => {
+        updateFormData({
+            assignees: formData.assignees.map(a => 
+                a.userId === userId ? { ...a, remainingHours: hours } : a
+            )
+        })
     }
 
     const handleSave = async () => {
@@ -171,6 +196,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setIsSaving(true)
         try {
             const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
+            
+            // Convertir assignees al formato esperado por el servidor
+            const assigneeData = formData.assignees.map(a => ({
+                userId: a.userId,
+                remainingHours: a.remainingHours === '' ? null : parseInt(a.remainingHours)
+            }))
+
             if (isEditMode && initialData?.id) {
                 const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
                 if (!hasChanges) {
@@ -183,7 +215,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     description: formData.description,
                     priority: formData.priority,
                     estimatedTime: hoursValue > 0 ? hoursValue : null,
-                    assigneeIds: formData.assigneeIds,
+                    assignees: assigneeData,
                     subTasks: formData.subTasks.length > 0 ? formData.subTasks : undefined,
                 })
 
@@ -199,7 +231,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     return false
                 }
             } else {
-                const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
                 const result = await createIncidence({
                     type: formData.type,
                     externalId: parseInt(formData.externalId),
@@ -208,7 +239,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     priority: formData.priority,
                     tech: formData.technology,
                     estimatedTime: hoursValue > 0 ? hoursValue : null,
-                    assigneeIds: formData.assigneeIds,
+                    assignees: assigneeData,
                 })
 
                 if (result.success) {
@@ -401,30 +432,78 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                                {users.map(user => (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center space-x-2 p-2 hover:bg-zinc-800 rounded cursor-pointer"
-                                        onClick={() => handleToggleAssignee(user.id)}
-                                    >
-                                        <Checkbox
-                                            checked={formData.assigneeIds.includes(user.id)}
-                                            onCheckedChange={() => {}}
-                                            className="border-zinc-600"
-                                        />
-                                        <span className="text-zinc-300 text-sm">{user.name}</span>
-                                        <span className="text-zinc-500 text-xs">({user.username})</span>
-                                        <Badge variant="outline" className="ml-auto text-[10px] border-zinc-700 text-zinc-500">
-                                            {user.role}
-                                        </Badge>
+                    {/* Asignación de equipo con horas restantes - solo en BACKLOG */}
+                    {isBacklog ? (
+                        <div className="space-y-2">
+                            <Label className="text-zinc-300">Asignar equipo</Label>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
+                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {users.map(user => {
+                                        const assigneeData = formData.assignees.find(a => a.userId === user.id)
+                                        const isSelected = !!assigneeData
+                                        
+                                        return (
+                                            <div
+                                                key={user.id}
+                                                className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded"
+                                            >
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onCheckedChange={() => handleToggleAssignee(user.id)}
+                                                    className="border-zinc-600"
+                                                />
+                                                <span className="text-zinc-300 text-sm flex-1">{user.name}</span>
+                                                <span className="text-zinc-500 text-xs">({user.username})</span>
+                                                
+                                                {/* Campo de horas restantes - solo visible si está seleccionado */}
+                                                {isSelected && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-zinc-500 text-xs">Horas:</span>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            max="9999"
+                                                            step="1"
+                                                            value={assigneeData.remainingHours}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
+                                                                    handleUpdateAssigneeHours(user.id, value);
+                                                                }
+                                                            }}
+                                                            className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm"
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                )}
+                                                
+                                                <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500">
+                                                    {user.role}
+                                                </Badge>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                            <p className="text-xs text-zinc-500">
+                                Al asignar colaboradores, puedes especificar las horas restantes para cada uno.
+                            </p>
+                        </div>
+                    ) : initialData && initialData.assignments.length > 0 ? (
+                        <div className="space-y-2">
+                            <Label className="text-zinc-300">Equipo asignado</Label>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
+                                {initialData.assignments.map(assignment => (
+                                    <div key={assignment.userId} className="flex items-center justify-between p-2">
+                                        <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
+                                        <span className="text-zinc-500 text-xs">
+                                            {assignment.remainingHours !== null ? `${assignment.remainingHours}h restantes` : 'Sin horas asignadas'}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    </div>
+                    ) : null}
 
                     <div className="space-y-2">
                         <Label className="text-zinc-300">Pendientes</Label>

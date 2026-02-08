@@ -121,13 +121,16 @@ export async function getUserDetails(userId: number) {
     const user = await db.user.findUnique({
       where: { id: userId },
       include: {
-        assignedIncidences: {
-          orderBy: { updatedAt: 'desc' },
+        assignments: {
+          include: {
+            incidence: true,
+          },
+          orderBy: { incidence: { updatedAt: 'desc' } },
           take: 5,
         },
         _count: {
           select: {
-            assignedIncidences: true,
+            assignments: true,
             ownedWorkspaces: true,
             workspaces: true,
           },
@@ -139,11 +142,12 @@ export async function getUserDetails(userId: number) {
       return null
     }
 
-    const totalTasks = user._count.assignedIncidences
-    const pendingTasks = user.assignedIncidences.filter(
+    const assignedIncidences = user.assignments.map(a => a.incidence)
+    const totalTasks = user._count.assignments
+    const pendingTasks = assignedIncidences.filter(
       (i) => i.status !== 'DONE'
     ).length
-    const completedTasks = user.assignedIncidences.filter(
+    const completedTasks = assignedIncidences.filter(
       (i) => i.status === 'DONE'
     ).length
 
@@ -154,7 +158,7 @@ export async function getUserDetails(userId: number) {
         pendingTasks,
         completedTasks,
       },
-      recentIncidences: user.assignedIncidences,
+      recentIncidences: assignedIncidences,
     }
   } catch (error) {
     console.error('Error getting user details:', error)

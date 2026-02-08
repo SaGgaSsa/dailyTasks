@@ -50,13 +50,14 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         opacity: isDragging ? 0.5 : 1,
     }
 
-    const completedItems = task.subTasks.filter(i => i.isCompleted).length
-    const totalItems = task.subTasks.length
+    const allSubTasks = task.assignments.flatMap(a => a.tasks)
+    const completedItems = allSubTasks.filter(i => i.isCompleted).length
+    const totalItems = allSubTasks.length
 
     const isBacklog = task.status === TaskStatus.BACKLOG
     const hasHours = (task.estimatedTime ?? 0) > 0
-    const hasAssignees = task.assignees.length > 0
-    const hasSubTasks = task.subTasks.length > 0
+    const hasAssignees = task.assignments.length > 0
+    const hasSubTasks = allSubTasks.length > 0
 
     return (
         <Card
@@ -131,16 +132,16 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
                         <div className="flex -space-x-2 overflow-hidden">
                             <TooltipProvider>
-                                {task.assignees.map((assignee) => (
-                                    <Tooltip key={assignee.id}>
+                                {task.assignments.map((assignment) => (
+                                    <Tooltip key={assignment.userId}>
                                         <TooltipTrigger asChild>
                                             <UserAvatar 
-                                                username={assignee.username} 
+                                                username={assignment.user.username} 
                                                 className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
                                             />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p className="text-xs">{assignee.username}: {assignee.name}</p>
+                                            <p className="text-xs">{assignment.user.username}: {assignment.user.name}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 ))}

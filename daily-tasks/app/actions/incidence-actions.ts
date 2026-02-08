@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Incidence } from '@prisma/client'
 import { Priority, TechStack, TaskStatus, TaskType, UserRole } from '@/types/enums'
-import { IncidenceWithDetails } from '@/types'
+import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 
 interface CreateIncidenceData {
@@ -15,7 +15,7 @@ interface CreateIncidenceData {
     tech: TechStack
     priority: Priority
     estimatedTime?: number | null
-    assigneeIds?: number[]
+    assignees?: AssigneeWithHours[]
 }
 
 interface UpdateIncidenceData {
@@ -26,8 +26,8 @@ interface UpdateIncidenceData {
     estimatedTime?: number | null
     title?: string
     technology?: TechStack
-    assigneeIds?: number[]
-    subTasks?: { title: string, isCompleted: boolean }[]
+    assignees?: AssigneeWithHours[]
+    subTasks?: { title: string; isCompleted: boolean }[]
 }
 
 export async function createIncidence(data: CreateIncidenceData) {
@@ -46,10 +46,7 @@ export async function createIncidence(data: CreateIncidenceData) {
                 technology: data.tech,
                 priority: data.priority,
                 estimatedTime: data.estimatedTime,
-                status: TaskStatus.BACKLOG, // Forced
-                assignees: {
-                    connect: data.assigneeIds?.map(id => ({ id })) || []
-                }
+                status: TaskStatus.BACKLOG,
             }
         })
 
@@ -64,8 +61,6 @@ export async function createIncidence(data: CreateIncidenceData) {
     }
 }
 
-
-
 export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
@@ -75,18 +70,19 @@ export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<Inc
 
         if (viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
-            // Optional: filter where user is assigned? 
-            // The user said: "Filtra donde assignees incluye al usuario actual (o mostrar todas las activas si se prefiere transparencia)"
-            // I'll stick to transparency but hiding Backlog.
         }
 
         const incidences = await db.incidence.findMany({
             where,
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
+                assignments: {
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
                     }
                 }
             },
@@ -104,10 +100,14 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
         const incidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
+                assignments: {
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
                     }
                 }
             }
@@ -127,8 +127,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
             include: {
-                assignees: true,
-                subTasks: true,
+                assignments: true
             }
         })
 
@@ -145,12 +144,8 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
                 errors.push('Debe asignar horas estimadas')
             }
 
-            if (incidence.assignees.length === 0) {
+            if (incidence.assignments.length === 0) {
                 errors.push('Debe asignar al menos un colaborador')
-            }
-
-            if (incidence.subTasks.length === 0) {
-                errors.push('Debe crear al menos un ítem en el checklist')
             }
 
             if (errors.length > 0) {
@@ -163,7 +158,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         }
 
         if (session.user.role !== 'ADMIN') {
-            const isAssigned = incidence.assignees.some(a => a.id === Number(session.user.id))
+            const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
             if (!isAssigned) {
                 return { success: false, error: 'Solo los desarrolladores asignados pueden mover esta tarea.' }
             }
@@ -193,8 +188,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
         const currentIncidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignees: true,
-                subTasks: true,
+                assignments: true
             }
         })
 
@@ -211,77 +205,95 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
             technology: data.technology,
         }
 
-        if (data.assigneeIds) {
-            updateData.assignees = {
-                set: data.assigneeIds.map(userId => ({ id: userId }))
-            }
-        }
-
-        if (data.subTasks) {
-            await db.$transaction([
-                db.subTask.deleteMany({ where: { incidenceId: id } }),
-                db.incidence.update({
-                    where: { id },
-                    data: {
-                        ...updateData,
-                        subTasks: {
-                            create: data.subTasks.map(st => ({
-                                title: st.title,
-                                isCompleted: st.isCompleted
-                            }))
-                        }
+        // Si se proporcionan asignados, manejar la creación/actualización de assignments
+        if (data.assignees) {
+            const currentAssignments = await db.assignment.findMany({
+                where: { incidenceId: id }
+            })
+            
+            const currentUserIds = currentAssignments.map(a => a.userId)
+            const newUserIds = data.assignees.map(a => a.userId)
+            
+            // Eliminar assignments que ya no están seleccionados
+            const toRemove = currentUserIds.filter(uid => !newUserIds.includes(uid))
+            if (toRemove.length > 0) {
+                await db.assignment.deleteMany({
+                    where: {
+                        incidenceId: id,
+                        userId: { in: toRemove }
                     }
                 })
-            ])
-        } else {
-            await db.incidence.update({
-                where: { id },
-                data: updateData
-            })
+            }
+            
+            // Crear o actualizar assignments
+            for (const assignee of data.assignees) {
+                await db.assignment.upsert({
+                    where: {
+                        incidenceId_userId: {
+                            incidenceId: id,
+                            userId: assignee.userId
+                        }
+                    },
+                    update: {
+                        remainingHours: assignee.remainingHours
+                    },
+                    create: {
+                        incidenceId: id,
+                        userId: assignee.userId,
+                        remainingHours: assignee.remainingHours
+                    }
+                })
+            }
         }
 
-        const updatedIncidenceWithRelations = await db.incidence.findUnique({
+        await db.incidence.update({
+            where: { id },
+            data: updateData
+        })
+
+        // Verificar si debe cambiar estado automáticamente
+        const updatedIncidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
-                    }
-                }
+                assignments: true
             }
-        }) as IncidenceWithDetails | null
+        })
 
-        const hasEstimatedTime = updatedIncidenceWithRelations && updatedIncidenceWithRelations.estimatedTime && updatedIncidenceWithRelations.estimatedTime > 0
-        const hasAssignees = updatedIncidenceWithRelations && updatedIncidenceWithRelations.assignees.length > 0
-        const hasSubTasks = updatedIncidenceWithRelations && updatedIncidenceWithRelations.subTasks.length > 0
-        const allConditionsMet = hasEstimatedTime && hasAssignees && hasSubTasks
+        if (updatedIncidence) {
+            const hasEstimatedTime = updatedIncidence.estimatedTime && updatedIncidence.estimatedTime > 0
+            const hasAssignees = updatedIncidence.assignments.length > 0
+            const allConditionsMet = hasEstimatedTime && hasAssignees
 
-        const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
-        const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
-                                   currentIncidence.status === TaskStatus.IN_PROGRESS || 
-                                   currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
+            const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
+            const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
+                                       currentIncidence.status === TaskStatus.IN_PROGRESS || 
+                                       currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
 
-        if (isBacklogToTodo || isActiveToBacklog) {
-            await db.incidence.update({
-                where: { id },
-                data: {
-                    status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
-                }
-            })
+            if (isBacklogToTodo || isActiveToBacklog) {
+                await db.incidence.update({
+                    where: { id },
+                    data: {
+                        status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
+                    }
+                })
+            }
         }
 
         const finalIncidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignees: true,
-                subTasks: {
-                    orderBy: {
-                        createdAt: 'asc'
+                assignments: {
+                    include: {
+                        user: true,
+                        tasks: {
+                            orderBy: {
+                                createdAt: 'asc'
+                            }
+                        }
                     }
                 }
             }
-        }) as IncidenceWithDetails | null
+        })
 
         revalidatePath('/dashboard')
         return { success: true, data: finalIncidence as unknown as IncidenceWithDetails }

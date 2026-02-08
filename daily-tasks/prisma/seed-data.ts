@@ -167,36 +167,48 @@ async function assignIncidences(incidences: { id: number }[], devs: { id: number
   for (const incidence of incidences) {
     if (Math.random() < 0.8) {
       const assignees = randomItems(devs, 1, 3)
-      await prisma.incidence.update({
-        where: { id: incidence.id },
-        data: {
-          assignees: {
-            connect: assignees.map(d => ({ id: d.id })),
+      
+      // Crear assignments para cada desarrollador
+      for (const dev of assignees) {
+        await prisma.assignment.create({
+          data: {
+            incidenceId: incidence.id,
+            userId: dev.id,
+            remainingHours: Math.random() < 0.7 ? randomInt(1, 40) : null,
           },
-        },
-      })
-      console.log(`Assigned incidence ${incidence.id} to ${assignees.length} dev(s)`)
+        })
+      }
+      
+      console.log(`Created ${assignees.length} assignment(s) for incidence ${incidence.id}`)
     }
   }
 }
 
 async function createSubTasks(incidences: { id: number }[]) {
   for (const incidence of incidences) {
-    const shouldHaveSubtasks = Math.random() < 0.6
-    if (shouldHaveSubtasks) {
+    // Obtener los assignments de esta incidencia
+    const assignments = await prisma.assignment.findMany({
+      where: { incidenceId: incidence.id }
+    })
+    
+    if (assignments.length > 0 && Math.random() < 0.6) {
       const subtaskCount = randomInt(1, 5)
       const selectedTemplates = randomItems(SUBTASK_TEMPLATES, 1, subtaskCount)
       
-      for (const template of selectedTemplates) {
-        await prisma.subTask.create({
-          data: {
-            title: template,
-            isCompleted: Math.random() < 0.5,
-            incidenceId: incidence.id,
-          },
-        })
+      // Asignar subtareas a cada assignment
+      for (const assignment of assignments) {
+        for (const template of selectedTemplates) {
+          await prisma.subTask.create({
+            data: {
+              title: template,
+              isCompleted: Math.random() < 0.5,
+              assignmentId: assignment.id,
+            },
+          })
+        }
       }
-      console.log(`Created ${selectedTemplates.length} subtasks for incidence ${incidence.id}`)
+      
+      console.log(`Created ${selectedTemplates.length * assignments.length} subtasks for incidence ${incidence.id} (${assignments.length} assignments)`)
     }
   }
 }
