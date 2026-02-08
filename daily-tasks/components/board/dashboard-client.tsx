@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
-import { LayoutDashboard, ListTodo, Plus } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Plus, BrainCircuit } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
@@ -112,7 +112,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                         <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed">
-                                    Tecnologia
+                                    <BrainCircuit className="h-4 w-4" />
                                     {techFilter.length > 0 && techFilter.length < Object.values(TechStack).length && (
                                         <>
                                             <Separator orientation="vertical" className="mx-2 h-4" />
