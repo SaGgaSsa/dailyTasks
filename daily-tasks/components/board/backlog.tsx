@@ -81,6 +81,8 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
+        const currentUserId = session?.user?.id ? Number(session.user.id) : null
+
         return tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,8 +92,8 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
             const matchesTech = techFilter === 'ALL' || task.technology === techFilter
             const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
 
-            const matchesMyAssignments = !onlyMyAssignments ||
-                task.assignees.some(a => a.id === Number(session?.user?.id))
+            const matchesMyAssignments = !onlyMyAssignments || 
+                (currentUserId !== null && task.assignees.some(a => a.id === currentUserId))
 
             return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
         })
