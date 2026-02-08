@@ -245,13 +245,6 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                                             </Badge>
                                         </div>
                                     </td>
-                                    <td className="p-2">
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
-                                                {task.status}
-                                            </Badge>
-                                        </div>
-                                    </td>
                                     <td className="p-2 text-center">
                                         <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${
                                             task.priority === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
