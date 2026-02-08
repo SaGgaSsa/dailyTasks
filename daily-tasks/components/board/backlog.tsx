@@ -2,6 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
+import {
+    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+} from '@tanstack/react-table'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,6 +79,174 @@ const statusOptions = [
     { value: TaskStatus.DONE, label: 'Finalizado' },
 ]
 
+const priorityLabels: Record<string, string> = {
+    HIGH: 'Alta',
+    MEDIUM: 'Media',
+    LOW: 'Baja',
+}
+
+const columns: ColumnDef<IncidenceWithDetails>[] = [
+    {
+        accessorKey: 'type',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</div>,
+        cell: ({ row }) => (
+            <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[row.original.type]}`}>
+                {row.original.type} {row.original.externalId}
+            </Badge>
+        ),
+    },
+    {
+        accessorKey: 'title',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion</div>,
+        cell: ({ row }) => (
+            <div className="flex items-center gap-3 max-w-lg">
+                <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
+                    {row.original.title}
+                </span>
+                <div className="flex items-center gap-3 text-[11px] text-zinc-500 shrink-0">
+                    {row.original.estimatedTime && (
+                        <span className="flex items-center gap-1">
+                            <span className="text-zinc-400">{row.original.estimatedTime}h</span>
+                            <span>estimadas</span>
+                        </span>
+                    )}
+                    {row.original.subTasks.length > 0 && (
+                        (() => {
+                            const completed = row.original.subTasks.filter(st => st.isCompleted).length
+                            const total = row.original.subTasks.length
+                            const isAllCompleted = completed === total
+                            return (
+                                <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
+                                    {isAllCompleted ? (
+                                        <>
+                                            <CheckCircle2 className="h-3 w-3" />
+                                            <span>completado</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-zinc-400">
+                                                {completed}/{total}
+                                            </span>
+                                            <span>pendientes</span>
+                                        </>
+                                    )}
+                                </span>
+                            )
+                        })()
+                    )}
+                </div>
+            </div>
+        ),
+    },
+    {
+        accessorKey: 'status',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-center">
+                <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[row.original.status]}`}>
+                    {row.original.status}
+                </Badge>
+            </div>
+        ),
+    },
+    {
+        accessorKey: 'priority',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Prioridad</div>,
+        cell: ({ row }) => {
+            const priority = row.original.priority
+            const priorityColor = priority === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                priority === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                    'bg-green-500/10 text-green-400 border-green-500/20'
+            return (
+                <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${priorityColor}`}>
+                    {priorityLabels[priority] || priority}
+                </Badge>
+            )
+        },
+    },
+    {
+        id: 'requirements',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Req.</div>,
+        cell: ({ row }) => {
+            const task = row.original
+            return (
+                <TooltipProvider>
+                    <div className="flex items-center justify-center gap-1">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className={(task.estimatedTime ?? 0) > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                    {(task.estimatedTime ?? 0) > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{(task.estimatedTime ?? 0) > 0 ? 'Horas asignadas' : 'Falta estimar horas'}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className={task.assignees.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                    {task.assignees.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.assignees.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className={task.subTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                    {task.subTasks.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.subTasks.length > 0 ? 'Checklist creado' : 'Falta crear checklist'}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
+                </TooltipProvider>
+            )
+        },
+    },
+    {
+        accessorKey: 'technology',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnologia</div>,
+        cell: ({ row }) => (
+            <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
+                {row.original.technology}
+            </span>
+        ),
+    },
+    {
+        accessorKey: 'assignees',
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</div>,
+        cell: ({ row }) => (
+            <div className="flex -space-x-1.5 overflow-hidden">
+                {row.original.assignees.map((user) => (
+                    <UserAvatar
+                        key={user.id}
+                        username={user.username}
+                        className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
+                    />
+                ))}
+            </div>
+        ),
+    },
+    {
+        id: 'actions',
+        enableHiding: false,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></div>,
+        cell: ({ row }) => {
+            return (
+                <div className="text-right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </div>
+            )
+        },
+    },
+]
+
 export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenChange, taskSelect, onTaskUpdate }: BacklogProps) {
     const { data: session } = useSession()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
@@ -92,12 +274,18 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
             const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
 
-            const matchesMyAssignments = !onlyMyAssignments || 
+            const matchesMyAssignments = !onlyMyAssignments ||
                 (session?.user?.id && task.assignees.some(a => a.id === Number(session.user.id)))
 
             return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
         })
     }, [tasks, searchQuery, techFilter, statusFilter, onlyMyAssignments, session?.user?.id])
+
+    const table = useReactTable({
+        data: filteredTasks,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+    })
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => prev.map(task =>
@@ -168,24 +356,28 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                 </div>
             </div>
 
-            <div className="flex-1 overflow-visible border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
-                <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
-                        <tr>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Prioridad</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Req.</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnologia</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-900">
+            <div className="flex-1 overflow-visible border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner [&>table]:h-full">
+                <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
+                        {table.getHeaderGroups().map(headerGroup => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map(header => (
+                                    <TableHead key={header.id}>
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                            )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody className="divide-y divide-zinc-900">
                         {filteredTasks.length === 0 ? (
-                            <tr>
-                                <td colSpan={8} className="p-12 text-center">
+                            <TableRow>
+                                <TableCell colSpan={columns.length} className="p-12 text-center">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <div className="p-4 rounded-full bg-zinc-900/50">
                                             <Inbox className="h-8 w-8 text-zinc-600" />
@@ -195,142 +387,33 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                                             <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
                                         </div>
                                     </div>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ) : (
-                            filteredTasks.map((task) => (
-                                <tr
-                                    key={task.id}
+                            table.getRowModel().rows.map(row => (
+                                <TableRow
+                                    key={row.id}
                                     className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
                                     onClick={() => {
                                         if (taskSelect) {
-                                            taskSelect(task)
+                                            taskSelect(row.original)
                                         }
                                         setIsSheetOpen(true)
                                     }}
                                 >
-                                    <td className="p-2">
-                                        <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[task.type]}`}>
-                                            {task.type} {task.externalId}
-                                        </Badge>
-                                    </td>
-                                    <td className="p-2">
-                                        <div className="flex items-center gap-3 max-w-lg">
-                                            <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
-                                                {task.title}
-                                            </span>
-                                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 shrink-0">
-                                                {task.estimatedTime && (
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="text-zinc-400">{task.estimatedTime}h</span>
-                                                        <span>estimadas</span>
-                                                    </span>
-                                                )}
-                                                {task.subTasks.length > 0 && (
-                                                    (() => {
-                                                        const completed = task.subTasks.filter(st => st.isCompleted).length
-                                                        const total = task.subTasks.length
-                                                        const isAllCompleted = completed === total
-                                                        return (
-                                                            <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
-                                                                {isAllCompleted ? (
-                                                                    <>
-                                                                        <CheckCircle2 className="h-3 w-3" />
-                                                                        <span>completado</span>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <span className="text-zinc-400">
-                                                                            {completed}/{total}
-                                                                        </span>
-                                                                        <span>pendientes</span>
-                                                                    </>
-                                                                )}
-                                                            </span>
-                                                        )
-                                                    })()
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-2">
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
-                                                {task.status}
-                                            </Badge>
-                                        </div>
-                                    </td>
-                                    <td className="p-2 text-center">
-                                        <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${
-                                            task.priority === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                            task.priority === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                            'bg-green-500/10 text-green-400 border-green-500/20'
-                                        }`}>
-                                            {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
-                                        </Badge>
-                                    </td>
-                                    <td className="p-2">
-                                        <TooltipProvider>
-                                            <div className="flex items-center justify-center gap-1">
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className={(task.estimatedTime ?? 0) > 0 ? 'text-zinc-600' : 'text-orange-500'}>
-                                                            {(task.estimatedTime ?? 0) > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{(task.estimatedTime ?? 0) > 0 ? 'Horas asignadas' : 'Falta estimar horas'}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className={task.assignees.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
-                                                            {task.assignees.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{task.assignees.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className={task.subTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
-                                                            {task.subTasks.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{task.subTasks.length > 0 ? 'Checklist creado' : 'Falta crear checklist'}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                        </TooltipProvider>
-                                    </td>
-                                    <td className="p-2 text-center">
-                                        <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
-                                            {task.technology}
-                                        </span>
-                                    </td>
-                                    <td className="p-2">
-                                        <div className="flex -space-x-1.5 overflow-hidden">
-                                            {task.assignees.map((user) => (
-                                                <UserAvatar 
-                                                    key={user.id} 
-                                                    username={user.username} 
-                                                    className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]" 
-                                                />
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 text-right">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </td>
-                                </tr>
+                                    {row.getVisibleCells().map(cell => (
+                                        <TableCell key={cell.id}>
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext()
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
                             ))
                         )}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
         </div>
     )
