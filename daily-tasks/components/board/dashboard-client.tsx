@@ -52,13 +52,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
     const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
     
     // Filtros solo para backlog
-    const [statusFilter, setStatusFilter] = useState<string[]>([
-        TaskStatus.BACKLOG,
-        TaskStatus.TODO,
-        TaskStatus.IN_PROGRESS,
-        TaskStatus.REVIEW,
-        TaskStatus.DONE
-    ])
+    const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
 
@@ -193,20 +187,14 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
-                                    {statusFilter.length > 0 && (
+                                    {statusFilter.length > 0 && statusFilter.length !== 1 && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setStatusFilter([
-                                                TaskStatus.BACKLOG,
-                                                TaskStatus.TODO,
-                                                TaskStatus.IN_PROGRESS,
-                                                TaskStatus.REVIEW,
-                                                TaskStatus.DONE
-                                            ])}
+                                            onClick={() => setStatusFilter([TaskStatus.BACKLOG])}
                                             className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
                                         >
-                                            Limpiar filtros
+                                            Restablecer a Backlog
                                         </Button>
                                     )}
                                     <div className="space-y-1">
