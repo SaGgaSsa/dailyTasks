@@ -69,55 +69,65 @@ const priorityLabels: Record<string, string> = {
 const columns: ColumnDef<IncidenceWithDetails>[] = [
     {
         accessorKey: 'type',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-28 shrink-0">Identificador</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">ID</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 ${typeColors[row.original.type]}`}>
+            <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 whitespace-nowrap ${typeColors[row.original.type]}`}>
                 {row.original.type} {row.original.externalId}
             </Badge>
         ),
     },
     {
         accessorKey: 'title',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-full">Descripcion</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-full">Descripcion | Horas | Pendientes</div>,
         cell: ({ row }) => {
             const title = row.original.title
             const displayTitle = title.length > 40 ? title.substring(0, 40) + '...' : title
+            
+            // Calcular horas restantes
+            const estimatedHours = row.original.estimatedTime || 0
+            const remainingHours = row.original.assignments.reduce((acc, assignment) => {
+                const assignmentRemaining = assignment.remainingHours || 0
+                const allTasksCompleted = assignment.tasks.length > 0 && assignment.tasks.every((t: {isCompleted: boolean}) => t.isCompleted)
+                return acc + (allTasksCompleted ? 0 : assignmentRemaining)
+            }, 0)
+            const hoursLeft = Math.max(0, estimatedHours - remainingHours)
+            
+            // Calcular pendientes
+            const allTasks = row.original.assignments.flatMap(a => a.tasks)
+            const completedTasks = allTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
+            const totalTasks = allTasks.length
+            const isAllCompleted = totalTasks > 0 && completedTasks === totalTasks
+            
             return (
-                <div className="flex flex-col gap-1">
-                    <span className="text-sm text-zinc-200 font-medium" title={title}>
+                <div className="flex items-center gap-4 min-w-0">
+                    <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
                         {displayTitle}
                     </span>
-                    {(() => {
-                        const allTasks = row.original.assignments.flatMap(a => a.tasks)
-                        if (allTasks.length === 0) return null
-                        const completed = allTasks.filter(st => st.isCompleted).length
-                        const total = allTasks.length
-                        const isAllCompleted = completed === total
-                        return (
-                            <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
-                                {isAllCompleted ? (
-                                    <>
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        <span>completado</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="text-zinc-400">
-                                            {completed}/{total}
-                                        </span>
-                                        <span>pendientes</span>
-                                    </>
-                                )}
-                            </span>
-                        )
-                    })()}
+                    <span className="text-xs text-zinc-400 whitespace-nowrap">
+                        {hoursLeft}h
+                    </span>
+                    {totalTasks > 0 && (
+                        <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${isAllCompleted ? 'text-green-400' : 'text-zinc-400'}`}>
+                            {isAllCompleted ? (
+                                <>
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>completado</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>{completedTasks}/{totalTasks}</span>
+                                    <span>pendientes</span>
+                                </>
+                            )}
+                        </span>
+                    )}
                 </div>
             )
         },
     },
     {
         accessorKey: 'priority',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-20 shrink-0">Prioridad</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Prioridad</div>,
         cell: ({ row }) => {
             const priority = row.original.priority
             const colors = {
@@ -126,7 +136,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 LOW: 'text-green-400 bg-green-500/10 border-green-500/20',
             }
             return (
-                <Badge variant="outline" className={`text-[10px] font-medium border ${colors[priority as keyof typeof colors] || 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20'}`}>
+                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${colors[priority as keyof typeof colors] || 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20'}`}>
                     {priorityLabels[priority] || priority}
                 </Badge>
             )
@@ -134,9 +144,9 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'status',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 shrink-0">Estado</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Estado</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-medium border ${statusColors[row.original.status]}`}>
+            <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
                 {row.original.status === 'BACKLOG' ? 'Backlog' :
                     row.original.status === 'TODO' ? 'Por Hacer' :
                         row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
@@ -147,7 +157,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         id: 'actions',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-20 shrink-0 text-center">Req</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap text-center">Req</div>,
         cell: ({ row }) => {
             const task = row.original
             const hasHours = (task.estimatedTime ?? 0) > 0
@@ -206,7 +216,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'assignees',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 shrink-0">Colaboradores</div>,
+        header: () => <div className="w-16"></div>,
         cell: ({ row }) => (
             <div className="flex -space-x-1.5 overflow-hidden">
                 {row.original.assignments.map((assignment) => (
