@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MoreHorizontal, CheckSquare } from 'lucide-react'
+import { MoreHorizontal, CheckSquare, CheckCircle, Clock, User, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -15,6 +15,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
+import { TaskStatus } from '@/types/enums'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
@@ -51,6 +52,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
     const completedItems = task.subTasks.filter(i => i.isCompleted).length
     const totalItems = task.subTasks.length
+
+    const isBacklog = task.status === TaskStatus.BACKLOG
+    const hasHours = (task.estimatedTime ?? 0) > 0
+    const hasAssignees = task.assignees.length > 0
+    const hasSubTasks = task.subTasks.length > 0
 
     return (
         <Card
@@ -147,6 +153,50 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                                 className="h-full bg-blue-500/50 transition-all duration-300"
                                 style={{ width: `${(completedItems / totalItems) * 100}%` }}
                             />
+                        </div>
+                    )}
+
+                    {/* Indicadores de requisitos (solo en BACKLOG) */}
+                    {isBacklog && (
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-zinc-800">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasHours ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasHours ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasHours ? 'Horas asignadas' : 'Falta estimar horas'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasAssignees ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasAssignees ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasAssignees ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={hasSubTasks ? 'text-muted-foreground' : 'text-orange-500'}>
+                                            {hasSubTasks ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{hasSubTasks ? 'Checklist creado' : 'Falta crear checklist'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     )}
                 </div>
