@@ -239,7 +239,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             <SheetContent
                 onInteractOutside={(e) => {
                     e.preventDefault()
-                    handleSaveAndClose()
+                    if (isEditMode) {
+                        handleSaveAndClose()
+                    } else {
+                        handleClose()
+                    }
                 }}
                 className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
             >
