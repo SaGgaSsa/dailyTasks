@@ -41,9 +41,9 @@ const statusColors: Record<TaskStatus, string> = {
 }
 
 const typeColors: Record<TaskType, string> = {
-    I_MODAPL: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 }
 
 const techOptions = [
@@ -160,8 +160,9 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnologia</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Prioridad</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Req.</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnologia</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
                         </tr>
@@ -169,7 +170,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                     <tbody className="divide-y divide-zinc-900">
                         {filteredTasks.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="p-12 text-center">
+                                <td colSpan={8} className="p-12 text-center">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <div className="p-4 rounded-full bg-zinc-900/50">
                                             <Inbox className="h-8 w-8 text-zinc-600" />
@@ -244,10 +245,21 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                                             </Badge>
                                         </div>
                                     </td>
+                                    <td className="p-2">
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${statusColors[task.status]}`}>
+                                                {task.status}
+                                            </Badge>
+                                        </div>
+                                    </td>
                                     <td className="p-2 text-center">
-                                        <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
-                                            {task.technology}
-                                        </span>
+                                        <Badge variant="outline" className={`text-[9px] py-0.5 font-bold border-none uppercase tracking-tighter ${
+                                            task.priority === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                            task.priority === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                                            'bg-green-500/10 text-green-400 border-green-500/20'
+                                        }`}>
+                                            {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                                        </Badge>
                                     </td>
                                     <td className="p-2">
                                         <TooltipProvider>
@@ -284,6 +296,11 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                                                 </Tooltip>
                                             </div>
                                         </TooltipProvider>
+                                    </td>
+                                    <td className="p-2 text-center">
+                                        <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
+                                            {task.technology}
+                                        </span>
                                     </td>
                                     <td className="p-2">
                                         <div className="flex -space-x-1.5 overflow-hidden">
