@@ -17,8 +17,8 @@ export default async function DashboardPage() {
   const kanbanTasks = await getIncidences('KANBAN')
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="flex-1 p-2 h-full overflow-hidden">
+    <div className="flex flex-col h-screen bg-background">
+      <div className="flex-1 p-2">
         <DashboardClient
           backlogTasks={backlogTasks}
           kanbanTasks={kanbanTasks}

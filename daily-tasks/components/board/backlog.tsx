@@ -168,9 +168,9 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                 </div>
             </div>
 
-            <div className="flex-1 overflow-auto border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
+            <div className="flex-1 overflow-visible border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
                 <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#0F0F0F] border-b border-zinc-900 z-10">
+                    <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-zinc-900">
                         <tr>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion</th>

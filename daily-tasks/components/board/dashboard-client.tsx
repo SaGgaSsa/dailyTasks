@@ -88,7 +88,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
             </div>
 
             {/* Contenido */}
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-visible">
                 {viewMode === 'BACKLOG' ? (
                     <Backlog 
                         initialTasks={backlogTasks}
