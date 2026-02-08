@@ -90,6 +90,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [newSubTask, setNewSubTask] = useState('')
+    const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -101,7 +102,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
     useEffect(() => {
         if (open && initialData) {
-            setFormData({
+            const data = {
                 type: initialData.type,
                 externalId: initialData.externalId?.toString() || '',
                 title: initialData.title || '',
@@ -111,7 +112,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 estimatedTime: initialData.estimatedTime?.toString() || '',
                 assigneeIds: initialData.assignees.map(a => a.id),
                 subTasks: initialData.subTasks.map(st => ({ title: st.title, isCompleted: st.isCompleted })),
-            })
+            }
+            setFormData(data)
+            setOriginalFormData(data)
         } else if (open && !initialData) {
             setFormData({
                 type: TaskType.I_MODAPL,
@@ -124,6 +127,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 assigneeIds: [],
                 subTasks: [],
             })
+            setOriginalFormData(null)
         }
     }, [open, initialData])
 
@@ -160,7 +164,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
     const handleSave = async () => {
         if (!formData.type || !formData.externalId || !formData.title) {
-            toast.error('Tipo, Número y Descripción son requeridos')
+            toast.error('Tipo, Numero y Descripcion son requeridos')
             return false
         }
 
@@ -168,6 +172,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         try {
             const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
             if (isEditMode && initialData?.id) {
+                const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
+                if (!hasChanges) {
+                    onOpenChange(false)
+                    return false
+                }
+
                 const result = await updateIncidence(initialData.id, {
                     title: formData.title,
                     description: formData.description,
