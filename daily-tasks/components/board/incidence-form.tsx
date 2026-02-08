@@ -124,10 +124,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             const result = await updateIncidence(initialData.id, fieldData)
             if (result.success) {
                 setSaveStatus('saved')
-                // Update parent component with new data
                 if (onTaskUpdate && result.data) {
                     onTaskUpdate(result.data)
                 }
+                router.refresh()
                 setTimeout(() => setSaveStatus('idle'), 1500)
             } else {
                 toast.error(result.error || 'Error al guardar')
@@ -137,7 +137,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             console.error('Auto-save error:', error)
             setSaveStatus('idle')
         }
-    }, [isEditMode, initialData?.id, onTaskUpdate])
+    }, [isEditMode, initialData?.id, onTaskUpdate, router])
 
     // Handle text input blur for auto-save
     const handleTextBlur = (field: string, value: string | number | undefined) => {
@@ -182,10 +182,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 
                 if (result.success) {
                     toast.success('Incidencia actualizada')
-                    // Update parent component with new data
                     if (onTaskUpdate && result.data) {
                         onTaskUpdate(result.data)
                     }
+                    router.refresh()
                     onOpenChange(false)
                 } else {
                     toast.error(result.error || 'Error al actualizar')
