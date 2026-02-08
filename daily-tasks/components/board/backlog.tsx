@@ -78,7 +78,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'title',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion | Horas | Pendientes</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
             const title = row.original.title
             

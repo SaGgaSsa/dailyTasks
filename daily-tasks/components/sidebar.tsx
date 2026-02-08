@@ -29,8 +29,8 @@ export function Sidebar({ userId }: SidebarProps) {
   const isAdmin = session?.user?.role === 'ADMIN'
 
   return (
-    <div className={`bg-[#0A0A0A] border-r border-zinc-800 transition-all duration-300 flex flex-col ${isOpen ? 'w-64' : 'w-16'}`}>
-      <div className="p-2 flex items-center gap-3">
+    <div className={`bg-[#0A0A0A] border-r border-zinc-800 transition-all duration-300 flex flex-col h-screen ${isOpen ? 'w-64' : 'w-16'}`}>
+      <div className="p-2 flex items-center gap-3 flex-shrink-0">
         <Link href="/" className="flex items-center gap-3">
           <div className="bg-zinc-100 p-1.5 rounded-lg">
             <Terminal className="h-5 w-5 text-zinc-900" />
@@ -42,7 +42,7 @@ export function Sidebar({ userId }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-6 px-2">
           {/* Main Section */}
           <div className="space-y-1">
@@ -101,7 +101,7 @@ export function Sidebar({ userId }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-zinc-800">
+      <div className="p-2 border-t border-zinc-800 flex-shrink-0">
         <div className={`flex items-center gap-3 ${!isOpen ? 'justify-center' : ''}`}>
           <UserAvatar username={session?.user?.username} size="sm" />
           {isOpen && (
