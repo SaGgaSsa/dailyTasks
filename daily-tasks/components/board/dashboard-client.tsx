@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { TaskStatus, TechStack } from '@/types/enums'
 
 interface DashboardClientProps {
@@ -109,11 +111,39 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                         />
                         <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
                             <PopoverTrigger asChild>
-                                <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start">
+                                <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed">
                                     Tecnologia
+                                    {techFilter.length > 0 && techFilter.length < Object.values(TechStack).length && (
+                                        <>
+                                            <Separator orientation="vertical" className="mx-2 h-4" />
+                                            <div className="hidden space-x-1 lg:flex">
+                                                {techFilter.length > 2 ? (
+                                                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                                        {techFilter.length} seleccionados
+                                                    </Badge>
+                                                ) : (
+                                                    techFilter.map(value => (
+                                                        <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
+                                                            {techOptions.find(o => o.value === value)?.label || value}
+                                                        </Badge>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
+                                {techFilter.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setTechFilter(Object.values(TechStack) as string[])}
+                                        className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
+                                    >
+                                        Limpiar filtros
+                                    </Button>
+                                )}
                                 <div className="space-y-1">
                                     {techOptions.map(opt => (
                                         <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
