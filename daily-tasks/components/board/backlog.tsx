@@ -5,8 +5,14 @@ import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { MoreHorizontal, CheckCircle2, Inbox } from 'lucide-react'
+import { MoreHorizontal, CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -62,6 +68,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripción</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnología</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Req.</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
                         </tr>
@@ -69,7 +76,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                     <tbody className="divide-y divide-zinc-900">
                         {tasks.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="p-12 text-center">
+                                <td colSpan={7} className="p-12 text-center">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <div className="p-4 rounded-full bg-zinc-900/50">
                                             <Inbox className="h-8 w-8 text-zinc-600" />
@@ -148,6 +155,42 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                         <span className="text-[11px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-1 rounded">
                                             {task.technology}
                                         </span>
+                                    </td>
+                                    <td className="p-2">
+                                        <TooltipProvider>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={(task.estimatedTime ?? 0) > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                                            {(task.estimatedTime ?? 0) > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{(task.estimatedTime ?? 0) > 0 ? 'Horas asignadas' : 'Falta estimar horas'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={task.assignees.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                                            {task.assignees.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{task.assignees.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={task.subTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                                            {task.subTasks.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{task.subTasks.length > 0 ? 'Checklist creado' : 'Falta crear checklist'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TooltipProvider>
                                     </td>
                                     <td className="p-2">
                                         <div className="flex -space-x-1.5 overflow-hidden">
