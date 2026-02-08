@@ -93,8 +93,8 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                     <Backlog 
                         initialTasks={backlogTasks}
                         isSheetOpen={isSheetOpen}
-                        onSheetOpenChange={setIsSheetOpen}
-                        onTaskSelect={setSelectedTask}
+                        onOpenChange={setIsSheetOpen}
+                        taskSelect={setSelectedTask}
                         onTaskUpdate={handleTaskUpdate}
                     />
                 ) : (

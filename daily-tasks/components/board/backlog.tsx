@@ -1,12 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { MoreHorizontal, CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
-import { TaskStatus, TaskType } from '@/types/enums'
+import { TaskStatus, TaskType, TechStack } from '@/types/enums'
 import {
     Tooltip,
     TooltipContent,
@@ -17,8 +27,8 @@ import {
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
     isSheetOpen?: boolean
-    onSheetOpenChange?: (open: boolean) => void
-    onTaskSelect?: (task: IncidenceWithDetails | null) => void
+    onOpenChange?: (open: boolean) => void
+    taskSelect?: (task: IncidenceWithDetails | null) => void
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
 }
 
@@ -36,18 +46,56 @@ const typeColors: Record<TaskType, string> = {
     I_CONS: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 }
 
-export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetOpenChange, onTaskSelect, onTaskUpdate }: BacklogProps) {
+const techOptions = [
+    { value: 'ALL', label: 'Todas' },
+    { value: TechStack.SISA, label: 'SISA' },
+    { value: TechStack.WEB, label: 'WEB' },
+    { value: TechStack.ANDROID, label: 'ANDROID' },
+    { value: TechStack.ANGULAR, label: 'ANGULAR' },
+    { value: TechStack.SPRING, label: 'SPRING' },
+]
+
+const statusOptions = [
+    { value: 'ALL', label: 'Todos' },
+    { value: TaskStatus.BACKLOG, label: 'Backlog' },
+    { value: TaskStatus.TODO, label: 'Por Hacer' },
+    { value: TaskStatus.IN_PROGRESS, label: 'En Progreso' },
+    { value: TaskStatus.REVIEW, label: 'Revision' },
+    { value: TaskStatus.DONE, label: 'Finalizado' },
+]
+
+export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenChange, taskSelect, onTaskUpdate }: BacklogProps) {
+    const { data: session } = useSession()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
-    
-    // Usar el estado externo si se proporciona, de lo contrario usar el internos
-    const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
-    const setIsSheetOpen = onSheetOpenChange || setInternalSheetOpen
+    const [searchQuery, setSearchQuery] = useState('')
+    const [techFilter, setTechFilter] = useState<string>('ALL')
+    const [statusFilter, setStatusFilter] = useState<string>('ALL')
+    const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
 
-    // Update local state when initialTasks changes (from parent)
+    const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
+    const setIsSheetOpen = onOpenChange || setInternalSheetOpen
+
     useEffect(() => {
         setTasks(initialTasks)
     }, [initialTasks])
+
+    const filteredTasks = useMemo(() => {
+        return tasks.filter(task => {
+            const matchesSearch = searchQuery === '' ||
+                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
+
+            const matchesTech = techFilter === 'ALL' || task.technology === techFilter
+            const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
+
+            const matchesMyAssignments = !onlyMyAssignments ||
+                task.assignees.some(a => a.id === Number(session?.user?.id))
+
+            return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
+        })
+    }, [tasks, searchQuery, techFilter, statusFilter, onlyMyAssignments, session?.user?.id])
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => prev.map(task =>
@@ -59,22 +107,65 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+                <Input
+                    placeholder="Buscar por titulo, descripcion o numero..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-zinc-900 border-zinc-800 text-zinc-100 w-64"
+                />
+                <Select value={techFilter} onValueChange={setTechFilter}>
+                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-36">
+                        <SelectValue placeholder="Tecnologia" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-800">
+                        {techOptions.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
+                                {opt.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-36">
+                        <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-800">
+                        {statusOptions.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
+                                {opt.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 ml-auto">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                            checked={onlyMyAssignments}
+                            onCheckedChange={(checked) => setOnlyMyAssignments(checked === true)}
+                            className="border-zinc-600"
+                        />
+                        <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                    </label>
+                </div>
+            </div>
+
             <div className="flex-1 overflow-auto border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-[#0F0F0F] border-b border-zinc-900 z-10">
                         <tr>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Identificador</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripción</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Estado</th>
-                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnología</th>
+                            <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32 text-center">Tecnologia</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-24 text-center">Req.</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-32">Colaboradores</th>
                             <th className="p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest w-16 text-right"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900">
-                        {tasks.length === 0 ? (
+                        {filteredTasks.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="p-12 text-center">
                                     <div className="flex flex-col items-center justify-center gap-3">
@@ -82,20 +173,20 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                             <Inbox className="h-8 w-8 text-zinc-600" />
                                         </div>
                                         <div>
-                                            <p className="text-zinc-400 font-medium">Sin incidencias en el backlog</p>
-                                            <p className="text-zinc-500 text-sm mt-1">Crea una nueva incidencia para comenzar</p>
+                                            <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                                            <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
                                         </div>
                                     </div>
                                 </td>
                             </tr>
                         ) : (
-                            tasks.map((task) => (
+                            filteredTasks.map((task) => (
                                 <tr
                                     key={task.id}
                                     className="group hover:bg-zinc-900/40 transition-all cursor-pointer"
                                     onClick={() => {
-                                        if (onTaskSelect) {
-                                            onTaskSelect(task)
+                                        if (taskSelect) {
+                                            taskSelect(task)
                                         }
                                         setIsSheetOpen(true)
                                     }}
@@ -119,9 +210,9 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                                 )}
                                                 {task.subTasks.length > 0 && (
                                                     (() => {
-                                                        const completed = task.subTasks.filter(st => st.isCompleted).length;
-                                                        const total = task.subTasks.length;
-                                                        const isAllCompleted = completed === total;
+                                                        const completed = task.subTasks.filter(st => st.isCompleted).length
+                                                        const total = task.subTasks.length
+                                                        const isAllCompleted = completed === total
                                                         return (
                                                             <span className={`flex items-center gap-1 ${isAllCompleted ? 'text-green-400' : ''}`}>
                                                                 {isAllCompleted ? (
@@ -138,7 +229,7 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                                                                     </>
                                                                 )}
                                                             </span>
-                                                        );
+                                                        )
                                                     })()
                                                 )}
                                             </div>
@@ -214,8 +305,6 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onSheetO
                     </tbody>
                 </table>
             </div>
-
-            {/* El formulario se maneja desde el padre DashboardClient */}
         </div>
     )
 }
