@@ -52,12 +52,14 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
     const [backlogTasks, setBacklogTasks] = useState(initialBacklogTasks)
     const [kanbanTasks, setKanbanTasks] = useState(initialKanbanTasks)
     
-    // Filtros del backlog
+    // Filtros compartidos
     const [searchQuery, setSearchQuery] = useState('')
     const [techFilter, setTechFilter] = useState<string[]>((Object.values(TechStack) as string[]))
+    const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
+    
+    // Filtros solo para backlog
     const [statusFilter, setStatusFilter] = useState<string>('ALL')
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
-    const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
 
     useEffect(() => {
         setBacklogTasks(initialBacklogTasks)
@@ -97,41 +99,46 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                         {viewMode === 'BACKLOG' ? 'Backlog' : 'Kanban'}
                     </h2>
                     
+                    {/* Filtros compartidos: Buscar y Tecnologia */}
+                    <div className="flex items-center gap-3">
+                        <Input
+                            placeholder="Buscar..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
+                        />
+                        <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start">
+                                    Tecnologia
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
+                                <div className="space-y-1">
+                                    {techOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
+                                            <Checkbox
+                                                checked={techFilter.includes(opt.value)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked === true) {
+                                                        setTechFilter(prev => [...prev, opt.value])
+                                                    } else {
+                                                        setTechFilter(prev => prev.filter(t => t !== opt.value))
+                                                    }
+                                                }}
+                                                className="border-zinc-600"
+                                            />
+                                            <span className="text-sm text-zinc-300">{opt.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Filtros solo para Backlog: Estado y Mis asignaciones */}
                     {viewMode === 'BACKLOG' && (
                         <div className="flex items-center gap-3">
-                            <Input
-                                placeholder="Buscar..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
-                            />
-                            <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start">
-                                        Tecnologia
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
-                                    <div className="space-y-1">
-                                        {techOptions.map(opt => (
-                                            <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
-                                                <Checkbox
-                                                    checked={techFilter.includes(opt.value)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked === true) {
-                                                            setTechFilter(prev => [...prev, opt.value])
-                                                        } else {
-                                                            setTechFilter(prev => prev.filter(t => t !== opt.value))
-                                                        }
-                                                    }}
-                                                    className="border-zinc-600"
-                                                />
-                                                <span className="text-sm text-zinc-300">{opt.label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
                                 <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-32 h-8 text-sm">
                                     <SelectValue placeholder="Estado" />
@@ -203,6 +210,8 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                     <KanbanBoard 
                         initialTasks={kanbanTasks}
                         onTaskUpdate={handleTaskUpdate}
+                        searchQuery={searchQuery}
+                        techFilter={techFilter}
                     />
                 )}
             </div>

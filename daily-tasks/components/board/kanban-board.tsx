@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
     DndContext,
     DragOverlay,
@@ -31,6 +31,8 @@ import { toast } from 'sonner'
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
+    searchQuery?: string
+    techFilter?: string[]
 }
 
 const COLUMNS = [
@@ -39,11 +41,28 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [] }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+    useEffect(() => {
+        setTasks(initialTasks)
+    }, [initialTasks])
+
+    const filteredTasks = useMemo(() => {
+        return tasks.filter(task => {
+            const matchesSearch = searchQuery === '' ||
+                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
+
+            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
+
+            return matchesSearch && matchesTech
+        })
+    }, [tasks, searchQuery, techFilter])
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -161,7 +180,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate }: KanbanBoardProps) {
                         key={col.id}
                         id={col.id}
                         title={col.title}
-                        tasks={tasks.filter((t) => t.status === col.id)}
+                        tasks={filteredTasks.filter((t) => t.status === col.id)}
                         onCardClick={handleCardClick}
                     />
                 ))}
