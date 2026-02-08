@@ -416,7 +416,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         setEstimatedTime(value);
                                     }
                                 }}
-                                onBlur={() => handleTextBlur('estimatedTime', estimatedTime ? parseInt(estimatedTime) : undefined)}
+                                onBlur={(e) => {
+                                    const value = e.target.value;
+                                    if (isEditMode && initialData?.id) {
+                                        handleAutoSave({ estimatedTime: value ? parseInt(value) : undefined });
+                                    }
+                                }}
                                 className="bg-zinc-900 border-zinc-800 text-zinc-100 w-24"
                                 placeholder="0"
                             />
