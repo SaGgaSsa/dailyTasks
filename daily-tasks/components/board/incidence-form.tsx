@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Plus, Trash2, Loader2, X } from 'lucide-react'
+import { Check, Plus, Trash2, Loader2, X, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { IncidenceWithDetails } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
-import { createIncidence, updateIncidence } from '@/app/actions/incidence-actions'
+import { createIncidence, updateIncidence, getIncidence } from '@/app/actions/incidence-actions'
 import { getUsers } from '@/app/actions/user-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
@@ -97,6 +97,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [isSaving, setIsSaving] = useState(false)
     const [newSubTask, setNewSubTask] = useState('')
     const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
+    const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -107,39 +108,51 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }, [])
 
     useEffect(() => {
-        if (open && initialData) {
-            const data = {
-                type: initialData.type,
-                externalId: initialData.externalId?.toString() || '',
-                title: initialData.title || '',
-                description: initialData.description || '',
-                priority: initialData.priority,
-                technology: initialData.technology,
-                estimatedTime: initialData.estimatedTime?.toString() || '',
-                assignees: initialData.assignments.map(a => ({
-                    userId: a.userId,
-                    remainingHours: a.remainingHours?.toString() || ''
-                })),
-                subTasks: initialData.assignments.flatMap(assignment => 
-                    assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
-                ),
+        const fetchFullData = async () => {
+            if (open && initialData?.id) {
+                // Fetch full data including inactive assignments
+                const fullData = await getIncidence(initialData.id)
+                if (fullData) {
+                    setFullIncidenceData(fullData)
+                    // Cargar TODOS los assignments (activos e inactivos) para preservar datos
+                    // pero solo los activos van en el formulario para edición
+                    const allAssignments = fullData.assignments
+                    const activeAssignments = allAssignments.filter(a => a.isAssigned)
+                    const data = {
+                        type: fullData.type,
+                        externalId: fullData.externalId?.toString() || '',
+                        title: fullData.title || '',
+                        description: fullData.description || '',
+                        priority: fullData.priority,
+                        technology: fullData.technology,
+                        estimatedTime: fullData.estimatedTime?.toString() || '',
+                        assignees: activeAssignments.map(a => ({
+                            userId: a.userId,
+                            remainingHours: a.remainingHours?.toString() || ''
+                        })),
+                        subTasks: allAssignments.flatMap(assignment => 
+                            assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
+                        ),
+                    }
+                    setFormData(data)
+                    setOriginalFormData(data)
+                }
+            } else if (open && !initialData) {
+                setFormData({
+                    type: TaskType.I_MODAPL,
+                    externalId: '',
+                    title: '',
+                    description: '',
+                    priority: Priority.MEDIUM,
+                    technology: TechStack.SISA,
+                    estimatedTime: '',
+                    assignees: [],
+                    subTasks: [],
+                })
+                setOriginalFormData(null)
             }
-            setFormData(data)
-            setOriginalFormData(data)
-        } else if (open && !initialData) {
-            setFormData({
-                type: TaskType.I_MODAPL,
-                externalId: '',
-                title: '',
-                description: '',
-                priority: Priority.MEDIUM,
-                technology: TechStack.SISA,
-                estimatedTime: '',
-                assignees: [],
-                subTasks: [],
-            })
-            setOriginalFormData(null)
         }
+        fetchFullData()
     }, [open, initialData])
 
     const updateFormData = (updates: Partial<FormData>) => {
@@ -173,8 +186,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 assignees: formData.assignees.filter(a => a.userId !== userId)
             })
         } else {
+            // Si el colaborador ya tenía un assignment (activo o inactivo), recuperar sus horas
+            // Usar fullIncidenceData que tiene TODOS los assignments incluyendo inactivos
+            const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
+            const previousHours = previousAssignment?.remainingHours?.toString() || ''
             updateFormData({
-                assignees: [...formData.assignees, { userId, remainingHours: '' }]
+                assignees: [...formData.assignees, { userId, remainingHours: previousHours }]
             })
         }
     }
@@ -221,8 +238,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
-                    if (onTaskUpdate && result.data) {
-                        onTaskUpdate(result.data)
+                    if (result.data) {
+                        // Actualizar fullIncidenceData con los datos actualizados del servidor
+                        setFullIncidenceData(result.data)
+                        if (onTaskUpdate) {
+                            onTaskUpdate(result.data)
+                        }
                     }
                     router.refresh()
                     return true
@@ -432,15 +453,24 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
 
-                    {/* Asignación de equipo con horas restantes - solo en BACKLOG */}
+                    {/* Asignación de colaboradores con horas restantes - solo en BACKLOG */}
                     {isBacklog ? (
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Asignar equipo</Label>
+                            <Label className="text-zinc-300">Asignar colaborador</Label>
                             <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                <div className="space-y-2">
                                     {users.map(user => {
                                         const assigneeData = formData.assignees.find(a => a.userId === user.id)
                                         const isSelected = !!assigneeData
+                                        
+                                        // Buscar si el colaborador ya tiene assignments con tareas
+                                        // Usar fullIncidenceData que tiene TODOS los assignments incluyendo inactivos
+                                        const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
+                                        const userTasks = userAssignment?.tasks || []
+                                        const hasTasks = userTasks.length > 0
+                                        const completedTasks = userTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
+                                        const totalTasks = userTasks.length
+                                        const isAllCompleted = hasTasks && completedTasks === totalTasks
                                         
                                         return (
                                             <div
@@ -452,8 +482,28 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                                     onCheckedChange={() => handleToggleAssignee(user.id)}
                                                     className="border-zinc-600"
                                                 />
-                                                <span className="text-zinc-300 text-sm flex-1">{user.name}</span>
-                                                <span className="text-zinc-500 text-xs">({user.username})</span>
+                                                <span className="text-zinc-300 text-sm">{user.name}</span>
+                                                
+                                                {/* Mostrar pendientes si el colaborador ya estaba asignado y tiene tareas */}
+                                                {hasTasks && (
+                                                    <div className="flex items-center gap-1 text-[11px]">
+                                                        {isAllCompleted ? (
+                                                            <>
+                                                                <CheckCircle2 className="h-3 w-3 text-green-400" />
+                                                                <span className="text-green-400">completado</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-zinc-400">
+                                                                    {completedTasks}/{totalTasks}
+                                                                </span>
+                                                                <span className="text-zinc-500">pendientes</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                
+                                                <div className="flex-1"></div>
                                                 
                                                 {/* Campo de horas restantes - solo visible si está seleccionado */}
                                                 {isSelected && (
@@ -476,10 +526,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                                         />
                                                     </div>
                                                 )}
-                                                
-                                                <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500">
-                                                    {user.role}
-                                                </Badge>
                                             </div>
                                         )
                                     })}
@@ -491,7 +537,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     ) : initialData && initialData.assignments.length > 0 ? (
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Equipo asignado</Label>
+                            <Label className="text-zinc-300">Colaborador asignado</Label>
                             <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
                                 {initialData.assignments.map(assignment => (
                                     <div key={assignment.userId} className="flex items-center justify-between p-2">

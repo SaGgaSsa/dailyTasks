@@ -189,7 +189,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>{task.assignments.length > 0 ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                                <p>{task.assignments.length > 0 ? 'Colaborador asignado' : 'Falta asignar colaborador'}</p>
                             </TooltipContent>
                         </Tooltip>
                         <Tooltip>

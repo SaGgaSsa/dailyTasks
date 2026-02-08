@@ -181,7 +181,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>{hasAssignees ? 'Equipo asignado' : 'Falta asignar equipo'}</p>
+                                        <p>{hasAssignees ? 'Colaborador asignado' : 'Falta asignar colaborador'}</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>

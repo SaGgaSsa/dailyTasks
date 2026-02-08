@@ -120,6 +120,7 @@ model Assignment {
   user           User      @relation(fields: [userId], references: [id])
 
   remainingHours Int?
+  isAssigned     Boolean   @default(true)
   tasks          SubTask[]
 
   @@unique([incidenceId, userId])

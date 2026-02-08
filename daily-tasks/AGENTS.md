@@ -6,29 +6,39 @@ Next.js 16 task/incidence management app (Jira-like). Stack: TypeScript, NextAut
 ## Commands (run from `daily-tasks`)
 
 ```bash
+# Development
 npm run dev          # Dev server (port 3000)
 npm run build        # Generate Prisma + Next.js build
 npm run start        # Production server
+
+# Linting
 npm run lint         # Run ESLint
-npm run seed         # Seed database
-npx prisma generate  # Generate Prisma client
-npx prisma db push   # Push schema changes
-npx prisma studio    # Open Prisma GUI (port 5555)
-docker-compose up -d # Start PostgreSQL
+npx eslint <file>   # Lint specific file
+npx eslint --fix    # Auto-fix linting issues
+
+# Database
+npx prisma generate        # Generate Prisma client
+npx prisma db push         # Push schema changes
+npx prisma studio          # Open Prisma GUI (port 5555)
+npm run seed              # Seed database
+
+# Docker
+docker-compose up -d       # Start PostgreSQL
+docker-compose logs postgres  # View DB logs
 ```
 
-## TypeScript
-- Use strict mode, avoid `any`; use explicit types or `unknown`
+## TypeScript & Types
+- Use strict mode; avoid `any`. Use explicit types or `unknown` with guards
 - Interface for objects, type for unions/intersections
 - Use `Readonly<T>` for immutability
+- Enums in `types/enums.ts`: TaskStatus, TaskType, TechStack, Priority, UserRole
 
-## Imports
-Order: external → `@/*` → relative
+## Imports Order
+external → `@/*` → relative
 ```typescript
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { db } from '@/lib/db'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { UserForm } from './user-form'
 ```
@@ -40,15 +50,11 @@ import { UserForm } from './user-form'
 | Directories | kebab-case | `components/ui/`, `app/actions/` |
 | Functions/vars | camelCase | `getUsers()`, `isLoading` |
 | Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
+| Enums | PascalCase | `TaskStatus.TODO` |
 | DB fields | snake_case | `created_at`, `user_id` |
+| React props | camelCase | `onOpenChange`, `initialData` |
 
-## Enums (`types/enums.ts`)
-```typescript
-export enum TaskStatus { BACKLOG = "BACKLOG", TODO = "TODO", ... }
-export enum UserRole { ADMIN = "ADMIN", DEV = "DEV" }
-```
-
-## Server Actions
+## Server Actions Pattern
 ```typescript
 'use server'
 export async function createUser(data: UserData) {
@@ -57,7 +63,8 @@ export async function createUser(data: UserData) {
     revalidatePath('/dashboard/users')
     return { success: true, data: result }
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    console.error('Error:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error' }
   }
 }
 ```
@@ -66,6 +73,7 @@ export async function createUser(data: UserData) {
 - Server: try-catch, return `{ success: boolean, error?: string, data?: T }`
 - Client: use error boundaries, toast via `sonner`
 - Never expose stack traces to client
+- UI text in Spanish: "Guardar", "Eliminar", "Usuario creado correctamente"
 
 ## UI Components (shadcn/ui-style)
 Use `class-variance-authority` for variants:
@@ -82,10 +90,11 @@ const buttonVariants = cva("inline-flex items-center justify-center...", {
 ## Database (Prisma)
 - snake_case columns via `@map`, singleton in `lib/db.ts`
 - Never use Prisma on client-side
+- Models: User, Incidence, Assignment, SubTask, Workspace
 
 ## Auth (NextAuth.js)
 - Config in `auth.config.ts`, JWT strategy, bcrypt passwords
-- Extended session type includes `id`, `email`, `username`, `role`, `avatarUrl`
+- Extended session includes `id`, `email`, `username`, `role`
 
 ## Tailwind CSS
 - Dark theme default (`dark` class on html)
@@ -99,17 +108,26 @@ daily-tasks/
 │   ├── dashboard/   # Protected routes
 │   └── api/         # API routes
 ├── components/ui/   # Base UI components
-├── components/*/     # Feature components
+├── components/*/    # Feature components
 ├── lib/db.ts        # Prisma singleton
 ├── types/enums.ts   # App enums
 └── prisma/          # Schema & seed
 ```
 
-## Spanish Language
-- UI text in Spanish: "Guardar", "Eliminar"
-- Error messages in Spanish
-
-## Version Control
-- Commit after task completion
-- Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
+## Git Workflow
+- Commit after task completion using Conventional Commits:
+  - `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
+- Example: `git commit -m "feat: add drag and drop to kanban board"`
 - Never commit broken code
+- Run `npm run lint` and `npm run build` before committing
+
+## Common Patterns
+1. **Sheet/Dialog**: `open`, `onOpenChange` props
+2. **Data fetching**: Server actions → client with `initialData`
+3. **Revalidation**: `revalidatePath()` after mutations
+4. **Forms**: Server actions with typed objects
+
+## Important Notes
+- Database requires Docker Compose running
+- Prisma client must be generated before building
+- Environment variables in `.env`: DATABASE_URL, NEXTAUTH_SECRET

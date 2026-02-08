@@ -76,6 +76,7 @@ export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<Inc
             where,
             include: {
                 assignments: {
+                    where: { isAssigned: true },
                     include: {
                         user: true,
                         tasks: {
@@ -127,7 +128,9 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
             include: {
-                assignments: true
+                assignments: {
+                    where: { isAssigned: true }
+                }
             }
         })
 
@@ -214,14 +217,15 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
             const currentUserIds = currentAssignments.map(a => a.userId)
             const newUserIds = data.assignees.map(a => a.userId)
             
-            // Eliminar assignments que ya no están seleccionados
-            const toRemove = currentUserIds.filter(uid => !newUserIds.includes(uid))
-            if (toRemove.length > 0) {
-                await db.assignment.deleteMany({
+            // Desactivar assignments que ya no están seleccionados (isAssigned: false)
+            const toDeactivate = currentUserIds.filter(uid => !newUserIds.includes(uid))
+            if (toDeactivate.length > 0) {
+                await db.assignment.updateMany({
                     where: {
                         incidenceId: id,
-                        userId: { in: toRemove }
-                    }
+                        userId: { in: toDeactivate }
+                    },
+                    data: { isAssigned: false }
                 })
             }
             
@@ -235,12 +239,14 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
                         }
                     },
                     update: {
-                        remainingHours: assignee.remainingHours
+                        remainingHours: assignee.remainingHours,
+                        isAssigned: true
                     },
                     create: {
                         incidenceId: id,
                         userId: assignee.userId,
-                        remainingHours: assignee.remainingHours
+                        remainingHours: assignee.remainingHours,
+                        isAssigned: true
                     }
                 })
             }
@@ -255,7 +261,9 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
         const updatedIncidence = await db.incidence.findUnique({
             where: { id },
             include: {
-                assignments: true
+                assignments: {
+                    where: { isAssigned: true }
+                }
             }
         })
 

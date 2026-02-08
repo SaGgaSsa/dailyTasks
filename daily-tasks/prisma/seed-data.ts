@@ -175,6 +175,7 @@ async function assignIncidences(incidences: { id: number }[], devs: { id: number
             incidenceId: incidence.id,
             userId: dev.id,
             remainingHours: Math.random() < 0.7 ? randomInt(1, 40) : null,
+            isAssigned: true,
           },
         })
       }
