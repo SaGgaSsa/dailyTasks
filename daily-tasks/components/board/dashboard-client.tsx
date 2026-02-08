@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
@@ -24,20 +24,18 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
     const [backlogTasks, setBacklogTasks] = useState(initialBacklogTasks)
     const [kanbanTasks, setKanbanTasks] = useState(initialKanbanTasks)
 
+    useEffect(() => {
+        setBacklogTasks(initialBacklogTasks)
+        setKanbanTasks(initialKanbanTasks)
+    }, [initialBacklogTasks, initialKanbanTasks])
+
     const handleBacklogUpdate = (updatedTask: IncidenceWithDetails) => {
         setBacklogTasks(prev => prev.map(task =>
             task.id === updatedTask.id ? updatedTask : task
         ))
     }
 
-    const handleKanbanUpdate = (updatedTask: IncidenceWithDetails) => {
-        setKanbanTasks(prev => prev.map(task =>
-            task.id === updatedTask.id ? updatedTask : task
-        ))
-    }
-
     const handleTaskUpdate = (updatedTask: IncidenceWithDetails) => {
-        // Update both lists
         setBacklogTasks(prev => prev.map(task =>
             task.id === updatedTask.id ? updatedTask : task
         ))
@@ -51,7 +49,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
     }
 
     if (!isAdmin) {
-        return <KanbanBoard initialTasks={kanbanTasks} onTaskUpdate={handleKanbanUpdate} />
+        return <KanbanBoard initialTasks={kanbanTasks} onTaskUpdate={handleTaskUpdate} />
     }
 
     return (
@@ -102,7 +100,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                 ) : (
                     <KanbanBoard 
                         initialTasks={kanbanTasks}
-                        onTaskUpdate={handleKanbanUpdate}
+                        onTaskUpdate={handleTaskUpdate}
                     />
                 )}
             </div>
