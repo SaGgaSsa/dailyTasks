@@ -15,6 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { MoreHorizontal, CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
 import { TaskStatus, TaskType, TechStack } from '@/types/enums'
 import {
@@ -69,9 +70,10 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [techFilter, setTechFilter] = useState<string>('ALL')
+    const [techFilter, setTechFilter] = useState<string[]>((Object.values(TechStack) as string[]))
     const [statusFilter, setStatusFilter] = useState<string>('ALL')
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
+    const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
 
     const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
     const setIsSheetOpen = onOpenChange || setInternalSheetOpen
@@ -81,19 +83,17 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
-        const currentUserId = session?.user?.id ? Number(session.user.id) : null
-
         return tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
-            const matchesTech = techFilter === 'ALL' || task.technology === techFilter
+            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
             const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
 
             const matchesMyAssignments = !onlyMyAssignments || 
-                (currentUserId !== null && task.assignees.some(a => a.id === currentUserId))
+                (session?.user?.id && task.assignees.some(a => a.id === Number(session.user.id)))
 
             return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
         })
@@ -117,18 +117,33 @@ export function Backlog({ initialTasks, isSheetOpen: externalSheetOpen, onOpenCh
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-zinc-900 border-zinc-800 text-zinc-100 w-64"
                 />
-                <Select value={techFilter} onValueChange={setTechFilter}>
-                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-36">
-                        <SelectValue placeholder="Tecnologia" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800">
-                        {techOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
-                                {opt.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 w-36 justify-start">
+                            Tecnologia
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
+                        <div className="space-y-1">
+                            {techOptions.filter(opt => opt.value !== 'ALL').map(opt => (
+                                <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
+                                    <Checkbox
+                                        checked={techFilter.includes(opt.value)}
+                                        onCheckedChange={(checked) => {
+                                            if (checked === true) {
+                                                setTechFilter(prev => [...prev, opt.value])
+                                            } else {
+                                                setTechFilter(prev => prev.filter(t => t !== opt.value))
+                                            }
+                                        }}
+                                        className="border-zinc-600"
+                                    />
+                                    <span className="text-sm text-zinc-300">{opt.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </PopoverContent>
+                </Popover>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100 w-36">
                         <SelectValue placeholder="Estado" />
