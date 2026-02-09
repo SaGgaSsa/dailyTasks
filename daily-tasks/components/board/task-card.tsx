@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
 import { TaskStatus } from '@/types/enums'
+import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
+import { useSession } from 'next-auth/react'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
@@ -34,6 +36,8 @@ const typeColors: Record<string, string> = {
 }
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
+    const session = useSession()
+    const userId = session?.user?.id
     const {
         attributes,
         listeners,
@@ -57,6 +61,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const hasHours = (task.estimatedTime ?? 0) > 0
     const hasAssignees = task.assignments.length > 0
     const hasSubTasks = allSubTasks.length > 0
+
+    const completedHours = calculateCompletedHours(task)
+    const isComplete = isFullyCompleted(completedHours, task.estimatedTime)
+    const userAssignment = task.assignments.find(a => a.userId === userId)
+    const userHours = userAssignment?.estimatedHours || 0
 
     return (
         <Card
@@ -100,13 +109,25 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 )}
 
                 {/* Technology + Hours */}
-                <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
-                        {task.technology}
-                    </Badge>
-                    {task.estimatedTime && (
-                        <span className="text-[10px] text-zinc-500">{task.estimatedTime}h</span>
-                    )}
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
+                            {task.technology}
+                        </Badge>
+                        {task.estimatedTime && userId && userHours > 0 && (
+                            <span className="text-[10px] text-zinc-400">
+                                Mis horas: {userHours}h
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-500">
+                            {formatHoursDisplay(completedHours, task.estimatedTime)}
+                        </span>
+                        {task.estimatedTime && isComplete && (
+                            <CheckCircle2 className="h-3 w-3 text-green-400" />
+                        )}
+                    </div>
                 </div>
 
                 {/* Footnotes: Subtasks and Assignees */}
