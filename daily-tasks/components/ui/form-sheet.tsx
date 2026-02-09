@@ -28,6 +28,8 @@ interface FormSheetProps {
     isSaving: boolean
     onSave: () => Promise<boolean> | void
     onClose: () => void
+    hasUnsavedChanges?: boolean
+    onDiscard?: () => void
     children: React.ReactNode
 }
 
@@ -39,6 +41,8 @@ export function FormSheet({
     isSaving,
     onSave,
     onClose,
+    hasUnsavedChanges,
+    onDiscard,
     children,
 }: FormSheetProps) {
     const handleSaveAndClose = async () => {
@@ -48,12 +52,20 @@ export function FormSheet({
         }
     }
 
+    const handleClose = () => {
+        if (hasUnsavedChanges && onDiscard) {
+            onDiscard()
+        } else {
+            onClose()
+        }
+    }
+
     return (
         <Sheet
             open={open}
             onOpenChange={(newOpen) => {
                 if (!newOpen) {
-                    onClose()
+                    handleClose()
                 }
             }}
         >
@@ -61,7 +73,9 @@ export function FormSheet({
                 showCloseButton={false}
                 onInteractOutside={(e) => {
                     e.preventDefault()
-                    if (isEditMode) {
+                    if (hasUnsavedChanges && !isEditMode && onDiscard) {
+                        onDiscard()
+                    } else if (isEditMode) {
                         handleSaveAndClose()
                     } else {
                         onClose()
@@ -99,9 +113,9 @@ export function FormSheet({
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                            title="Descartar cambios"
+                            title={hasUnsavedChanges ? "Descartar cambios" : "Cerrar"}
                         >
                             <X className="h-4 w-4" />
                         </Button>

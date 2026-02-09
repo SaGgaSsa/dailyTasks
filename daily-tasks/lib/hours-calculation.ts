@@ -20,19 +20,3 @@ export function formatHoursDisplay(completed: number, total: number | null): str
 export function isFullyCompleted(completed: number, total: number | null): boolean {
   return total !== null && completed === total
 }
-
-export function validateHours(
-  incidence: IncidenceWithDetails,
-  estimatedHours: number
-): { valid: boolean; error?: string } {
-  if (incidence.status === TaskStatus.BACKLOG && estimatedHours > 0) {
-    const completedHours = calculateCompletedHours(incidence)
-    if (completedHours > estimatedHours) {
-      return {
-        valid: false,
-        error: `Las horas completadas (${completedHours}h) exceden la estimación (${estimatedHours}h)`
-      }
-    }
-  }
-  return { valid: true }
-}

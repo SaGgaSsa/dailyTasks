@@ -109,28 +109,24 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 )}
 
                 {/* Technology + Hours */}
-                <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
+                        {task.technology}
+                    </Badge>
+                    <span className="text-[10px] text-zinc-400">
+                        {formatHoursDisplay(completedHours, task.estimatedTime)}
+                    </span>
+                </div>
+                {task.estimatedTime && userId && userHours > 0 && (
                     <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
-                            {task.technology}
-                        </Badge>
-                        {task.estimatedTime && userId && userHours > 0 && (
-                            <span className="text-[10px] text-zinc-400">
-                                Mis horas: {userHours}h
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-zinc-500">
-                            {formatHoursDisplay(completedHours, task.estimatedTime)}
+                        <span className="text-[10px] text-zinc-400">
+                            Mis horas: {userHours}h
                         </span>
                         {task.estimatedTime && isComplete && (
                             <CheckCircle2 className="h-3 w-3 text-green-400" />
                         )}
                     </div>
-                </div>
-
-                {/* Footnotes: Subtasks and Assignees */}
+                )}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-zinc-500">
                         <CheckSquare className="h-3 w-3" />

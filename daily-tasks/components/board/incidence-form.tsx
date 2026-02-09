@@ -9,6 +9,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { FormSheet, FormInput, FormSelect, FormRow, FormRow3 } from '@/components/ui/form-sheet'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import { IncidenceWithDetails } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
 import { createIncidence, updateIncidence, getIncidence } from '@/app/actions/incidence-actions'
@@ -84,6 +92,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [newSubTask, setNewSubTask] = useState('')
     const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
     const sortUsers = (userList: User[], assignedUserIds: Set<number>) => {
         const sortByRoleAndName = (a: User, b: User) => {
@@ -311,6 +320,27 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         onOpenChange(false)
     }
 
+    const handleDiscard = () => {
+        setShowDiscardConfirm(true)
+    }
+
+    const confirmDiscard = () => {
+        setShowDiscardConfirm(false)
+        onOpenChange(false)
+    }
+
+    function hasFormChanges(): boolean {
+        if (isEditMode && originalFormData) {
+            return JSON.stringify(formData) !== JSON.stringify(originalFormData)
+        }
+        return formData.externalId !== '' || 
+               formData.title !== '' || 
+               formData.description !== '' ||
+               formData.estimatedTime !== '' ||
+               formData.subTasks.length > 0 ||
+               formData.assignees.length > 0
+    }
+
     const title = isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'
 
     return (
@@ -322,7 +352,35 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             isSaving={isSaving}
             onSave={handleSave}
             onClose={handleClose}
+            hasUnsavedChanges={hasFormChanges()}
+            onDiscard={handleDiscard}
         >
+            <Dialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+                <DialogContent className="bg-[#191919] border-zinc-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-zinc-100">¿Salir sin guardar?</DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Tiene cambios sin guardar. ¿Está seguro de que desea salir y perder los cambios?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setShowDiscardConfirm(false)}
+                            className="bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border-zinc-700"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            onClick={confirmDiscard} 
+                            className="bg-red-600 text-white hover:bg-red-700"
+                        >
+                            Salir sin guardar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full py-32">
                     <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />

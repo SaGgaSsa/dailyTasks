@@ -199,20 +199,6 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
 
-        // Validar que las horas de los asignados no excedan la estimación global
-        if (data.estimatedTime !== undefined && data.estimatedTime !== null) {
-            const assigneesEstimatedSum = (data.assignees || [])
-                .filter(a => a.userId) // Filtrar asignaciones válidas
-                .reduce((sum, a) => sum + (a.estimatedHours || 0), 0)
-
-            if (assigneesEstimatedSum > data.estimatedTime) {
-                return {
-                    success: false,
-                    error: `La suma de horas asignadas (${assigneesEstimatedSum}h) excede la estimación global (${data.estimatedTime}h)`
-                }
-            }
-        }
-
         const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
