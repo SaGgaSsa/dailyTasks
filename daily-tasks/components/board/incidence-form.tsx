@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -122,29 +122,50 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     useEffect(() => {
         const fetchFullData = async () => {
             if (open && initialData?.id) {
-                const fullData = await getIncidence(initialData.id)
-                if (fullData) {
-                    setFullIncidenceData(fullData)
-                    const allAssignments = fullData.assignments
-                    const activeAssignments = allAssignments.filter(a => a.isAssigned)
-                    const data = {
-                        type: fullData.type,
-                        externalId: fullData.externalId?.toString() || '',
-                        title: fullData.title || '',
-                        description: fullData.description || '',
-                        priority: fullData.priority,
-                        technology: fullData.technology,
-                        estimatedTime: fullData.estimatedTime?.toString() || '',
-                        assignees: activeAssignments.map(a => ({
-                            userId: a.userId,
-                            remainingHours: a.remainingHours?.toString() || ''
-                        })),
-                        subTasks: allAssignments.flatMap(assignment => 
-                            assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
-                        ),
+                setIsLoading(true)
+                setFormData({
+                    type: TaskType.I_MODAPL,
+                    externalId: '',
+                    title: '',
+                    description: '',
+                    priority: Priority.MEDIUM,
+                    technology: TechStack.SISA,
+                    estimatedTime: '',
+                    assignees: [],
+                    subTasks: [],
+                })
+                setFullIncidenceData(null)
+                setOriginalFormData(null)
+                
+                try {
+                    const fullData = await getIncidence(initialData.id)
+                    if (fullData) {
+                        setFullIncidenceData(fullData)
+                        const allAssignments = fullData.assignments
+                        const activeAssignments = allAssignments.filter(a => a.isAssigned)
+                        const data = {
+                            type: fullData.type,
+                            externalId: fullData.externalId?.toString() || '',
+                            title: fullData.title || '',
+                            description: fullData.description || '',
+                            priority: fullData.priority,
+                            technology: fullData.technology,
+                            estimatedTime: fullData.estimatedTime?.toString() || '',
+                            assignees: activeAssignments.map(a => ({
+                                userId: a.userId,
+                                remainingHours: a.remainingHours?.toString() || ''
+                            })),
+                            subTasks: allAssignments.flatMap(assignment => 
+                                assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
+                            ),
+                        }
+                        setFormData(data)
+                        setOriginalFormData(data)
                     }
-                    setFormData(data)
-                    setOriginalFormData(data)
+                } catch (error) {
+                    console.error('Error loading incidence:', error)
+                } finally {
+                    setIsLoading(false)
                 }
             } else if (open && !initialData) {
                 setFormData({
@@ -159,6 +180,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     subTasks: [],
                 })
                 setOriginalFormData(null)
+                setIsLoading(false)
             }
         }
         fetchFullData()
@@ -301,6 +323,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             onSave={handleSave}
             onClose={handleClose}
         >
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-full py-32">
+                    <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
+                    <span className="mt-4 text-zinc-400">Cargando datos...</span>
+                </div>
+            ) : (
+                <>
             <FormRow>
                 <FormSelect
                     id="type"
@@ -527,6 +556,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     placeholder="Añade comentarios o notas técnicas..."
                 />
             </div>
+            </>)
+        }
         </FormSheet>
     )
 }

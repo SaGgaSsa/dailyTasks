@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { FormSheet, FormInput, FormSelect, FormRow } from '@/components/ui/form-sheet'
 import { upsertUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
@@ -29,6 +30,7 @@ const techOptions = [
 
 export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
     const router = useRouter()
+    const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
 
     const [formData, setFormData] = useState({
@@ -43,16 +45,8 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
     const isEditMode = !!initialData
 
     useEffect(() => {
-        if (initialData) {
-            setFormData({
-                name: initialData.name || '',
-                email: initialData.email || '',
-                username: initialData.username || '',
-                password: '',
-                role: initialData.role || 'DEV',
-                technologies: initialData.technologies || [],
-            })
-        } else {
+        if (open && initialData) {
+            setIsLoading(true)
             setFormData({
                 name: '',
                 email: '',
@@ -61,6 +55,28 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                 role: 'DEV',
                 technologies: [],
             })
+            setTimeout(() => {
+                setFormData({
+                    name: initialData.name || '',
+                    email: initialData.email || '',
+                    username: initialData.username || '',
+                    password: '',
+                    role: initialData.role || 'DEV',
+                    technologies: initialData.technologies || [],
+                })
+                setIsLoading(false)
+            }, 0)
+        } else if (open) {
+            setIsLoading(true)
+            setFormData({
+                name: '',
+                email: '',
+                username: '',
+                password: '',
+                role: 'DEV',
+                technologies: [],
+            })
+            setIsLoading(false)
         }
     }, [initialData, open])
 
@@ -120,6 +136,13 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
             onSave={handleSave}
             onClose={handleClose}
         >
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-full py-32">
+                    <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
+                    <span className="mt-4 text-zinc-400">Cargando datos...</span>
+                </div>
+            ) : (
+                <>
             <FormInput
                 id="name"
                 label="Nombre"
@@ -176,6 +199,8 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                 options={techOptions}
                 placeholder="Seleccionar tecnología"
             />
+            </>)
+        }
         </FormSheet>
     )
 }
