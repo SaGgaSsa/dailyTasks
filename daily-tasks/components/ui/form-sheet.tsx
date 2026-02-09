@@ -69,7 +69,7 @@ export function FormSheet({
                 }}
                 className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
             >
-                <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
+                <SheetHeader className="space-y-2 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 pt-1">
                             <Button
@@ -108,7 +108,7 @@ export function FormSheet({
                     </div>
                 </SheetHeader>
 
-                <div className="flex flex-col space-y-4 py-6 pl-8">
+                <div className="flex flex-col space-y-4 pt-4 py-6 pl-8">
                     {children}
                 </div>
             </SheetContent>
