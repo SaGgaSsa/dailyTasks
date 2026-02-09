@@ -152,6 +152,98 @@ Common patterns:
 - Sheet/Dialog: `open`, `onOpenChange` props
 - Use `cn()` for conditional classes: `cn("base-class", condition && "conditional")`
 
+## Formularios y Paneles Laterales (Sheets)
+
+**SIEMPRE usar** `FormSheet` de `@/components/ui/form-sheet` para:
+- Formularios de edición/creación
+- Paneles de visualización de detalles
+- Cualquier Sheet que muestre información estructurada
+
+**NO usar** directamente:
+- `<Sheet>` + `<SheetContent>` con clases personalizadas
+- Estilos inline para backgrounds, padding, bordes
+
+### Componentes disponibles
+
+| Componente | Uso |
+|------------|-----|
+| `FormSheet` | Wrapper principal del panel (header con título, botones X/Check) |
+| `FormInput` | Input con label integrado y estilos dark |
+| `FormSelect` | Select con label integrado y estilos dark |
+| `FormTextarea` | Textarea con label integrado y estilos dark |
+| `FormRow` | Grid de 2 columnas |
+| `FormRow3` | Grid de 3 columnas |
+| `FormField` | Contenedor genérico label + children |
+| `Label` | Label reexportado con estilos |
+
+### Estructura obligatoria
+
+```tsx
+import { FormSheet, FormInput, FormSelect, FormRow } from '@/components/ui/form-sheet'
+
+export function MyForm({ open, onOpenChange, initialData }: MyFormProps) {
+    const [isSaving, setIsSaving] = useState(false)
+    const isEditMode = !!initialData
+
+    const handleSave = async () => {
+        // ... lógica de guardado
+        return true // o false si falla
+    }
+
+    const handleClose = () => {
+        onOpenChange(false)
+    }
+
+    return (
+        <FormSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={isEditMode ? 'Editar Registro' : 'Nuevo Registro'}
+            isEditMode={isEditMode}
+            isSaving={isSaving}
+            onSave={handleSave}
+            onClose={handleClose}
+        >
+            <FormRow>
+                <FormInput
+                    id="name"
+                    label="Nombre"
+                    value={formData.name}
+                    onChange={(e) => updateFormData({ name: e.target.value })}
+                />
+                <FormSelect
+                    id="status"
+                    label="Estado"
+                    value={formData.status}
+                    onValueChange={(val) => updateFormData({ status: val })}
+                    options={[
+                        { value: 'ACTIVE', label: 'Activo' },
+                        { value: 'INACTIVE', label: 'Inactivo' },
+                    ]}
+                />
+            </FormRow>
+        </FormSheet>
+    )
+}
+```
+
+### Paneles de solo lectura
+
+Para visualización sin edición (ej: `UserDetailSheet`), usar la misma estructura visual:
+
+```tsx
+<Sheet open={open} onOpenChange={onOpenChange}>
+    <SheetContent className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto">
+        <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
+            {/* Título + botón X */}
+        </SheetHeader>
+        <div className="flex flex-col space-y-4 py-6 pl-8">
+            {/* Contenido */}
+        </div>
+    </SheetContent>
+</Sheet>
+```
+
 ## Database (Prisma)
 
 - Models: User, Incidence, Assignment, SubTask
@@ -218,14 +310,32 @@ daily-tasks/
 
 ## Git Commits
 
-Use Conventional Commits:
-- `feat:` new features
-- `fix:` bug fixes  
-- `refactor:` code cleanup
-- `style:` formatting/UI
-- `docs:` documentation
-- `chore:` config/dependencies
+**IMPORTANTE:** Después de cada modificación solicitada, SIEMPRE hacer commit automáticamente.
 
-Example: `git commit -m "feat: add task filtering by technology"`
+### Proceso obligatorio
 
-**Never commit broken code.** Fix errors first.
+1. Verificar `npm run lint` - fixear errores si hay
+2. Verificar `npm run build` - debe pasar sin errores
+3. Hacer `git add` de los archivos modificados
+4. Crear commit con Conventional Commits
+5. Verificar con `git status` que el commit fue exitoso
+
+### Formato de mensajes (Conventional Commits)
+
+| Tipo | Uso | Ejemplo |
+|------|-----|---------|
+| `feat:` | Nueva funcionalidad | `feat: add user profile page` |
+| `fix:` | Corrección de bugs | `fix: resolve login validation error` |
+| `refactor:` | Refactorización | `refactor: extract form logic to custom hook` |
+| `style:` | Cambios visuales/UI | `style: improve button hover states` |
+| `docs:` | Documentación | `docs: update API endpoint descriptions` |
+| `chore:` | Config/dependencias | `chore: upgrade eslint to v9` |
+
+### Ejemplos por tipo de cambio
+
+- Modificar UI/estilos → `style: reduce padding in task cards`
+- Nueva funcionalidad → `feat: add technology filter to backlog`
+- Arreglar bug → `fix: prevent horizontal scroll in backlog table`
+- Refactorizar código → `refactor: unify form sheets with FormSheet component`
+
+**Nunca commitear código roto.** Fixear errores primero.
