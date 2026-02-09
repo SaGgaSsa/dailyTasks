@@ -46,7 +46,7 @@ const techOptions = [
 
 interface AssigneeFormData {
     userId: number
-    remainingHours: string
+    estimatedHours: string
 }
 
 interface FormData {
@@ -153,7 +153,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             estimatedTime: fullData.estimatedTime?.toString() || '',
                             assignees: activeAssignments.map(a => ({
                                 userId: a.userId,
-                                remainingHours: a.remainingHours?.toString() || ''
+                                estimatedHours: a.estimatedHours?.toString() || ''
                             })),
                             subTasks: allAssignments.flatMap(assignment => 
                                 assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
@@ -218,9 +218,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             })
         } else {
             const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
-            const previousHours = previousAssignment?.remainingHours?.toString() || ''
+            const previousHours = previousAssignment?.estimatedHours?.toString() || ''
             updateFormData({
-                assignees: [...formData.assignees, { userId, remainingHours: previousHours }]
+                assignees: [...formData.assignees, { userId, estimatedHours: previousHours }]
             })
         }
     }
@@ -228,7 +228,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const handleUpdateAssigneeHours = (userId: number, hours: string) => {
         updateFormData({
             assignees: formData.assignees.map(a => 
-                a.userId === userId ? { ...a, remainingHours: hours } : a
+                a.userId === userId ? { ...a, estimatedHours: hours } : a
             )
         })
     }
@@ -245,7 +245,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             
             const assigneeData = formData.assignees.map(a => ({
                 userId: a.userId,
-                remainingHours: a.remainingHours === '' ? null : parseInt(a.remainingHours)
+                estimatedHours: a.estimatedHours === '' ? null : parseInt(a.estimatedHours)
             }))
 
             if (isEditMode && initialData?.id) {
@@ -447,13 +447,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         
                                         {isSelected && (
                                             <div className="flex items-center gap-2">
-                                                <span className="text-zinc-500 text-xs">Horas:</span>
+                                                <span className="text-zinc-500 text-xs">Horas asignadas:</span>
                                                 <Input
                                                     type="number"
                                                     min="0"
                                                     max="9999"
                                                     step="1"
-                                                    value={assigneeData.remainingHours}
+                                                    value={assigneeData.estimatedHours}
                                                     onChange={(e) => {
                                                         const value = e.target.value;
                                                         if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
@@ -471,7 +471,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         </div>
                     </div>
                     <p className="text-xs text-zinc-500">
-                        Al asignar colaboradores, puedes especificar las horas restantes para cada uno.
+                        Al asignar colaboradores, especifica las horas que cada uno aportará a la tarea.
                     </p>
                 </div>
             ) : initialData && initialData.assignments.length > 0 ? (
@@ -482,7 +482,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             <div key={assignment.userId} className="flex items-center justify-between p-2">
                                 <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
                                 <span className="text-zinc-500 text-xs">
-                                    {assignment.remainingHours !== null ? `${assignment.remainingHours}h restantes` : 'Sin horas asignadas'}
+                                    {assignment.estimatedHours !== null ? `${assignment.estimatedHours}h asignadas` : 'Sin horas asignadas'}
                                 </span>
                             </div>
                         ))}
