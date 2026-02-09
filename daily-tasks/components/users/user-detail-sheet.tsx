@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { X, Loader2 } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -8,12 +9,11 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
-import { UserAvatar } from '@/components/ui/user-avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { Badge } from '@/components/ui/badge'
 import {
-  ChevronDown,
   Copy,
   ExternalLink,
   Mail,
@@ -24,6 +24,7 @@ import {
   Clock,
   CheckCircle2,
   Circle,
+  ChevronDown,
 } from 'lucide-react'
 import { getUserDetails } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
@@ -145,45 +146,79 @@ export function UserDetailSheet({
     }
   }
 
+  const handleClose = () => {
+    onOpenChange(false)
+  }
+
   if (!userId) return null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <SheetContent className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Detalles del usuario</SheetTitle>
+          <SheetDescription>Información detallada del colaborador</SheetDescription>
+        </SheetHeader>
+        
+        <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 pt-1">
+              {loading ? (
+                <div className="h-12 w-12 rounded-full bg-zinc-800 animate-pulse" />
+              ) : details ? (
+                <>
+                  <UserAvatar username={details.username} size="lg" className="h-12 w-12" />
+                  <div>
+                    <SheetTitle className="text-zinc-100 text-base">
+                      {details.name || 'Sin nombre'}
+                    </SheetTitle>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-zinc-400 text-sm">@{details.username}</span>
+                      <Badge
+                        variant={details.role === 'ADMIN' ? 'default' : 'secondary'}
+                        className="text-[10px]"
+                      >
+                        {details.role}
+                      </Badge>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <SheetTitle className="text-zinc-100">Usuario no encontrado</SheetTitle>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              {loading && (
+                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                title="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        ) : details ? (
-          <>
-            <SheetHeader className="space-y-4">
-              <div className="flex items-center gap-4">
-                <UserAvatar username={details.username} size="lg" className="h-16 w-16" />
-                <div>
-                  <SheetTitle className="text-xl">
-                    {details.name || 'Sin nombre'}
-                  </SheetTitle>
-                  <SheetDescription className="flex items-center gap-2 mt-1">
-                    <span>@{details.username}</span>
-                    <Badge
-                      variant={details.role === 'ADMIN' ? 'default' : 'secondary'}
-                    >
-                      {details.role}
-                    </Badge>
-                  </SheetDescription>
-                </div>
-              </div>
-            </SheetHeader>
+        </SheetHeader>
 
-            <div className="mt-6 space-y-6">
+        <div className="flex flex-col space-y-4 py-6 pl-8">
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : details ? (
+            <>
               <div className="grid grid-cols-1 gap-4 text-sm">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Email</span>
+                    <Mail className="h-4 w-4 text-zinc-500" />
+                    <span className="text-zinc-500">Email</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[200px]">{details.email}</span>
+                    <span className="truncate max-w-[200px] text-zinc-300">{details.email}</span>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -196,16 +231,16 @@ export function UserDetailSheet({
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-zinc-800" />
 
               <div>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Hash className="h-4 w-4" />
-                  Metadatos del Sistema
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Hash className="h-3 w-3" />
+                  Metadatos
                 </h3>
                 <div className="grid grid-cols-1 gap-3 text-sm">
-                  <div className="flex flex-col gap-1 p-3 rounded-lg bg-zinc-900/50">
-                    <span className="text-xs text-muted-foreground">ID de Usuario</span>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-zinc-500 text-xs">ID de Usuario</span>
                     <div className="flex items-center gap-2">
                       <code className="text-xs text-zinc-400 font-mono">
                         {details.id}
@@ -220,67 +255,63 @@ export function UserDetailSheet({
                       </Button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1 p-3 rounded-lg bg-zinc-900/50">
-                    <span className="text-xs text-muted-foreground">
-                      Fecha de Creación
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-zinc-500 text-xs">Fecha de Creación</span>
+                    <span className="flex items-center gap-2 text-zinc-300">
+                      <Calendar className="h-3 w-3 text-zinc-500" />
                       {formatDate(details.createdAt)}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1 p-3 rounded-lg bg-zinc-900/50">
-                    <span className="text-xs text-muted-foreground">
-                      Última Actualización
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-zinc-500 text-xs">Última Actualización</span>
+                    <span className="flex items-center gap-2 text-zinc-300">
+                      <Clock className="h-3 w-3 text-zinc-500" />
                       {formatDate(details.updatedAt)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-zinc-800" />
 
               <div>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Métricas de Trabajo
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Shield className="h-3 w-3" />
+                  Métricas
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="flex flex-col items-center p-4 rounded-lg bg-zinc-900/50">
-                    <span className="text-2xl font-bold">
+                  <div className="flex flex-col items-center p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-xl font-bold text-zinc-200">
                       {details.metrics.totalTasks}
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">
-                      Tareas Totales
+                    <span className="text-[10px] text-zinc-500 text-center">
+                      Totales
                     </span>
                   </div>
-                  <div className="flex flex-col items-center p-4 rounded-lg bg-zinc-900/50">
-                    <span className="text-2xl font-bold text-yellow-400">
+                  <div className="flex flex-col items-center p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-xl font-bold text-yellow-400">
                       {details.metrics.pendingTasks}
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">
+                    <span className="text-[10px] text-zinc-500 text-center">
                       Pendientes
                     </span>
                   </div>
-                  <div className="flex flex-col items-center p-4 rounded-lg bg-zinc-900/50">
-                    <span className="text-2xl font-bold text-green-400">
+                  <div className="flex flex-col items-center p-3 rounded-lg bg-zinc-900/50">
+                    <span className="text-xl font-bold text-green-400">
                       {details.metrics.completedTasks}
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">
+                    <span className="text-[10px] text-zinc-500 text-center">
                       Completadas
                     </span>
                   </div>
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-zinc-800" />
 
               <div>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ExternalLink className="h-3 w-3" />
                   Actividad Reciente
                 </h3>
                 {details.recentIncidences.length > 0 ? (
@@ -295,34 +326,30 @@ export function UserDetailSheet({
                             <CheckCircle2 className="h-4 w-4 text-green-400 flex-shrink-0" />
                           ) : (
                             <Circle
-                              className={`h-4 w-4 flex-shrink-0 ${getStatusColor(
-                                incidence.status
-                              )}`}
+                              className={`h-4 w-4 flex-shrink-0 ${getStatusColor(incidence.status)}`}
                             />
                           )}
                           <div className="truncate">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground font-mono">
+                              <span className="text-[10px] text-zinc-500 font-mono">
                                 {incidence.type}-{incidence.externalId}
                               </span>
-                              <StatusBadge
-                                status={incidence.status as TaskStatus}
-                              />
+                              <StatusBadge status={incidence.status as TaskStatus} />
                             </div>
-                            <p className="text-sm truncate">{incidence.title}</p>
+                            <p className="text-sm text-zinc-300 truncate">{incidence.title}</p>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
+                  <div className="text-center py-6 text-zinc-500 text-sm">
                     No hay incidencias asignadas
                   </div>
                 )}
               </div>
 
-              <Separator />
+              <Separator className="bg-zinc-800" />
 
               <details className="group" open={isDebugOpen}>
                 <summary
@@ -338,28 +365,26 @@ export function UserDetailSheet({
                   >
                     <span className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4" />
-                      Zona de Peligro (Debug)
+                      Debug
                     </span>
                     <ChevronDown
-                      className={`h-4 w-4 transition-transform ${
-                        isDebugOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`h-4 w-4 transition-transform ${isDebugOpen ? 'rotate-180' : ''}`}
                     />
                   </Button>
                 </summary>
-                <div className="mt-2 rounded-lg bg-zinc-950 p-4 overflow-auto max-h-[400px]">
-                  <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-all">
+                <div className="mt-2 rounded-lg bg-zinc-950 p-4 overflow-auto max-h-[300px]">
+                  <pre className="text-[10px] text-green-400 font-mono whitespace-pre-wrap break-all">
                     {JSON.stringify(details, null, 2)}
                   </pre>
                 </div>
               </details>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-zinc-500">Usuario no encontrado</p>
             </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">Usuario no encontrado</p>
-          </div>
-        )}
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   )
