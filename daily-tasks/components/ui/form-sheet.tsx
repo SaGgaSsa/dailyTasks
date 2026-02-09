@@ -58,6 +58,7 @@ export function FormSheet({
             }}
         >
             <SheetContent
+                showCloseButton={false}
                 onInteractOutside={(e) => {
                     e.preventDefault()
                     if (isEditMode) {
@@ -70,25 +71,7 @@ export function FormSheet({
             >
                 <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
-                        <SheetTitle className="text-zinc-100 pt-1">
-                            {title}
-                        </SheetTitle>
-                        <SheetDescription className="sr-only">
-                            Formulario para {isEditMode ? 'editar' : 'crear'} registro
-                        </SheetDescription>
                         <div className="flex items-center gap-2 pt-1">
-                            {isSaving && (
-                                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
-                            )}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onClose}
-                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                                title="Descartar cambios"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -103,7 +86,25 @@ export function FormSheet({
                                     <Check className="h-4 w-4" />
                                 )}
                             </Button>
+                            {isSaving && (
+                                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+                            )}
                         </div>
+                        <SheetTitle className="text-zinc-100 pt-1">
+                            {title}
+                        </SheetTitle>
+                        <SheetDescription className="sr-only">
+                            Formulario para {isEditMode ? 'editar' : 'crear'} registro
+                        </SheetDescription>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClose}
+                            className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                            title="Descartar cambios"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
                     </div>
                 </SheetHeader>
 
