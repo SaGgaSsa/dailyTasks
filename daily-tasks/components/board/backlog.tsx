@@ -214,18 +214,28 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         },
     },
     {
+        accessorKey: 'technology',
+        header: () => null,
+        cell: ({ row }) => (
+            <span className="text-[10px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-0.5 rounded whitespace-nowrap">
+                {row.original.technology}
+            </span>
+        ),
+        size: 70,
+    },
+    {
         accessorKey: 'assignees',
         header: () => null,
         cell: ({ row }) => {
             const assignments = row.original.assignments.filter(a => a.isAssigned)
             const count = assignments.length
 
-            if (count === 0) return null
+            if (count === 0) return <div className="w-8" />
 
             if (count === 1) {
                 const assignment = assignments[0]
                 return (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center w-8">
                         <UserAvatar
                             username={assignment.user.username}
                             className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
@@ -240,7 +250,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <div className="flex items-center justify-center text-zinc-500">
+                            <div className="flex items-center justify-center w-8 text-zinc-500">
                                 <User className="h-5 w-5" />
                             </div>
                         </TooltipTrigger>
@@ -251,6 +261,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 </TooltipProvider>
             )
         },
+        size: 40,
     },
 ]
 
@@ -325,6 +336,7 @@ export function Backlog({
                                         header.column.id === 'priority' ? 'w-20' :
                                         header.column.id === 'status' ? 'w-24' :
                                         header.column.id === 'actions' ? 'w-20' :
+                                        header.column.id === 'technology' ? 'w-16' :
                                         header.column.id === 'assignees' ? 'w-16' : ''
                                     return (
                                         <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass}`}>
@@ -373,9 +385,11 @@ export function Backlog({
                                             cell.column.id === 'priority' ? 'w-20' :
                                             cell.column.id === 'status' ? 'w-24' :
                                             cell.column.id === 'actions' ? 'w-20' :
+                                            cell.column.id === 'technology' ? 'w-16' :
                                             cell.column.id === 'assignees' ? 'w-16' : ''
+                                        const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
                                         return (
-                                            <TableCell key={cell.id} className={`py-3 ${widthClass}`}>
+                                            <TableCell key={cell.id} className={`py-3 ${widthClass} ${extraClass}`.trim()}>
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
                                         )
