@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckSquare, CheckCircle, Clock, User, List } from 'lucide-react'
+import { CheckSquare, CheckCircle, CheckCircle2, Clock, User, List } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IncidenceWithDetails } from '@/types'
@@ -36,8 +36,8 @@ const typeColors: Record<string, string> = {
 }
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
-    const session = useSession()
-    const userId = session?.user?.id
+    const { data: session } = useSession()
+    const userId = session?.user?.id || undefined
     const {
         attributes,
         listeners,
@@ -64,7 +64,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
     const completedHours = calculateCompletedHours(task)
     const isComplete = isFullyCompleted(completedHours, task.estimatedTime)
-    const userAssignment = task.assignments.find(a => a.userId === userId)
+    const userAssignment = task.assignments.find(a => String(a.userId) === String(userId))
     const userHours = userAssignment?.estimatedHours || 0
 
     return (

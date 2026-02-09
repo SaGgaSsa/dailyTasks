@@ -1,6 +1,8 @@
 import { Incidence, User, SubTask, Assignment } from '@prisma/client'
 import { TaskStatus, TaskType, TechStack, Priority } from './enums'
 
+export { TaskStatus, TaskType, TechStack, Priority }
+
 // Tipo para crear asignaciones con horas asignadas
 export interface AssigneeWithHours {
   userId: number

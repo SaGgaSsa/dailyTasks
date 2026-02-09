@@ -1,4 +1,5 @@
-import { IncidenceWithDetails, TaskStatus } from '@/types'
+import { IncidenceWithDetails } from '@/types'
+import { TaskStatus } from '@/types/enums'
 
 export function calculateCompletedHours(incidence: IncidenceWithDetails): number {
   return incidence.assignments

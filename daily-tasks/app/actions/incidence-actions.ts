@@ -200,7 +200,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
         }
 
         // Validar que las horas de los asignados no excedan la estimación global
-        if (data.estimatedTime !== undefined) {
+        if (data.estimatedTime !== undefined && data.estimatedTime !== null) {
             const assigneesEstimatedSum = (data.assignees || [])
                 .filter(a => a.userId) // Filtrar asignaciones válidas
                 .reduce((sum, a) => sum + (a.estimatedHours || 0), 0)
