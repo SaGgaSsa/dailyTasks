@@ -229,7 +229,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             if (isEditMode && initialData?.id) {
                 const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
                 if (!hasChanges) {
-                    return false
+                    return true
                 }
 
                 const result = await updateIncidence(initialData.id, {
