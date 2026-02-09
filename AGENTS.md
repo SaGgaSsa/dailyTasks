@@ -310,32 +310,47 @@ daily-tasks/
 
 ## Git Commits
 
-**IMPORTANTE:** Después de cada modificación solicitada, SIEMPRE hacer commit automáticamente.
+Use Conventional Commits:
+- `feat:` new features
+- `fix:` bug fixes  
+- `refactor:` code cleanup
+- `style:` formatting/UI
+- `docs:` documentation
+- `chore:` config/dependencies
 
-### Proceso obligatorio
+### Agrupación de cambios
 
-1. Verificar `npm run lint` - fixear errores si hay
-2. Verificar `npm run build` - debe pasar sin errores
-3. Hacer `git add` de los archivos modificados
-4. Crear commit con Conventional Commits
-5. Verificar con `git status` que el commit fue exitoso
+Los commits se agrupan **por tema/categoría** en lugar de por cada cambio individual:
+- **Hacer commit** cuando cambies de tema/funcionalidad
+- **No hacer commits** por cada cambio menor del mismo tema
+- El agente te preguntará cuando detecte cambio de categoría
 
-### Formato de mensajes (Conventional Commits)
+**Ejemplo de agrupación**:
+- Modificar 3 archivos de `FormSheet` → 1 solo commit
+- Arreglar 2 bugs en backlog → 1 solo commit
+- Cambiar tema de paneles a usuarios → Hacer commit del tema anterior
+
+### Categorías para detectar cambio de tema
+
+| Categoría | Patrones de archivos/directorio |
+|-----------|------------------------------|
+| UI/estilos | `components/ui/*.tsx`, cambios de Tailwind |
+| Formularios | `*form.tsx`, `form-sheet.tsx` |
+| Usuarios | `users/`, `user-*.tsx` |
+| Board/Kanban | `board/`, `backlog`, `kanban` |
+| Datos/Server Actions | `app/actions/*.ts` |
+| Tipos/enums | `types/*.ts` |
+| Documentación | `*.md`, `docs/` |
+
+### Formato de mensajes
 
 | Tipo | Uso | Ejemplo |
 |------|-----|---------|
 | `feat:` | Nueva funcionalidad | `feat: add user profile page` |
 | `fix:` | Corrección de bugs | `fix: resolve login validation error` |
 | `refactor:` | Refactorización | `refactor: extract form logic to custom hook` |
-| `style:` | Cambios visuales/UI | `style: improve button hover states` |
+| `style:` | Cambios visuales | `style: improve button hover states` |
 | `docs:` | Documentación | `docs: update API endpoint descriptions` |
 | `chore:` | Config/dependencias | `chore: upgrade eslint to v9` |
-
-### Ejemplos por tipo de cambio
-
-- Modificar UI/estilos → `style: reduce padding in task cards`
-- Nueva funcionalidad → `feat: add technology filter to backlog`
-- Arreglar bug → `fix: prevent horizontal scroll in backlog table`
-- Refactorizar código → `refactor: unify form sheets with FormSheet component`
 
 **Nunca commitear código roto.** Fixear errores primero.
