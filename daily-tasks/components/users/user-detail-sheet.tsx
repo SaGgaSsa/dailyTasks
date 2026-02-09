@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { UserAvatar } from '@/components/ui/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import {
   Copy,
@@ -198,20 +197,6 @@ export function UserDetailSheet({
             </div>
           ) : details ? (
             <>
-              <div className="flex items-center gap-4 p-4 rounded-lg bg-zinc-900/50">
-                <UserAvatar username={details.username} size="lg" className="h-12 w-12" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 text-sm">@{details.username}</span>
-                    <Badge
-                      variant={details.role === 'ADMIN' ? 'default' : 'secondary'}
-                      className="text-[10px]"
-                    >
-                      {details.role}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
 
               <Separator className="bg-zinc-800" />
 
