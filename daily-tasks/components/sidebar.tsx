@@ -39,21 +39,48 @@ export function Sidebar({ userId }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
-        <div className="space-y-6 px-2">
-          {/* Main Section */}
+        <div className="space-y-1 px-2">
+          {isOpen && (
+            <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              Gestión
+            </div>
+          )}
+          <Link href="/dashboard">
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              {isOpen && <span>Incidencias</span>}
+            </Button>
+          </Link>
+
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
+          >
+            <BookOpen className="h-4 w-4" />
+            {isOpen && <span>Wiki Técnica</span>}
+          </Button>
+        </div>
+      </nav>
+
+      {/* Admin Section */}
+      {isAdmin && (
+        <div className="py-4 border-t border-zinc-800 px-2 flex-shrink-0">
           <div className="space-y-1">
             {isOpen && (
               <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Gestión
+                Administración
               </div>
             )}
-            <Link href="/dashboard">
+            <Link href="/dashboard/users">
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
               >
-                <LayoutDashboard className="h-4 w-4" />
-                {isOpen && <span>Incidencias</span>}
+                <Users className="h-4 w-4" />
+                {isOpen && <span>Colaborador</span>}
               </Button>
             </Link>
 
@@ -61,40 +88,12 @@ export function Sidebar({ userId }: SidebarProps) {
               variant="ghost"
               className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
             >
-              <BookOpen className="h-4 w-4" />
-              {isOpen && <span>Wiki Técnica</span>}
+              <Settings className="h-4 w-4" />
+              {isOpen && <span>Configuración</span>}
             </Button>
           </div>
-
-          {/* Admin Section */}
-          {isAdmin && (
-            <div className="space-y-1">
-              {isOpen && (
-                <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                  Administración
-                </div>
-              )}
-              <Link href="/dashboard/users">
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
-                >
-                  <Users className="h-4 w-4" />
-                  {isOpen && <span>Colaborador</span>}
-                </Button>
-              </Link>
-
-              <Button
-                variant="ghost"
-                className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
-              >
-                <Settings className="h-4 w-4" />
-                {isOpen && <span>Configuración</span>}
-              </Button>
-            </div>
-          )}
         </div>
-      </nav>
+      )}
 
       {/* Footer */}
       <div className="p-2 border-t border-zinc-800 flex-shrink-0">

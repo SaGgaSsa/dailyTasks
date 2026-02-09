@@ -99,13 +99,39 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
 
+    const sortUsers = (userList: User[], assignedUserIds: Set<number>) => {
+        const sortByRoleAndName = (a: User, b: User) => {
+            if (a.role === 'DEV' && b.role !== 'DEV') return -1
+            if (a.role !== 'DEV' && b.role === 'DEV') return 1
+            return a.username.localeCompare(b.username)
+        }
+
+        if (assignedUserIds.size === 0) {
+            return [...userList].sort(sortByRoleAndName)
+        }
+
+        const assigned = userList.filter(u => assignedUserIds.has(u.id)).sort(sortByRoleAndName)
+        const unassigned = userList.filter(u => !assignedUserIds.has(u.id)).sort(sortByRoleAndName)
+        return [...assigned, ...unassigned]
+    }
+
     useEffect(() => {
         const loadUsers = async () => {
             const userList = await getUsers()
-            setUsers(userList)
+            const assignedUserIds = new Set<number>()
+            
+            if (initialData?.id) {
+                const fullData = await getIncidence(initialData.id)
+                if (fullData) {
+                    fullData.assignments.filter(a => a.isAssigned).forEach(a => assignedUserIds.add(a.userId))
+                }
+            }
+            
+            const sortedUsers = sortUsers(userList, assignedUserIds)
+            setUsers(sortedUsers)
         }
         loadUsers()
-    }, [])
+    }, [initialData?.id])
 
     useEffect(() => {
         const fetchFullData = async () => {
