@@ -13,12 +13,12 @@ export default async function DashboardLayout({
 
   return (
     <SessionProvider>
-      <div className="flex min-h-screen bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
         {/* Sidebar */}
         <Sidebar userId={userId} />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Navbar */}
           <Navbar />
 

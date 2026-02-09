@@ -40,8 +40,8 @@ interface BacklogProps {
     setSearchQuery: (query: string) => void
     techFilter: string[]
     setTechFilter: (filter: string[]) => void
-    statusFilter: string
-    setStatusFilter: (filter: string) => void
+    statusFilter: string[]
+    setStatusFilter: (filter: string[]) => void
     onlyMyAssignments: boolean
     setOnlyMyAssignments: (value: boolean) => void
 }
@@ -78,7 +78,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'title',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descripcion | Horas | Pendientes</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
             const title = row.original.title
             
@@ -214,19 +214,54 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         },
     },
     {
-        accessorKey: 'assignees',
+        accessorKey: 'technology',
         header: () => null,
         cell: ({ row }) => (
-            <div className="flex -space-x-1.5 overflow-hidden justify-center">
-                {row.original.assignments.map((assignment) => (
-                    <UserAvatar
-                        key={assignment.userId}
-                        username={assignment.user.username}
-                        className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
-                    />
-                ))}
-            </div>
+            <span className="text-[10px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-0.5 rounded whitespace-nowrap">
+                {row.original.technology}
+            </span>
         ),
+        size: 70,
+    },
+    {
+        accessorKey: 'assignees',
+        header: () => null,
+        cell: ({ row }) => {
+            const assignments = row.original.assignments.filter(a => a.isAssigned)
+            const count = assignments.length
+
+            if (count === 0) return <div className="w-8" />
+
+            if (count === 1) {
+                const assignment = assignments[0]
+                return (
+                    <div className="flex items-center justify-center w-8">
+                        <UserAvatar
+                            username={assignment.user.username}
+                            className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
+                        />
+                    </div>
+                )
+            }
+
+            const usernames = assignments.map(a => a.user.username).join(', ')
+
+            return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center justify-center w-8 text-zinc-500">
+                                <User className="h-5 w-5" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{usernames}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )
+        },
+        size: 40,
     },
 ]
 
@@ -264,7 +299,7 @@ export function Backlog({
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
-            const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter
+            const matchesStatus = statusFilter.length === 0 || statusFilter.includes(task.status)
 
             const matchesMyAssignments = !onlyMyAssignments ||
                 (session?.user?.id && task.assignments.some(a => a.userId === Number(session.user.id)))
@@ -301,6 +336,7 @@ export function Backlog({
                                         header.column.id === 'priority' ? 'w-20' :
                                         header.column.id === 'status' ? 'w-24' :
                                         header.column.id === 'actions' ? 'w-20' :
+                                        header.column.id === 'technology' ? 'w-16' :
                                         header.column.id === 'assignees' ? 'w-16' : ''
                                     return (
                                         <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass}`}>
@@ -349,9 +385,11 @@ export function Backlog({
                                             cell.column.id === 'priority' ? 'w-20' :
                                             cell.column.id === 'status' ? 'w-24' :
                                             cell.column.id === 'actions' ? 'w-20' :
+                                            cell.column.id === 'technology' ? 'w-16' :
                                             cell.column.id === 'assignees' ? 'w-16' : ''
+                                        const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
                                         return (
-                                            <TableCell key={cell.id} className={`py-3 ${widthClass}`}>
+                                            <TableCell key={cell.id} className={`py-3 ${widthClass} ${extraClass}`.trim()}>
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
                                         )

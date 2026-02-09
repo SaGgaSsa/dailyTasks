@@ -99,7 +99,10 @@ const columns: ColumnDef<User>[] = [
               onClick={() => {
                 const newPassword = prompt('Ingrese la nueva contraseña:')
                 if (newPassword) {
-                  updateUserPassword(new FormData(document.createElement('form')))
+                  const formData = new FormData()
+                  formData.append('userId', String(user.id))
+                  formData.append('newPassword', newPassword)
+                  updateUserPassword(formData)
                 }
               }}
             >

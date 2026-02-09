@@ -18,43 +18,8 @@ model User {
   updatedAt     DateTime      @updatedAt
 
   assignments        Assignment[]
-  ownedWorkspaces    Workspace[]     @relation("OwnedWorkspaces")
-  workspaces         WorkspaceMember[]
 
   @@map("users")
-}
-
-model Workspace {
-  id        Int       @id @default(autoincrement())
-  name      String
-  ownerId   Int
-  owner     User      @relation("OwnedWorkspaces", fields: [ownerId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  members   WorkspaceMember[]
-
-  @@map("workspaces")
-}
-
-model WorkspaceMember {
-  id          Int             @id @default(autoincrement())
-  userId      Int
-  workspaceId Int
-  role        WorkspaceRole   @default(MEMBER)
-  joinedAt    DateTime        @default(now())
-
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, workspaceId])
-  @@map("workspace_members")
-}
-
-enum WorkspaceRole {
-  OWNER
-  ADMIN
-  MEMBER
 }
 
 enum UserRole {

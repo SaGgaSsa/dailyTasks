@@ -81,7 +81,7 @@ export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
                             </TableRow>
                         ) : (
                             data.map((user) => (
-                                <TableRow key={user.id} className="cursor-pointer" onClick={() => onViewDetail(user)}>
+                                <TableRow key={user.id} className="cursor-pointer" onClick={() => onEdit(user)}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell>{user.username}</TableCell>
