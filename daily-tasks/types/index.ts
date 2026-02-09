@@ -1,10 +1,10 @@
 import { Incidence, User, SubTask, Assignment } from '@prisma/client'
 import { TaskStatus, TaskType, TechStack, Priority } from './enums'
 
-// Tipo para crear asignaciones con horas restantes
+// Tipo para crear asignaciones con horas asignadas
 export interface AssigneeWithHours {
   userId: number
-  remainingHours: number | null
+  estimatedHours: number | null
 }
 
 export type AssignmentWithDetails = Assignment & {

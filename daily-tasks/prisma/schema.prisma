@@ -83,11 +83,11 @@ model Assignment {
   incidence      Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
   userId         Int
   user           User      @relation(fields: [userId], references: [id])
-
-  remainingHours Int?
+  
+  estimatedHours Int?
   isAssigned     Boolean   @default(true)
   tasks          SubTask[]
-
+  
   @@unique([incidenceId, userId])
   @@map("assignments")
 }
