@@ -29,6 +29,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -81,45 +82,19 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
             const title = row.original.title
-            
-            // Calcular horas restantes
-            const estimatedHours = row.original.estimatedTime || 0
-            const remainingHours = row.original.assignments.reduce((acc, assignment) => {
-                const assignmentRemaining = assignment.remainingHours || 0
-                const allTasksCompleted = assignment.tasks.length > 0 && assignment.tasks.every((t: {isCompleted: boolean}) => t.isCompleted)
-                return acc + (allTasksCompleted ? 0 : assignmentRemaining)
-            }, 0)
-            const hoursLeft = Math.max(0, estimatedHours - remainingHours)
-            
-            // Calcular pendientes
-            const allTasks = row.original.assignments.flatMap(a => a.tasks)
-            const completedTasks = allTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
-            const totalTasks = allTasks.length
-            const isAllCompleted = totalTasks > 0 && completedTasks === totalTasks
+            const totalHours = row.original.estimatedTime || 0
+            const completedHours = calculateCompletedHours(row.original)
+            const isComplete = isFullyCompleted(completedHours, row.original.estimatedTime)
             
             return (
                 <div className="flex items-center gap-4 min-w-0">
                     <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
                         {title}
                     </span>
-                    <span className="text-xs text-zinc-400 whitespace-nowrap shrink-0">
-                        {hoursLeft}h
+                    <span className={`text-xs whitespace-nowrap shrink-0 ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+                        {formatHoursDisplay(completedHours, totalHours)}h
+                        {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
                     </span>
-                    {totalTasks > 0 && (
-                        <span className={`text-xs flex items-center gap-1 whitespace-nowrap shrink-0 ${isAllCompleted ? 'text-green-400' : 'text-zinc-400'}`}>
-                            {isAllCompleted ? (
-                                <>
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    <span>completado</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>{completedTasks}/{totalTasks}</span>
-                                    <span>pendientes</span>
-                                </>
-                            )}
-                        </span>
-                    )}
                 </div>
             )
         },
