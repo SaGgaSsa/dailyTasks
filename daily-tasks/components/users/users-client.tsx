@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, Eye } from 'lucide-react'
-import { UserSheet } from './user-sheet'
+import { UserForm } from './user-form'
 import { UsersTable } from './users-table'
 import { UserDetailSheet } from './user-detail-sheet'
 import { Button } from '@/components/ui/button'
@@ -48,7 +48,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                 onViewDetail={handleViewDetail}
             />
 
-            <UserSheet
+            <UserForm
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 initialData={selectedUser}

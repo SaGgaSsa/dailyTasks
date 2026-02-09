@@ -2,27 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Plus, Trash2, Loader2, X, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
-} from '@/components/ui/sheet'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
+import { FormSheet, FormInput, FormSelect, FormRow, FormRow3 } from '@/components/ui/form-sheet'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { IncidenceWithDetails } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
 import { createIncidence, updateIncidence, getIncidence } from '@/app/actions/incidence-actions'
@@ -136,12 +122,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     useEffect(() => {
         const fetchFullData = async () => {
             if (open && initialData?.id) {
-                // Fetch full data including inactive assignments
                 const fullData = await getIncidence(initialData.id)
                 if (fullData) {
                     setFullIncidenceData(fullData)
-                    // Cargar TODOS los assignments (activos e inactivos) para preservar datos
-                    // pero solo los activos van en el formulario para edición
                     const allAssignments = fullData.assignments
                     const activeAssignments = allAssignments.filter(a => a.isAssigned)
                     const data = {
@@ -212,8 +195,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 assignees: formData.assignees.filter(a => a.userId !== userId)
             })
         } else {
-            // Si el colaborador ya tenía un assignment (activo o inactivo), recuperar sus horas
-            // Usar fullIncidenceData que tiene TODOS los assignments incluyendo inactivos
             const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
             const previousHours = previousAssignment?.remainingHours?.toString() || ''
             updateFormData({
@@ -240,7 +221,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         try {
             const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
             
-            // Convertir assignees al formato esperado por el servidor
             const assigneeData = formData.assignees.map(a => ({
                 userId: a.userId,
                 remainingHours: a.remainingHours === '' ? null : parseInt(a.remainingHours)
@@ -249,7 +229,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             if (isEditMode && initialData?.id) {
                 const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
                 if (!hasChanges) {
-                    onOpenChange(false)
                     return false
                 }
 
@@ -265,7 +244,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
                     if (result.data) {
-                        // Actualizar fullIncidenceData con los datos actualizados del servidor
                         setFullIncidenceData(result.data)
                         if (onTaskUpdate) {
                             onTaskUpdate(result.data)
@@ -292,7 +270,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 if (result.success) {
                     toast.success(`${formData.type} ${formData.externalId} creada`)
                     router.refresh()
-                    onOpenChange(false)
                     return true
                 } else {
                     toast.error(result.error || 'Error al crear')
@@ -308,343 +285,248 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         }
     }
 
-    const handleClose = async () => {
+    const handleClose = () => {
         onOpenChange(false)
     }
 
-    const handleSaveAndClose = async () => {
-        const success = await handleSave()
-        if (success) {
-            onOpenChange(false)
-        }
-    }
+    const title = isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'
 
     return (
-        <Sheet open={open} onOpenChange={(open) => {
-            if (!open) {
-                handleClose()
-            }
-        }}>
-            <SheetContent
-                onInteractOutside={(e) => {
-                    e.preventDefault()
-                    if (isEditMode) {
-                        handleSaveAndClose()
-                    } else {
-                        handleClose()
-                    }
-                }}
-                className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
-            >
-                <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
-                    <div className="flex items-center justify-between">
-                        <SheetTitle className="text-zinc-100 pt-1">
-                            {isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'}
-                        </SheetTitle>
-                        <div className="flex items-center gap-2 pt-1">
-                            {isSaving && (
-                                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
-                            )}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleClose}
-                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                                title="Descartar cambios"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleSaveAndClose}
-                                disabled={isSaving}
-                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                                title="Guardar"
-                            >
-                                {isSaving ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Check className="h-4 w-4" />
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                </SheetHeader>
+        <FormSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={title}
+            isEditMode={isEditMode}
+            isSaving={isSaving}
+            onSave={handleSave}
+            onClose={handleClose}
+        >
+            <FormRow>
+                <FormSelect
+                    id="type"
+                    label="Tipo"
+                    value={formData.type}
+                    onValueChange={(value) => updateFormData({ type: value as TaskType })}
+                    options={typeOptions}
+                    disabled={isEditMode}
+                />
 
-                <div className="flex flex-col space-y-4 py-6 pl-8">
-                    <div className="grid grid-cols-2 gap-4">
+                <FormInput
+                    id="externalId"
+                    label="Número"
+                    type="number"
+                    value={formData.externalId}
+                    onChange={(e) => updateFormData({ externalId: e.target.value })}
+                    disabled={isEditMode}
+                    placeholder="#"
+                />
+            </FormRow>
+
+            <FormInput
+                id="title"
+                label="Descripción"
+                value={formData.title}
+                onChange={(e) => updateFormData({ title: e.target.value })}
+                placeholder="Descripción breve de la incidencia"
+            />
+
+            <FormRow3>
+                <FormSelect
+                    id="priority"
+                    label="Prioridad"
+                    value={formData.priority}
+                    onValueChange={(value) => updateFormData({ priority: value as Priority })}
+                    options={priorityOptions}
+                />
+
+                <FormSelect
+                    id="technology"
+                    label="Tecnología"
+                    value={formData.technology}
+                    onValueChange={(value) => updateFormData({ technology: value as TechStack })}
+                    options={techOptions}
+                />
+
+                <div className="space-y-2">
+                    <Label htmlFor="estimatedTime" className="text-zinc-300">Horas</Label>
+                    <Input
+                        id="estimatedTime"
+                        type="number"
+                        min="0"
+                        max="9999"
+                        step="1"
+                        value={formData.estimatedTime}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 9999)) {
+                                updateFormData({ estimatedTime: value });
+                            }
+                        }}
+                        className="bg-zinc-900 border-zinc-800 text-zinc-100 w-24"
+                        placeholder="0"
+                    />
+                </div>
+            </FormRow3>
+
+            {isBacklog ? (
+                <div className="space-y-2">
+                    <Label className="text-zinc-300">Asignar colaborador</Label>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
                         <div className="space-y-2">
-                            <Label htmlFor="type" className="text-zinc-300">Tipo</Label>
-                            <Select
-                                value={formData.type}
-                                onValueChange={(value) => updateFormData({ type: value as TaskType })}
-                                disabled={isEditMode}
-                            >
-                                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
-                                    {typeOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="externalId" className="text-zinc-300">Número</Label>
-                            <Input
-                                id="externalId"
-                                type="number"
-                                value={formData.externalId}
-                                onChange={(e) => updateFormData({ externalId: e.target.value })}
-                                disabled={isEditMode}
-                                className="bg-zinc-900 border-zinc-800 text-zinc-100"
-                                placeholder="#"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="title" className="text-zinc-300">Descripción</Label>
-                        <Input
-                            id="title"
-                            value={formData.title}
-                            onChange={(e) => updateFormData({ title: e.target.value })}
-                            className="bg-zinc-900 border-zinc-800 text-zinc-100"
-                            placeholder="Descripción breve de la incidencia"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="priority" className="text-zinc-300">Prioridad</Label>
-                            <Select
-                                value={formData.priority}
-                                onValueChange={(value) => updateFormData({ priority: value as Priority })}
-                            >
-                                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
-                                    {priorityOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="technology" className="text-zinc-300">Tecnología</Label>
-                            <Select
-                                value={formData.technology}
-                                onValueChange={(value) => updateFormData({ technology: value as TechStack })}
-                            >
-                                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
-                                    {techOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="estimatedTime" className="text-zinc-300">Horas</Label>
-                            <Input
-                                id="estimatedTime"
-                                type="number"
-                                min="0"
-                                max="9999"
-                                step="1"
-                                value={formData.estimatedTime}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 9999)) {
-                                        updateFormData({ estimatedTime: value });
-                                    }
-                                }}
-                                className="bg-zinc-900 border-zinc-800 text-zinc-100 w-24"
-                                placeholder="0"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Asignación de colaboradores con horas restantes - solo en BACKLOG */}
-                    {isBacklog ? (
-                        <div className="space-y-2">
-                            <Label className="text-zinc-300">Asignar colaborador</Label>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                                <div className="space-y-2">
-                                    {users.map(user => {
-                                        const assigneeData = formData.assignees.find(a => a.userId === user.id)
-                                        const isSelected = !!assigneeData
+                            {users.map(user => {
+                                const assigneeData = formData.assignees.find(a => a.userId === user.id)
+                                const isSelected = !!assigneeData
+                                
+                                const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
+                                const userTasks = userAssignment?.tasks || []
+                                const hasTasks = userTasks.length > 0
+                                const completedTasks = userTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
+                                const totalTasks = userTasks.length
+                                const isAllCompleted = hasTasks && completedTasks === totalTasks
+                                
+                                return (
+                                    <div
+                                        key={user.id}
+                                        className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded"
+                                    >
+                                        <Checkbox
+                                            checked={isSelected}
+                                            onCheckedChange={() => handleToggleAssignee(user.id)}
+                                            className="border-zinc-600"
+                                        />
+                                        <span className="text-zinc-300 text-sm">{user.name}</span>
                                         
-                                        // Buscar si el colaborador ya tiene assignments con tareas
-                                        // Usar fullIncidenceData que tiene TODOS los assignments incluyendo inactivos
-                                        const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
-                                        const userTasks = userAssignment?.tasks || []
-                                        const hasTasks = userTasks.length > 0
-                                        const completedTasks = userTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
-                                        const totalTasks = userTasks.length
-                                        const isAllCompleted = hasTasks && completedTasks === totalTasks
-                                        
-                                        return (
-                                            <div
-                                                key={user.id}
-                                                className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded"
-                                            >
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onCheckedChange={() => handleToggleAssignee(user.id)}
-                                                    className="border-zinc-600"
-                                                />
-                                                <span className="text-zinc-300 text-sm">{user.name}</span>
-                                                
-                                                {/* Mostrar pendientes si el colaborador ya estaba asignado y tiene tareas */}
-                                                {hasTasks && (
-                                                    <div className="flex items-center gap-1 text-[11px]">
-                                                        {isAllCompleted ? (
-                                                            <>
-                                                                <CheckCircle2 className="h-3 w-3 text-green-400" />
-                                                                <span className="text-green-400">completado</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-zinc-400">
-                                                                    {completedTasks}/{totalTasks}
-                                                                </span>
-                                                                <span className="text-zinc-500">pendientes</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                
-                                                <div className="flex-1"></div>
-                                                
-                                                {/* Campo de horas restantes - solo visible si está seleccionado */}
-                                                {isSelected && (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-zinc-500 text-xs">Horas:</span>
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            max="9999"
-                                                            step="1"
-                                                            value={assigneeData.remainingHours}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
-                                                                    handleUpdateAssigneeHours(user.id, value);
-                                                                }
-                                                            }}
-                                                            className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm"
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
+                                        {hasTasks && (
+                                            <div className="flex items-center gap-1 text-[11px]">
+                                                {isAllCompleted ? (
+                                                    <>
+                                                        <CheckCircle2 className="h-3 w-3 text-green-400" />
+                                                        <span className="text-green-400">completado</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-zinc-400">
+                                                            {completedTasks}/{totalTasks}
+                                                        </span>
+                                                        <span className="text-zinc-500">pendientes</span>
+                                                    </>
                                                 )}
                                             </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                            <p className="text-xs text-zinc-500">
-                                Al asignar colaboradores, puedes especificar las horas restantes para cada uno.
-                            </p>
-                        </div>
-                    ) : initialData && initialData.assignments.length > 0 ? (
-                        <div className="space-y-2">
-                            <Label className="text-zinc-300">Colaborador asignado</Label>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                                {initialData.assignments.map(assignment => (
-                                    <div key={assignment.userId} className="flex items-center justify-between p-2">
-                                        <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
-                                        <span className="text-zinc-500 text-xs">
-                                            {assignment.remainingHours !== null ? `${assignment.remainingHours}h restantes` : 'Sin horas asignadas'}
-                                        </span>
+                                        )}
+                                        
+                                        <div className="flex-1"></div>
+                                        
+                                        {isSelected && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-zinc-500 text-xs">Horas:</span>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    max="9999"
+                                                    step="1"
+                                                    value={assigneeData.remainingHours}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
+                                                            handleUpdateAssigneeHours(user.id, value);
+                                                        }
+                                                    }}
+                                                    className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+                                )
+                            })}
                         </div>
-                    ) : null}
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                        Al asignar colaboradores, puedes especificar las horas restantes para cada uno.
+                    </p>
+                </div>
+            ) : initialData && initialData.assignments.length > 0 ? (
+                <div className="space-y-2">
+                    <Label className="text-zinc-300">Colaborador asignado</Label>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
+                        {initialData.assignments.map(assignment => (
+                            <div key={assignment.userId} className="flex items-center justify-between p-2">
+                                <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
+                                <span className="text-zinc-500 text-xs">
+                                    {assignment.remainingHours !== null ? `${assignment.remainingHours}h restantes` : 'Sin horas asignadas'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
 
-                    <div className="space-y-2">
-                        <Label className="text-zinc-300">Pendientes</Label>
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3 space-y-2">
-                            <div className="flex gap-2">
-                                <Input
-                                    value={newSubTask}
-                                    onChange={(e) => setNewSubTask(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubTask()}
-                                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm"
-                                    placeholder="Nuevo ítem..."
+            <div className="space-y-2">
+                <Label className="text-zinc-300">Pendientes</Label>
+                <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3 space-y-2">
+                    <div className="flex gap-2">
+                        <Input
+                            value={newSubTask}
+                            onChange={(e) => setNewSubTask(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddSubTask()}
+                            className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm"
+                            placeholder="Nuevo ítem..."
+                        />
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={handleAddSubTask}
+                            className="h-9 w-9 text-zinc-400 hover:text-zinc-100"
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    
+                    <div className="space-y-1">
+                        {formData.subTasks.map((subTask, index) => (
+                            <div
+                                key={index}
+                                className="flex items-center gap-2 p-2 hover:bg-zinc-800 rounded group"
+                            >
+                                <Checkbox
+                                    checked={subTask.isCompleted}
+                                    onCheckedChange={() => handleToggleSubTask(index)}
+                                    className="border-zinc-600"
                                 />
+                                <span className={`text-sm flex-1 ${subTask.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>
+                                    {subTask.title}
+                                </span>
                                 <Button
                                     type="button"
                                     size="icon"
                                     variant="ghost"
-                                    onClick={handleAddSubTask}
-                                    className="h-9 w-9 text-zinc-400 hover:text-zinc-100"
+                                    onClick={() => handleRemoveSubTask(index)}
+                                    className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
-                                    <Plus className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3" />
                                 </Button>
                             </div>
-                            
-                            <div className="space-y-1">
-                                {formData.subTasks.map((subTask, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center gap-2 p-2 hover:bg-zinc-800 rounded group"
-                                    >
-                                        <Checkbox
-                                            checked={subTask.isCompleted}
-                                            onCheckedChange={() => handleToggleSubTask(index)}
-                                            className="border-zinc-600"
-                                        />
-                                        <span className={`text-sm flex-1 ${subTask.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>
-                                            {subTask.title}
-                                        </span>
-                                        <Button
-                                            type="button"
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={() => handleRemoveSubTask(index)}
-                                            className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                {formData.subTasks.length === 0 && (
-                                    <p className="text-zinc-500 text-sm text-center py-2">
-                                        No hay ítems en el checklist
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="description" className="text-zinc-300">Comentario</Label>
-                        <Textarea
-                            id="description"
-                            value={formData.description}
-                            onChange={(e) => updateFormData({ description: e.target.value })}
-                            className="bg-zinc-900 border-zinc-800 text-zinc-100 min-h-[120px] resize-none"
-                            placeholder="Añade comentarios o notas técnicas..."
-                        />
+                        ))}
+                        {formData.subTasks.length === 0 && (
+                            <p className="text-zinc-500 text-sm text-center py-2">
+                                No hay ítems en el checklist
+                            </p>
+                        )}
                     </div>
                 </div>
-            </SheetContent>
-        </Sheet>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="description" className="text-zinc-300">Comentario</Label>
+                <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => updateFormData({ description: e.target.value })}
+                    className="bg-zinc-900 border-zinc-800 text-zinc-100 min-h-[120px] resize-none"
+                    placeholder="Añade comentarios o notas técnicas..."
+                />
+            </div>
+        </FormSheet>
     )
 }
