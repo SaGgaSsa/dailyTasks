@@ -93,6 +93,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+    const [removedAssigneesHours, setRemovedAssigneesHours] = useState<Record<number, string>>({})
 
     const sortUsers = (userList: User[], assignedUserIds: Set<number>) => {
         const sortByRoleAndName = (a: User, b: User) => {
@@ -222,14 +223,17 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const handleToggleAssignee = (userId: number) => {
         const exists = formData.assignees.find(a => a.userId === userId)
         if (exists) {
+            const hoursToSave = exists.estimatedHours
+            setRemovedAssigneesHours(prev => ({ ...prev, [userId]: hoursToSave }))
             updateFormData({
                 assignees: formData.assignees.filter(a => a.userId !== userId)
             })
         } else {
+            const restoredHours = removedAssigneesHours[userId] ?? ''
             const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
-            const previousHours = previousAssignment?.estimatedHours?.toString() || ''
+            const previousHours = previousAssignment?.estimatedHours?.toString() ?? ''
             updateFormData({
-                assignees: [...formData.assignees, { userId, estimatedHours: previousHours }]
+                assignees: [...formData.assignees, { userId, estimatedHours: restoredHours || previousHours }]
             })
         }
     }
@@ -503,26 +507,25 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         
                                         <div className="flex-1"></div>
                                         
-                                        {isSelected && (
-                                            <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2">
                                                 <span className="text-zinc-500 text-xs">Horas asignadas:</span>
                                                 <Input
                                                     type="number"
                                                     min="0"
                                                     max="9999"
                                                     step="1"
-                                                    value={assigneeData.estimatedHours}
+                                                    value={assigneeData?.estimatedHours || ''}
+                                                    disabled={!isSelected}
                                                     onChange={(e) => {
                                                         const value = e.target.value;
                                                         if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
                                                             handleUpdateAssigneeHours(user.id, value);
                                                         }
                                                     }}
-                                                    className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm"
+                                                    className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                     placeholder="0"
                                                 />
                                             </div>
-                                        )}
                                     </div>
                                 )
                             })}

@@ -1,176 +1,57 @@
-# AGENTS.md - Daily Tasks Development Guide
+# Daily Tasks – AI Development Rules
 
-## Project Overview
+## Context
 
-Next.js 16 task/incidence management app (Jira-like). Stack: TypeScript, NextAuth.js, Prisma ORM, Tailwind CSS v4, Radix UI, PostgreSQL, dnd-kit for drag-and-drop.
+Next.js 16 + TypeScript (strict) + Prisma + PostgreSQL  
+Tailwind v4 + Radix UI + dnd-kit  
+Authentication: NextAuth v5  
+All commands run from /daily-tasks
 
-## Commands (run from `daily-tasks/`)
+---
 
-```bash
-# Development
-npm run dev                    # Dev server (port 3000)
-npm run build                  # Prisma generate + Next.js build
-npm run start                  # Production server
-npm run seed                   # Seed database
+## Core Rules (MANDATORY)
 
-# Linting
-npm run lint                   # Run ESLint on codebase
-npx eslint <file>              # Lint specific file
-npx eslint --fix <file>        # Auto-fix linting issues
+1. Never use `any`.
+2. All mutations must use `'use server'`.
+3. Never use Prisma on client-side.
+4. UI text must be in Spanish.
+5. All forms MUST use `FormSheet` from `@/components/ui/form-sheet`.
+6. Return pattern for server actions:
 
-# Database
-npx prisma generate            # Generate Prisma client (before build)
-npx prisma db push             # Push schema changes
-npx prisma studio              # Open Prisma GUI (port 5555)
-npx prisma migrate dev         # Run migrations
+   `{ success: boolean, error?: string, data?: T }`
 
-# Docker
-docker-compose up -d           # Start PostgreSQL
-docker-compose logs postgres   # View DB logs
-docker-compose down           # Remove containers
-```
+7. Do NOT reprint full files unless explicitly requested.
+8. Show minimal diffs only.
+9. Do not modify unrelated files.
+10. Do not refactor unless explicitly requested.
 
-**Testing:** No test framework configured. Add Jest/Vitest to package.json when creating tests.
+---
 
-## TypeScript Rules
+## Code Discipline
 
-- Strict mode enabled. Avoid `any` - use explicit types or `unknown` with type guards
-- Interface for object shapes, type for unions/intersections
-- Use `Readonly<T>` for immutable data
-- Prisma types imported from `@prisma/client` (e.g., `User`, `Incidence`)
+- Respect existing architecture.
+- Follow current naming conventions.
+- Keep changes minimal and scoped.
+- Prefer extending existing components over creating new ones.
+- No speculative improvements.
 
-## Import Order
+---
 
-External packages → `@/*` alias → relative imports
+## Server Action Pattern
 
-```typescript
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Check, Plus, Trash2 } from 'lucide-react'
-import { db } from '@/lib/db'
-import { Button } from '@/components/ui/button'
-import { IncidenceForm } from './incidence-form'
-```
+Always:
 
-## Naming Conventions
+- try/catch
+- handle Prisma P2002
+- call revalidatePath when needed
+- return structured result object
 
-| Pattern | Convention | Example |
-|---------|------------|---------|
-| Components/Files | PascalCase | `UserTable.tsx`, `TaskCard` |
-| Directories | kebab-case | `components/ui/`, `app/actions/` |
-| Functions/variables | camelCase | `getUsers()`, `isLoading` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| Database columns | snake_case | `created_at`, `user_id` |
-| React props | camelCase | `onOpenChange`, `initialData` |
+---
 
-## Server Actions Pattern
+## Output Format
 
-All server-side mutations use `'use server'` directive:
+When modifying code:
 
-```typescript
-'use server'
-
-import { db } from '@/lib/db'
-import { revalidatePath } from 'next/cache'
-
-export async function upsertUser(data: UpsertUserData) {
-    try {
-        if (data.id) {
-            await db.user.update({ where: { id: data.id }, data: { ...data } })
-        } else {
-            await db.user.create({ data })
-        }
-        revalidatePath('/dashboard')
-        return { success: true }
-    } catch (error) {
-        console.error('Error:', error)
-        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'El registro ya existe' }
-        }
-        return { success: false, error: 'Error al guardar' }
-    }
-}
-```
-
-**Return pattern:** `{ success: boolean, error?: string, data?: T }`
-
-## Client Components
-
-```typescript
-'use client'
-
-import { useState } from 'react'
-import { toast } from 'sonner'
-
-export function MyForm({ onSubmit }: MyFormProps) {
-    const [isPending, setIsPending] = useState(false)
-
-    async function handleSubmit() {
-        setIsPending(true)
-        const result = await onSubmit(formData)
-        if (result.success) {
-            toast.success('Guardado correctamente')
-        } else {
-            toast.error(result.error || 'Error')
-        }
-        setIsPending(false)
-    }
-
-    return <form onSubmit={handleSubmit}>...</form>
-}
-```
-
-## UI Components (shadcn/ui + Radix)
-
-Use `class-variance-authority` for variants:
-
-```typescript
-const buttonVariants = cva("inline-flex items-center justify-center...", {
-    variants: {
-        variant: { default: "bg-primary", destructive: "bg-destructive" },
-        size: { default: "h-9 px-4", sm: "h-8" }
-    },
-    defaultVariants: { variant: "default", size: "default" }
-})
-```
-
-Common patterns:
-- Sheet/Dialog: `open`, `onOpenChange` props
-- Use `cn()` for conditional classes: `cn("base-class", condition && "conditional")`
-
-## Database (Prisma)
-
-- Models: User, Incidence, Assignment, SubTask
-- snake_case columns via `@map("table_name")`
-- Singleton client in `lib/db.ts` - import as `import { db } from '@/lib/db'`
-- Never use Prisma on client-side (only in Server Actions/API routes)
-
-## Authentication (NextAuth.js v5)
-
-- Config in `auth.config.ts`, JWT session strategy
-- Extended session: `{ id, email, username, role, avatarUrl }`
-- bcryptjs for password hashing
-
-## Spanish Language
-
-- UI text in Spanish: "Guardar", "Eliminar", "Usuario creado correctamente"
-- Error messages in Spanish for user-facing feedback
-- Code comments can be Spanish or English (be consistent per file)
-
-## Git Commits
-
-Use Conventional Commits:
-- `feat:` new features
-- `fix:` bug fixes
-- `refactor:` code cleanup
-- `style:` formatting/UI
-- `docs:` documentation
-- `chore:` config/dependencies
-
-**Never commit broken code.** Fix errors first, then run `npm run lint` and `npm run build`.
-
-## Important Notes
-
-- Docker must be running for database access
-- Always run `npx prisma generate` before building after schema changes
-- Environment variables: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+1. Explain briefly what will change.
+2. Show only the necessary diff.
+3. Do not include unchanged code.

@@ -4,7 +4,7 @@ Guidelines for AI agents working on this Next.js 16 task management application.
 
 ## Project Overview
 
-Next.js 16 app with PostgreSQL for task/incidence management (Jira-like). Stack: TypeScript, NextAuth.js, Prisma ORM, Tailwind CSS v4, Radix UI, dnd-kit for drag-and-drop.
+Next.js 16 app with PostgreSQL for task/incidence management (Jira-like). Stack: TypeScript, NextAuth.js, Prisma ORM, Tailwind CSS v5, Radix UI, dnd-kit for drag-and-drop.
 
 **All commands run from `daily-tasks/` directory.**
 
