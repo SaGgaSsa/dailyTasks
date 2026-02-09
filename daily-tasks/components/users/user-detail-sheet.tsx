@@ -154,7 +154,10 @@ export function UserDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto">
+      <SheetContent
+        showCloseButton={false}
+        className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Detalles del usuario</SheetTitle>
           <SheetDescription>Información detallada del colaborador</SheetDescription>
@@ -162,31 +165,15 @@ export function UserDetailSheet({
         
         <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 pt-1">
-              {loading ? (
-                <div className="h-12 w-12 rounded-full bg-zinc-800 animate-pulse" />
-              ) : details ? (
-                <>
-                  <UserAvatar username={details.username} size="lg" className="h-12 w-12" />
-                  <div>
-                    <SheetTitle className="text-zinc-100 text-base">
-                      {details.name || 'Sin nombre'}
-                    </SheetTitle>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-zinc-400 text-sm">@{details.username}</span>
-                      <Badge
-                        variant={details.role === 'ADMIN' ? 'default' : 'secondary'}
-                        className="text-[10px]"
-                      >
-                        {details.role}
-                      </Badge>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <SheetTitle className="text-zinc-100">Usuario no encontrado</SheetTitle>
-              )}
-            </div>
+            {loading ? (
+              <div className="h-6 w-48 rounded bg-zinc-800 animate-pulse" />
+            ) : details ? (
+              <SheetTitle className="text-zinc-100 pt-1">
+                {details.name || 'Sin nombre'}
+              </SheetTitle>
+            ) : (
+              <SheetTitle className="text-zinc-100">Usuario no encontrado</SheetTitle>
+            )}
             <div className="flex items-center gap-2 pt-1">
               {loading && (
                 <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
@@ -211,22 +198,17 @@ export function UserDetailSheet({
             </div>
           ) : details ? (
             <>
-              <div className="grid grid-cols-1 gap-4 text-sm">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50">
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-zinc-900/50">
+                <UserAvatar username={details.username} size="lg" className="h-12 w-12" />
+                <div>
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-zinc-500" />
-                    <span className="text-zinc-500">Email</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[200px] text-zinc-300">{details.email}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => copyToClipboard(details.email, 'Email')}
+                    <span className="text-zinc-400 text-sm">@{details.username}</span>
+                    <Badge
+                      variant={details.role === 'ADMIN' ? 'default' : 'secondary'}
+                      className="text-[10px]"
                     >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                      {details.role}
+                    </Badge>
                   </div>
                 </div>
               </div>
