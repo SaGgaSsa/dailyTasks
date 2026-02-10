@@ -957,6 +957,32 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         </div>
                                     ))}
 
+                                    <Input
+                                        data-assignment-id={currentUserId}
+                                        value={newTaskInputs[currentUserId] || ''}
+                                        onChange={(e) => {
+                                            const value = e.target.value
+                                            setNewTaskInputs(prev => ({ ...prev, [currentUserId]: value }))
+                                            if (value.length >= 3) {
+                                                setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && currentUserId > 0) {
+                                                const value = newTaskInputs[currentUserId] || ''
+                                                if (value.length >= 3) {
+                                                    handleCreateTask(currentUserId, value)
+                                                    setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
+                                                    setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
+                                                } else {
+                                                    setTaskInputErrors(prev => ({ ...prev, [currentUserId]: true }))
+                                                }
+                                            }
+                                        }}
+                                        className={`bg-zinc-900 text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-zinc-800'}`}
+                                        placeholder="+ Agregar tarea..."
+                                    />
+
                                     {showCompletedTasks && completedDrafts.length > 0 && (
                                         <div className="space-y-1 pt-2 border-t border-zinc-800">
                                             {completedDrafts.map(draft => (
@@ -983,32 +1009,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                 </>
                             )
                         })()}
-
-                        <Input
-                                                data-assignment-id={currentUserId}
-                                                value={newTaskInputs[currentUserId] || ''}
-                                                onChange={(e) => {
-                                                    const value = e.target.value
-                                                    setNewTaskInputs(prev => ({ ...prev, [currentUserId]: value }))
-                                                    if (value.length >= 3) {
-                                                        setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
-                                                    }
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && currentUserId > 0) {
-                                                        const value = newTaskInputs[currentUserId] || ''
-                                                        if (value.length >= 3) {
-                                                            handleCreateTask(currentUserId, value)
-                                                            setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
-                                                            setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
-                                                        } else {
-                                                            setTaskInputErrors(prev => ({ ...prev, [currentUserId]: true }))
-                                                        }
-                                                    }
-                                                }}
-                            className={`bg-zinc-900 text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-zinc-800'}`}
-                            placeholder="+ Agregar tarea..."
-                        />
 
 
 
