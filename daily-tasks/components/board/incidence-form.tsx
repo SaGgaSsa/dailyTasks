@@ -199,7 +199,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         setOriginalFormData(data)
                     }
                 } catch (error) {
-                    console.error('Error loading incidence:', error)
+                    toast.error('Error cargando incidencia')
                 } finally {
                     setIsLoading(false)
                 }
@@ -415,7 +415,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 router.refresh()
                 return true
             } catch (error) {
-                console.error('Save error:', error)
                 toast.error('Error inesperado')
                 return false
             } finally {
@@ -512,7 +511,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 }
             }
         } catch (error) {
-            console.error('Save error:', error)
             toast.error('Error inesperado')
             return false
         } finally {

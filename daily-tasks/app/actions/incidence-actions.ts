@@ -101,16 +101,24 @@ export async function getIncidences({ viewType, search, tech, status, assignee }
 
         // Technology filter
         if (tech && tech.length > 0) {
-            where.technology = { in: tech }
+            // Filter valid TechStack values and convert to proper type
+            const validTech = tech.filter(t => Object.values(TechStack).includes(t as TechStack)) as TechStack[]
+            if (validTech.length > 0) {
+                where.technology = { in: validTech }
+            }
         }
 
         // Status filter (only for backlog)
         if (status && viewType === 'BACKLOG') {
             const statusValues = status.split(',').filter(Boolean)
-            if (statusValues.length === 1) {
-                where.status = statusValues[0] as TaskStatus
-            } else if (statusValues.length > 1) {
-                where.status = { in: statusValues as TaskStatus[] }
+            const validStatus = statusValues.filter(s => Object.values(TaskStatus).includes(s as TaskStatus)) as TaskStatus[]
+            
+            if (validStatus.length > 0) {
+                if (validStatus.length === 1) {
+                    where.status = validStatus[0]
+                } else {
+                    where.status = { in: validStatus }
+                }
             }
         }
 
@@ -139,7 +147,20 @@ export async function getIncidences({ viewType, search, tech, status, assignee }
                     }
                 }
             },
-            orderBy: { position: 'asc' }
+            orderBy: viewType === 'BACKLOG' ? [
+                // En backlog: ordenar por prioridad (desc) y luego por fecha de creación (asc)
+                {
+                    priority: 'desc'
+                },
+                {
+                    createdAt: 'asc'
+                }
+            ] : [
+                // En kanban: mantener el orden actual por posición
+                {
+                    position: 'asc'
+                }
+            ]
         })
         return incidences as unknown as IncidenceWithDetails[]
     } catch (error) {

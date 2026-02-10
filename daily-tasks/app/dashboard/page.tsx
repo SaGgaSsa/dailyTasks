@@ -2,7 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
 import { DashboardClient } from '@/components/board/dashboard-client'
-import { TechStack } from '@/types/enums'
+import { TechStack, TaskStatus } from '@/types/enums'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
@@ -21,21 +21,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Parse search params para filtros múltiples y únicos
   const tech = params.tech 
-    ? params.tech.includes(',') 
-      ? params.tech.split(',').filter(Boolean) 
-      : [params.tech].filter(Boolean)
-    : Object.values(TechStack) // Por defecto, todas las tecnologías
+    ? (Array.isArray(params.tech) ? params.tech : [params.tech])
+        .flatMap(t => t.split(','))
+        .filter(Boolean)
+        .filter(t => Object.values(TechStack).includes(t as TechStack))
+    : Object.values(TechStack)
   
   const status = params.status 
-    ? params.status.includes(',')
-      ? params.status.split(',').filter(Boolean)
-      : [params.status].filter(Boolean)
-    : ['BACKLOG'] // Por defecto, solo BACKLOG en el backlog
+    ? (Array.isArray(params.status) ? params.status : [params.status])
+        .flatMap(s => s.split(','))
+        .filter(Boolean)
+        .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
+    : ['BACKLOG']
   
   const assignee = params.assignee 
-    ? params.assignee.includes(',')
-      ? params.assignee.split(',').filter(Boolean)
-      : [params.assignee].filter(Boolean)
+    ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
+        .flatMap(a => a.split(','))
+        .filter(Boolean)
     : []
   
   const search = params.search || ''
@@ -45,7 +47,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     viewType: 'BACKLOG',
     search,
     tech,
-    status: status.length > 0 ? status.join(',') : status[0] || '',
+    status: status.length > 0 ? status.join(',') : '',
     assignee
   })
   const kanbanTasks = await getIncidences({
