@@ -90,16 +90,6 @@ export function FilterDropdown({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
-                {selectedValues.length > 0 && (!resetValue || selectedValues.length !== 1) && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleReset}
-                        className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
-                    >
-                        {resetValue ? 'Restablecer' : 'Limpiar filtros'}
-                    </Button>
-                )}
                 <div className="space-y-1">
                     {options.map(opt => (
                         <label
@@ -115,6 +105,15 @@ export function FilterDropdown({
                         </label>
                     ))}
                 </div>
+                <Separator className="my-2 bg-zinc-800" />
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReset}
+                    className="w-full h-7 text-xs text-zinc-400 hover:text-zinc-200"
+                >
+                    Restablecer
+                </Button>
             </PopoverContent>
         </Popover>
     )

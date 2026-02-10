@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
-import { LayoutDashboard, ListTodo, Plus, BrainCircuit } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
@@ -49,8 +49,52 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const [techFilter, setTechFilter] = useState<string[]>(Object.values(TechStack))
     const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
+    const [kanbanOnlyMyAssignments, setKanbanOnlyMyAssignments] = useState(false)
+    const [userFilter, setUserFilter] = useState<string[]>([])
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
+
+    const userOptions = useMemo(() => {
+        interface UserInfo {
+            id: number
+            name: string
+            username: string
+            role: string
+        }
+        const users = new Map<number, UserInfo>()
+
+        const addUsersFromTasks = (tasks: IncidenceWithDetails[]) => {
+            tasks.forEach(task => {
+                task.assignments
+                    .filter(a => a.isAssigned)
+                    .forEach(a => {
+                        users.set(a.user.id, {
+                            id: a.user.id,
+                            name: a.user.name || '',
+                            username: a.user.username || '',
+                            role: a.user.role
+                        })
+                    })
+            })
+        }
+
+        addUsersFromTasks(backlogTasks)
+        addUsersFromTasks(kanbanTasks)
+
+        return Array.from(users.values())
+            .sort((a, b) => {
+                if (a.role !== b.role) {
+                    return a.role === 'DEV' ? -1 : 1
+                }
+                const aLabel = a.name || a.username
+                const bLabel = b.name || b.username
+                return aLabel.localeCompare(bLabel)
+            })
+            .map(u => ({
+                value: String(u.id),
+                label: u.name || u.username
+            }))
+    }, [backlogTasks, kanbanTasks])
 
     const handleTaskUpdate = useCallback((updatedTask: IncidenceWithDetails) => {
         setBacklogTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
@@ -59,6 +103,20 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
 
     const handleIncidenceCreated = () => {
         router.refresh()
+    }
+
+    const handleResetKanbanFilters = () => {
+        setSearchQuery('')
+        setTechFilter(Object.values(TechStack))
+        setUserFilter([])
+        setKanbanOnlyMyAssignments(false)
+    }
+
+    const handleResetBacklogFilters = () => {
+        setSearchQuery('')
+        setTechFilter(Object.values(TechStack))
+        setStatusFilter([TaskStatus.BACKLOG])
+        setOnlyMyAssignments(false)
     }
 
     if (!isAdmin) {
@@ -111,6 +169,27 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             </label>
                         </>
                     )}
+
+                    {viewMode === 'KANBAN' && (
+                        <>
+                            <FilterDropdown
+                                icon={<User className="h-4 w-4" />}
+                                label="Usuario"
+                                options={userOptions}
+                                selectedValues={userFilter}
+                                allValues={userOptions.map(o => o.value)}
+                                onValuesChange={setUserFilter}
+                            />
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                    checked={kanbanOnlyMyAssignments}
+                                    onCheckedChange={(checked) => setKanbanOnlyMyAssignments(checked === true)}
+                                    className="border-zinc-600"
+                                />
+                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                            </label>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -154,6 +233,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         setStatusFilter={setStatusFilter}
                         onlyMyAssignments={onlyMyAssignments}
                         setOnlyMyAssignments={setOnlyMyAssignments}
+                        onResetFilters={handleResetBacklogFilters}
                     />
                 ) : (
                     <KanbanBoard
@@ -162,6 +242,9 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         searchQuery={searchQuery}
                         techFilter={techFilter}
                         userId={userId}
+                        userFilter={userFilter}
+                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        onResetFilters={handleResetKanbanFilters}
                     />
                 )}
             </div>

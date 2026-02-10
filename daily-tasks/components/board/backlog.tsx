@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
@@ -43,6 +44,7 @@ interface BacklogProps {
     setStatusFilter: (filter: string[]) => void
     onlyMyAssignments: boolean
     setOnlyMyAssignments: (value: boolean) => void
+    onResetFilters?: () => void
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -251,7 +253,8 @@ export function Backlog({
     statusFilter,
     setStatusFilter,
     onlyMyAssignments,
-    setOnlyMyAssignments
+    setOnlyMyAssignments,
+    onResetFilters,
 }: BacklogProps) {
     const { data: session } = useSession()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
@@ -335,7 +338,18 @@ export function Backlog({
                                         </div>
                                         <div>
                                             <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
+                                            {onResetFilters ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={onResetFilters}
+                                                    className="mt-2 text-blue-400 hover:text-blue-300"
+                                                >
+                                                    Resetear filtros
+                                                </Button>
+                                            ) : (
+                                                <p className="text-zinc-500 text-sm mt-1">Sin incidencias</p>
+                                            )}
                                         </div>
                                     </div>
                                 </TableCell>

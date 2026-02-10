@@ -22,8 +22,10 @@ import { BoardColumn } from './board-column'
 import { TaskCard } from './task-card'
 import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
+import { Inbox } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
-import { TaskStatus } from '@/types/enums'
+import { TaskStatus, TechStack } from '@/types/enums'
 import { toast } from 'sonner'
 
 interface KanbanBoardProps {
@@ -32,6 +34,9 @@ interface KanbanBoardProps {
     searchQuery?: string
     techFilter?: string[]
     userId?: number
+    userFilter?: string[]
+    kanbanOnlyMyAssignments?: boolean
+    onResetFilters?: () => void
 }
 
 const COLUMNS = [
@@ -40,7 +45,7 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -59,11 +64,13 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
 
-            const isAssigned = !userId || task.assignments.some(a => a.userId === userId && a.isAssigned)
+            const matchesUserFilter = userFilter.length === 0 || task.assignments.some(a => a.userId === Number(userId) || userFilter.includes(String(a.userId)))
 
-            return matchesSearch && matchesTech && isAssigned
+            const matchesMyAssignments = !kanbanOnlyMyAssignments || task.assignments.some(a => a.userId === userId && a.isAssigned)
+
+            return matchesSearch && matchesTech && matchesUserFilter && matchesMyAssignments
         })
-    }, [tasks, searchQuery, techFilter, userId])
+    }, [tasks, searchQuery, techFilter, userId, userFilter, kanbanOnlyMyAssignments])
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -165,6 +172,36 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         if (onTaskUpdate) {
             onTaskUpdate(updatedTask)
         }
+    }
+
+    const allTechValues = Object.values(TechStack)
+    const hasFilters = searchQuery || techFilter.length !== allTechValues.length || userFilter.length > 0 || kanbanOnlyMyAssignments
+
+    if (filteredTasks.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="p-4 rounded-full bg-zinc-900/50">
+                        <Inbox className="h-8 w-8 text-zinc-600" />
+                    </div>
+                    <div>
+                        <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                        {hasFilters ? (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onResetFilters}
+                                className="mt-2 text-blue-400 hover:text-blue-300"
+                            >
+                                Resetear filtros
+                            </Button>
+                        ) : (
+                            <p className="text-zinc-500 text-sm mt-1">Sin incidencias asignadas</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
