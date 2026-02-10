@@ -311,6 +311,38 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
     }
 }
 
+export async function updateIncidenceComment(incidenceId: number, description: string) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId },
+            include: { assignments: { where: { isAssigned: true } } }
+        })
+
+        if (!incidence) return { success: false, error: 'Incidencia no encontrada' }
+
+        const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isAssigned && !isAdmin) {
+            return { success: false, error: 'No autorizado para editar esta incidencia' }
+        }
+
+        await db.incidence.update({
+            where: { id: incidenceId },
+            data: { description }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error updating comment:', error)
+        return { success: false, error: 'Error al actualizar el comentario.' }
+    }
+}
+
 export async function createSubTask(assignmentId: number, title: string) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }

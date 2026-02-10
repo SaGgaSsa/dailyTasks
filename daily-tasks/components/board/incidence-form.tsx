@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, ChevronUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
-import { createIncidence, updateIncidence, getIncidence, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
+import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
 import { getUsers } from '@/app/actions/user-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
@@ -31,6 +32,7 @@ interface IncidenceFormProps {
     initialData?: IncidenceWithDetails | null
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     onIncidenceCreated?: () => void
+    isDev?: boolean
 }
 
 const typeOptions = [
@@ -76,7 +78,7 @@ interface FormData {
     subTasks: { title: string; isCompleted: boolean }[]
 }
 
-export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated }: IncidenceFormProps) {
+export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated, isDev = false }: IncidenceFormProps) {
     const router = useRouter()
     const { data: session } = useSession()
     const isEditMode = !!initialData?.id
@@ -316,6 +318,34 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }
 
     const handleSave = async () => {
+        if (isDev) {
+            if (!initialData?.id) {
+                return false
+            }
+            setIsSaving(true)
+            try {
+                const commentResult = await updateIncidenceComment(initialData.id, formData.description)
+                if (!commentResult.success) {
+                    toast.error(commentResult.error || 'Error al guardar comentario')
+                    return false
+                }
+
+                for (const draft of draftTasks) {
+                    await createSubTask(draft.assignmentId, draft.title)
+                }
+                setDraftTasks([])
+                toast.success('Guardado correctamente')
+                router.refresh()
+                return true
+            } catch (error) {
+                console.error('Save error:', error)
+                toast.error('Error inesperado')
+                return false
+            } finally {
+                setIsSaving(false)
+            }
+        }
+
         if (!formData.type || !formData.externalId || !formData.title) {
             toast.error('Tipo, Numero y Descripcion son requeridos')
             return false
@@ -324,7 +354,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setIsSaving(true)
         try {
             const hoursValue = formData.estimatedTime ? parseInt(formData.estimatedTime) : 0
-            
+
             const assigneeData = formData.assignees.map(a => ({
                 userId: a.userId,
                 assignedHours: a.assignedHours === '' ? null : parseInt(a.assignedHours)
@@ -347,12 +377,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
-                    
+
                     for (const draft of draftTasks) {
                         await createSubTask(draft.assignmentId, draft.title)
                     }
                     setDraftTasks([])
-                    
+
                     if (result.data) {
                         setFullIncidenceData(result.data)
                         if (onTaskUpdate) {
@@ -424,7 +454,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                formData.assignees.length > 0
     }
 
-    const title = isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia'
+    const title = isDev
+        ? (initialData ? `📋 ${initialData.type} ${initialData.externalId}` : 'Tarea')
+        : (isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia')
 
     return (
         <FormSheet
@@ -470,6 +502,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     <span className="mt-4 text-zinc-400">Cargando datos...</span>
                 </div>
             ) : (
+                <>
+            {!isDev && (
                 <>
             <FormRow>
                 <FormSelect
@@ -539,8 +573,21 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     />
                 </div>
             </FormRow3>
+                </>
+            )}
 
-            {(isBacklog || (hasRequirements && isAdmin)) ? (
+            {isDev && initialData && (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight ${initialData.type === 'I_MODAPL' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : initialData.type === 'I_CASO' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                            {initialData.type} {initialData.externalId}
+                        </Badge>
+                        <span className="text-sm text-zinc-200 font-medium">{initialData.title}</span>
+                    </div>
+                </div>
+            )}
+
+            {!isDev ? ((isBacklog || (hasRequirements && isAdmin)) ? (
                 <div className="space-y-2">
                     <Label className="text-zinc-300">Asignar colaborador</Label>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-md">
@@ -659,7 +706,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         ))}
                     </div>
                 </div>
-            ) : null}
+            ) : null) : null}
 
             {isEditMode && fullIncidenceData?.assignments && (() => {
                 const currentUserAssignment = fullIncidenceData.assignments.find(

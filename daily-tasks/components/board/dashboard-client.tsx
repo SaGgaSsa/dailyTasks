@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
@@ -38,6 +39,7 @@ const statusOptions = [
 
 export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const router = useRouter()
+    const { data: session } = useSession()
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -47,6 +49,8 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const [techFilter, setTechFilter] = useState<string[]>(Object.values(TechStack))
     const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
+
+    const userId = session?.user?.id ? Number(session.user.id) : undefined
 
     const handleTaskUpdate = useCallback((updatedTask: IncidenceWithDetails) => {
         setBacklogTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
@@ -58,7 +62,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     }
 
     if (!isAdmin) {
-        return <KanbanBoard initialTasks={kanbanTasksState} onTaskUpdate={handleTaskUpdate} />
+        return <KanbanBoard initialTasks={kanbanTasksState} onTaskUpdate={handleTaskUpdate} userId={userId} />
     }
 
     return (
@@ -157,6 +161,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         onTaskUpdate={handleTaskUpdate}
                         searchQuery={searchQuery}
                         techFilter={techFilter}
+                        userId={userId}
                     />
                 )}
             </div>
@@ -170,6 +175,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                 initialData={selectedTask}
                 onTaskUpdate={handleTaskUpdate}
                 onIncidenceCreated={handleIncidenceCreated}
+                isDev={!isAdmin}
             />
         </div>
     )

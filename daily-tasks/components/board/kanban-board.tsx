@@ -31,6 +31,7 @@ interface KanbanBoardProps {
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     searchQuery?: string
     techFilter?: string[]
+    userId?: number
 }
 
 const COLUMNS = [
@@ -39,7 +40,7 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [] }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -58,9 +59,11 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
 
-            return matchesSearch && matchesTech
+            const isAssigned = !userId || task.assignments.some(a => a.userId === userId && a.isAssigned)
+
+            return matchesSearch && matchesTech && isAssigned
         })
-    }, [tasks, searchQuery, techFilter])
+    }, [tasks, searchQuery, techFilter, userId])
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
