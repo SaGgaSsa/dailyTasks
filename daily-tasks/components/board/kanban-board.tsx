@@ -37,6 +37,7 @@ interface KanbanBoardProps {
     userFilter?: string[]
     kanbanOnlyMyAssignments?: boolean
     onResetFilters?: () => void
+    isDev?: boolean
 }
 
 const COLUMNS = [
@@ -45,7 +46,7 @@ const COLUMNS = [
     { id: TaskStatus.REVIEW, title: 'Revisión' },
 ]
 
-export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters, isDev = false }: KanbanBoardProps) {
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -232,6 +233,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                 }}
                 initialData={selectedTask}
                 onTaskUpdate={handleTaskUpdate}
+                isDev={isDev}
+                isKanban={true}
             />
 
             <DragOverlay dropAnimation={{

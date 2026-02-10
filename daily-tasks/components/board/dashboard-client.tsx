@@ -49,7 +49,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const [techFilter, setTechFilter] = useState<string[]>(Object.values(TechStack))
     const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
-    const [kanbanOnlyMyAssignments, setKanbanOnlyMyAssignments] = useState(false)
+    const [kanbanOnlyMyAssignments, setKanbanOnlyMyAssignments] = useState(!isAdmin)
     const [userFilter, setUserFilter] = useState<string[]>([])
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
@@ -109,7 +109,9 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         setSearchQuery('')
         setTechFilter(Object.values(TechStack))
         setUserFilter([])
-        setKanbanOnlyMyAssignments(false)
+        if (isAdmin) {
+            setKanbanOnlyMyAssignments(false)
+        }
     }
 
     const handleResetBacklogFilters = () => {
@@ -120,7 +122,48 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     }
 
     if (!isAdmin) {
-        return <KanbanBoard initialTasks={kanbanTasksState} onTaskUpdate={handleTaskUpdate} userId={userId} />
+        return (
+            <div className="flex flex-col h-full space-y-4">
+                <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Kanban
+                        </h2>
+
+                        <Input
+                            placeholder="Buscar..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
+                        />
+
+                        <FilterDropdown
+                            icon={<BrainCircuit className="h-4 w-4" />}
+                            label="Tecnología"
+                            options={techOptions}
+                            selectedValues={techFilter}
+                            allValues={Object.values(TechStack)}
+                            onValuesChange={setTechFilter}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-visible">
+                    <KanbanBoard
+                        initialTasks={kanbanTasksState}
+                        onTaskUpdate={handleTaskUpdate}
+                        searchQuery={searchQuery}
+                        techFilter={techFilter}
+                        userId={userId}
+                        userFilter={userFilter}
+                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        onResetFilters={handleResetKanbanFilters}
+                        isDev={true}
+                    />
+                </div>
+            </div>
+        )
     }
 
     return (
