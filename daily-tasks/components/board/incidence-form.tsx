@@ -854,7 +854,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 </div>
             ) : null) : null}
 
-            {isEditMode && fullIncidenceData?.assignments && (() => {
+            {isEditMode && isDev && fullIncidenceData?.assignments && (() => {
                 const currentUserAssignment = fullIncidenceData.assignments.find(
                     a => a.isAssigned && a.userId === Number(session?.user?.id)
                 )
