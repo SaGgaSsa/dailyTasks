@@ -518,7 +518,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         <div className="flex-1"></div>
                                         
                                         <div className="flex items-center gap-2">
-                                                <span className="text-zinc-500 text-xs">Horas Estimadas:</span>
+                                                <span className="text-zinc-500 text-xs">Horas Asignadas:</span>
                                                 <Input
                                                     type="number"
                                                     min="0"
