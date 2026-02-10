@@ -28,10 +28,11 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
 
   // Parse initial params from URL
   useEffect(() => {
+    const urlStatus = searchParams.getAll('status').filter(Boolean)
     const parsed: SearchParamsState = {
       search: searchParams.get('search') || '',
       tech: searchParams.getAll('tech').filter(Boolean),
-      status: searchParams.getAll('status').filter(Boolean),
+      status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'], // Default to BACKLOG if no status in URL
       assignee: searchParams.getAll('assignee').filter(Boolean),
     }
     
