@@ -94,15 +94,12 @@ export function FormSheet({
                                 className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                                 title="Guardar"
                             >
-                                {isSaving ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Check className="h-4 w-4" />
-                                )}
-                            </Button>
-                            {isSaving && (
+                            {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+                            ) : (
+                                <Check className="h-4 w-4" />
                             )}
+                        </Button>
                         </div>
                         <SheetTitle className="text-zinc-100 pt-1">
                             {title}
