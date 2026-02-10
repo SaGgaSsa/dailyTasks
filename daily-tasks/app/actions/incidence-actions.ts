@@ -343,7 +343,7 @@ export async function updateIncidenceComment(incidenceId: number, description: s
     }
 }
 
-export async function createSubTask(assignmentId: number, title: string) {
+export async function createSubTask(assignmentId: number, title: string, isCompleted: boolean = false) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
@@ -366,7 +366,7 @@ export async function createSubTask(assignmentId: number, title: string) {
             data: {
                 title,
                 assignmentId,
-                isCompleted: false
+                isCompleted
             }
         })
 

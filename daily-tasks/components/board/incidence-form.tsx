@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
@@ -65,6 +65,7 @@ interface DraftTask {
     tempId: string
     title: string
     assignmentId: number
+    isCompleted: boolean
 }
 
 interface FormData {
@@ -108,11 +109,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
     const [removedAssigneesHours, setRemovedAssigneesHours] = useState<Record<number, string>>({})
     const [newTaskInputs, setNewTaskInputs] = useState<Record<number, string>>({})
+    const [taskInputErrors, setTaskInputErrors] = useState<Record<number, boolean>>({})
     const [draftTasks, setDraftTasks] = useState<DraftTask[]>([])
     const [showCompletedTasks, setShowCompletedTasks] = useState(false)
     const [expandedAssignees, setExpandedAssignees] = useState<Set<number>>(new Set())
     const [tasksToToggle, setTasksToToggle] = useState<Set<number>>(new Set())
     const [tasksToDelete, setTasksToDelete] = useState<Set<number>>(new Set())
+    const taskInputRef = useRef<HTMLInputElement>(null)
 
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
     const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
@@ -219,6 +222,20 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         fetchFullData()
     }, [open, initialData])
 
+    useEffect(() => {
+        if (isEditMode && !isLoading && open) {
+            setTimeout(() => {
+                const currentUserId = Number(session?.user?.id)
+                if (currentUserId) {
+                    const input = document.querySelector(`[data-assignment-id="${currentUserId}"]`) as HTMLInputElement
+                    if (input) {
+                        input.focus()
+                    }
+                }
+            }, 100)
+        }
+    }, [isEditMode, isLoading, open, session?.user?.id])
+
     const updateFormData = (updates: Partial<FormData>) => {
         setFormData(prev => ({ ...prev, ...updates }))
     }
@@ -244,11 +261,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }
 
     const handleCreateTask = async (assignmentId: number, title: string) => {
-        if (!title.trim()) return
+        if (!title.trim() || title.trim().length < 3) {
+            setTaskInputErrors(prev => ({ ...prev, [assignmentId]: true }))
+            return
+        }
         
         const tempId = `${assignmentId}-${Date.now()}`
-        setDraftTasks(prev => [...prev, { tempId, title, assignmentId }])
+        setDraftTasks(prev => [...prev, { tempId, title, assignmentId, isCompleted: false }])
         setNewTaskInputs(prev => ({ ...prev, [assignmentId]: '' }))
+        setTaskInputErrors(prev => ({ ...prev, [assignmentId]: false }))
         
         setTimeout(() => {
             const input = document.querySelector(`[data-assignment-id="${assignmentId}"]`) as HTMLInputElement
@@ -260,6 +281,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
     const handleRemoveDraftTask = (tempId: string) => {
         setDraftTasks(prev => prev.filter(t => t.tempId !== tempId))
+    }
+
+    const handleToggleDraftTask = (tempId: string) => {
+        setDraftTasks(prev => prev.map(t =>
+            t.tempId === tempId ? { ...t, isCompleted: !t.isCompleted } : t
+        ))
     }
 
     const handleToggleTask = (taskId: number) => {
@@ -434,7 +461,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                 a => a.id === draft.assignmentId || a.userId === draft.assignmentId
                             )
                             if (assignment) {
-                                await createSubTask(assignment.id, draft.title)
+                                await createSubTask(assignment.id, draft.title, draft.isCompleted)
                             }
                         }
                     }
@@ -760,20 +787,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                     
                                     {isExpanded && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                                            <Input
-                                                data-assignment-id={userAssignment?.id || user.id}
-                                                value={newTaskInputs[user.id] || ''}
-                                                onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [user.id]: e.target.value }))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        handleCreateTask(userAssignment?.id || user.id, newTaskInputs[user.id] || '')
-                                                        setNewTaskInputs(prev => ({ ...prev, [user.id]: '' }))
-                                                    }
-                                                }}
-                                                className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm w-full"
-                                                placeholder={`Nueva tarea para ${user.name}...`}
-                                            />
-                                            
                                             {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
                                                 <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
                                                     <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
@@ -788,6 +801,33 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                                     </Button>
                                                 </div>
                                             ))}
+                                            
+                                            <Input
+                                                data-assignment-id={userAssignment?.id || user.id}
+                                                value={newTaskInputs[user.id] || ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value
+                                                    setNewTaskInputs(prev => ({ ...prev, [user.id]: value }))
+                                                    if (value.length >= 3) {
+                                                        setTaskInputErrors(prev => ({ ...prev, [user.id]: false }))
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const assignmentId = userAssignment?.id || user.id
+                                                        const value = newTaskInputs[user.id] || ''
+                                                        if (value.length >= 3) {
+                                                            handleCreateTask(assignmentId, value)
+                                                            setNewTaskInputs(prev => ({ ...prev, [user.id]: '' }))
+                                                            setTaskInputErrors(prev => ({ ...prev, [assignmentId]: false }))
+                                                        } else {
+                                                            setTaskInputErrors(prev => ({ ...prev, [assignmentId]: true }))
+                                                        }
+                                                    }
+                                                }}
+                                                className={`bg-zinc-950 text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-zinc-800'}`}
+                                                placeholder={`Nueva tarea para ${user.name}...`}
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -831,9 +871,31 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     return isToggled ? !t.isCompleted : t.isCompleted
                 })
 
+                const userDraftTasks = draftTasks.filter(t => t.assignmentId === currentUserId)
+                const pendingDrafts = userDraftTasks.filter(t => !t.isCompleted)
+                const completedDrafts = userDraftTasks.filter(t => t.isCompleted)
+
+                const totalCompleted = completedTasks.length + completedDrafts.length
+                const totalPending = pendingTasks.length + pendingDrafts.length
+                const totalTasks = totalCompleted + totalPending
+
                 return (
                     <div className="space-y-3">
-                        <h3 className="text-zinc-100 font-medium">📋 Mi Trabajo</h3>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-zinc-100 font-medium">Tareas pendientes</h3>
+                            {totalTasks > 0 && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <span className="text-xs text-zinc-400">
+                                        {totalCompleted}/{totalTasks} pendientes
+                                    </span>
+                                    <Checkbox
+                                        checked={showCompletedTasks}
+                                        onCheckedChange={(checked) => setShowCompletedTasks(checked === true)}
+                                        className="border-zinc-600"
+                                    />
+                                </label>
+                            )}
+                        </div>
                         
                         {pendingTasks.length > 0 && (
                             <div className="space-y-1">
@@ -868,54 +930,90 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             </div>
                         )}
 
+                        {(() => {
+                            const userDraftTasks = draftTasks.filter(t => t.assignmentId === currentUserId)
+                            const pendingDrafts = userDraftTasks.filter(t => !t.isCompleted)
+                            const completedDrafts = userDraftTasks.filter(t => t.isCompleted)
+
+                            return (
+                                <>
+                                    {pendingDrafts.map(draft => (
+                                        <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded group">
+                                            <Checkbox
+                                                checked={draft.isCompleted}
+                                                onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
+                                                className="border-zinc-600"
+                                            />
+                                            <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleRemoveDraftTask(draft.tempId)}
+                                                className="h-6 w-6 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ))}
+
+                                    {showCompletedTasks && completedDrafts.length > 0 && (
+                                        <div className="space-y-1 pt-2 border-t border-zinc-800">
+                                            {completedDrafts.map(draft => (
+                                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group opacity-60">
+                                                    <Checkbox
+                                                        checked={draft.isCompleted}
+                                                        onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
+                                                        className="border-zinc-600"
+                                                    />
+                                                    <span className="text-sm text-zinc-500 line-through flex-1">{draft.title}</span>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleRemoveDraftTask(draft.tempId)}
+                                                        className="h-6 w-6 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )
+                        })()}
+
                         <Input
                                                 data-assignment-id={currentUserId}
                                                 value={newTaskInputs[currentUserId] || ''}
-                                                onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [currentUserId]: e.target.value }))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && currentUserId > 0) {
-                                                        handleCreateTask(currentUserId, newTaskInputs[currentUserId] || '')
-                                                        setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
+                                                onChange={(e) => {
+                                                    const value = e.target.value
+                                                    setNewTaskInputs(prev => ({ ...prev, [currentUserId]: value }))
+                                                    if (value.length >= 3) {
+                                                        setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
                                                     }
                                                 }}
-                            className="bg-zinc-900 border-zinc-800 text-zinc-100 text-sm w-full"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && currentUserId > 0) {
+                                                        const value = newTaskInputs[currentUserId] || ''
+                                                        if (value.length >= 3) {
+                                                            handleCreateTask(currentUserId, value)
+                                                            setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
+                                                            setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
+                                                        } else {
+                                                            setTaskInputErrors(prev => ({ ...prev, [currentUserId]: true }))
+                                                        }
+                                                    }
+                                                }}
+                            className={`bg-zinc-900 text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-zinc-800'}`}
                             placeholder="+ Agregar tarea..."
                         />
 
-                        {draftTasks.filter(t => t.assignmentId === currentUserId).map(draft => (
-                            <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded">
-                                <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                    className="h-6 w-6 text-zinc-500 hover:text-red-400"
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        ))}
 
-                        {pendingTasks.length === 0 && draftTasks.filter(t => t.assignmentId === currentUserAssignment?.id).length === 0 && (
-                            <p className="text-zinc-500 text-sm text-center py-2">
-                                Sin tareas asignadas
-                            </p>
-                        )}
-
-                        {completedTasks.length > 0 && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                                className="text-xs text-zinc-500 hover:text-zinc-300"
-                            >
-                                {showCompletedTasks ? 'Ocultar completadas' : `Mostrar completadas (${completedTasks.length})`}
-                            </Button>
-                        )}
 
                         {showCompletedTasks && completedTasks.length > 0 && (
-                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
+                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-200 pt-2 border-t border-zinc-800">
                                 {completedTasks.map((task) => {
                                     const isToggled = tasksToToggle.has(task.id)
                                     const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted

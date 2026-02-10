@@ -119,7 +119,7 @@ export function FormSheet({
                     </div>
                 </SheetHeader>
 
-                <div className="flex flex-col space-y-4 pt-4 py-6 pl-8">
+                <div className="flex flex-col space-y-4 pt-4 py-6 px-8">
                     {children}
                 </div>
             </SheetContent>
