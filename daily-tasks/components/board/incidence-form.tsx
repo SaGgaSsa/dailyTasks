@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Trash2, ChevronUp, Loader2 } from 'lucide-react'
+import { Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -298,6 +298,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             updateFormData({
                 assignees: formData.assignees.filter(a => a.userId !== userId)
             })
+            setExpandedAssignees(prev => {
+                const next = new Set(prev)
+                next.delete(userId)
+                return next
+            })
         } else {
             const restoredHours = removedAssigneesHours[userId] ?? ''
             const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
@@ -334,6 +339,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     await createSubTask(draft.assignmentId, draft.title)
                 }
                 setDraftTasks([])
+
+                const updatedData = await getIncidence(initialData.id)
+                if (updatedData) {
+                    setFullIncidenceData(updatedData)
+                    if (onTaskUpdate) {
+                        onTaskUpdate(updatedData)
+                    }
+                }
+
                 toast.success('Guardado correctamente')
                 router.refresh()
                 return true
@@ -361,7 +375,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             }))
 
             if (isEditMode && initialData?.id) {
-                const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
+                const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData) || draftTasks.length > 0
                 if (!hasChanges) {
                     return true
                 }
@@ -378,15 +392,23 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
 
-                    for (const draft of draftTasks) {
-                        await createSubTask(draft.assignmentId, draft.title)
+                    if (draftTasks.length > 0 && result.data) {
+                        for (const draft of draftTasks) {
+                            const assignment = result.data.assignments.find(
+                                a => a.id === draft.assignmentId || a.userId === draft.assignmentId
+                            )
+                            if (assignment) {
+                                await createSubTask(assignment.id, draft.title)
+                            }
+                        }
                     }
                     setDraftTasks([])
 
-                    if (result.data) {
-                        setFullIncidenceData(result.data)
+                    const updatedData = await getIncidence(initialData.id)
+                    if (updatedData) {
+                        setFullIncidenceData(updatedData)
                         if (onTaskUpdate) {
-                            onTaskUpdate(result.data)
+                            onTaskUpdate(updatedData)
                         }
                     }
                     router.refresh()
@@ -639,7 +661,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                                 placeholder="0"
                                             />
                                         </div>
-                                        {isSelected && (
+                                        {isExpanded ? (
                                             <Button
                                                 type="button"
                                                 variant="ghost"
@@ -649,10 +671,20 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                             >
                                                 <ChevronUp className="h-3 w-3" />
                                             </Button>
+                                        ) : (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => toggleAssigneeExpanded(user.id)}
+                                                className="h-6 w-6 text-zinc-500"
+                                            >
+                                                <ChevronDown className="h-3 w-3" />
+                                            </Button>
                                         )}
                                     </div>
                                     
-                                    {isSelected && (
+                                    {isExpanded && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             <Input
                                                 data-assignment-id={userAssignment?.id || user.id}
@@ -668,7 +700,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                                 placeholder={`Nueva tarea para ${user.name}...`}
                                             />
                                             
-                                            {draftTasks.filter(t => t.assignmentId === userAssignment?.id).map(draft => (
+                                            {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
                                                 <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
                                                     <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
                                                     <Button
