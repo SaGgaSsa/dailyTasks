@@ -2,8 +2,7 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Incidence } from '@prisma/client'
-import { Priority, TechStack, TaskStatus, TaskType, UserRole } from '@/types/enums'
+import { Priority, TechStack, TaskStatus, TaskType } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 
@@ -61,15 +60,68 @@ export async function createIncidence(data: CreateIncidenceData) {
     }
 }
 
-export async function getIncidences(viewType: 'BACKLOG' | 'KANBAN'): Promise<IncidenceWithDetails[]> {
+interface GetIncidencesOptions {
+    viewType: 'BACKLOG' | 'KANBAN'
+    search?: string
+    tech?: string[]
+    status?: string
+    assignee?: string[]
+}
+
+export async function getIncidences({ viewType, search, tech, status, assignee }: GetIncidencesOptions): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
 
     try {
         const where: Record<string, unknown> = {}
 
+        // View type filtering
         if (viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
+        }
+
+        // Search across multiple fields
+        if (search) {
+            // Try to parse as number for externalId search
+            const searchNumber = parseInt(search, 10)
+            const isValidNumber = !isNaN(searchNumber)
+            
+            const orConditions = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } }
+            ] as unknown[]
+            
+            // Add externalId search only if valid number
+            if (isValidNumber) {
+                orConditions.push({ externalId: searchNumber })
+            }
+            
+            where.OR = orConditions
+        }
+
+        // Technology filter
+        if (tech && tech.length > 0) {
+            where.technology = { in: tech }
+        }
+
+        // Status filter (only for backlog)
+        if (status && viewType === 'BACKLOG') {
+            const statusValues = status.split(',').filter(Boolean)
+            if (statusValues.length === 1) {
+                where.status = statusValues[0] as TaskStatus
+            } else if (statusValues.length > 1) {
+                where.status = { in: statusValues as TaskStatus[] }
+            }
+        }
+
+        // Assignee filter
+        if (assignee && assignee.length > 0) {
+            where.assignments = {
+                some: {
+                    isAssigned: true,
+                    userId: { in: assignee.map(Number) }
+                }
+            }
         }
 
         const incidences = await db.incidence.findMany({

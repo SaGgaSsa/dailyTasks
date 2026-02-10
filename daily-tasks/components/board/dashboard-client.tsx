@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
@@ -10,10 +9,12 @@ import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User } from 'lucide-reac
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { SearchBar } from '@/components/ui/search-bar'
+import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus, TechStack } from '@/types/enums'
+import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
 
 interface DashboardClientProps {
     backlogTasks: IncidenceWithDetails[]
@@ -21,38 +22,33 @@ interface DashboardClientProps {
     isAdmin: boolean
 }
 
-const techOptions = [
-    { value: TechStack.SISA, label: 'SISA' },
-    { value: TechStack.WEB, label: 'WEB' },
-    { value: TechStack.ANDROID, label: 'ANDROID' },
-    { value: TechStack.ANGULAR, label: 'ANGULAR' },
-    { value: TechStack.SPRING, label: 'SPRING' },
-]
-
-const statusOptions = [
-    { value: TaskStatus.BACKLOG, label: 'Backlog' },
-    { value: TaskStatus.TODO, label: 'Por Hacer' },
-    { value: TaskStatus.IN_PROGRESS, label: 'En Progreso' },
-    { value: TaskStatus.REVIEW, label: 'Revision' },
-    { value: TaskStatus.DONE, label: 'Finalizado' },
-]
-
 export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
-    const router = useRouter()
     const { data: session } = useSession()
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
     const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
-    const [searchQuery, setSearchQuery] = useState('')
-    const [techFilter, setTechFilter] = useState<string[]>(Object.values(TechStack))
-    const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
-    const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
-    const [kanbanOnlyMyAssignments, setKanbanOnlyMyAssignments] = useState(!isAdmin)
-    const [userFilter, setUserFilter] = useState<string[]>([])
+
+    const { params, updateSearch, updateTech, updateStatus, updateAssignee, resetFilters, isLoading } = useSearchParamsSync()
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
+
+    const techOptions = [
+        { value: TechStack.SISA, label: 'SISA' },
+        { value: TechStack.WEB, label: 'WEB' },
+        { value: TechStack.ANDROID, label: 'ANDROID' },
+        { value: TechStack.ANGULAR, label: 'ANGULAR' },
+        { value: TechStack.SPRING, label: 'SPRING' },
+    ]
+
+    const statusOptions = [
+        { value: TaskStatus.BACKLOG, label: 'Backlog' },
+        { value: TaskStatus.TODO, label: 'Por Hacer' },
+        { value: TaskStatus.IN_PROGRESS, label: 'En Progreso' },
+        { value: TaskStatus.REVIEW, label: 'Revision' },
+        { value: TaskStatus.DONE, label: 'Finalizado' },
+    ]
 
     const userOptions = useMemo(() => {
         interface UserInfo {
@@ -101,24 +97,27 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         setKanbanTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
     }, [])
 
-    const handleIncidenceCreated = () => {
-        router.refresh()
-    }
+    const handleIncidenceCreated = useCallback(() => {
+        window.location.reload()
+    }, [])
 
-    const handleResetKanbanFilters = () => {
-        setSearchQuery('')
-        setTechFilter(Object.values(TechStack))
-        setUserFilter([])
-        if (isAdmin) {
-            setKanbanOnlyMyAssignments(false)
-        }
-    }
+    const handleResetKanbanFilters = useCallback(() => {
+        updateTech([])
+        updateAssignee([])
+    }, [updateTech, updateAssignee])
 
-    const handleResetBacklogFilters = () => {
-        setSearchQuery('')
-        setTechFilter(Object.values(TechStack))
-        setStatusFilter([TaskStatus.BACKLOG])
-        setOnlyMyAssignments(false)
+    const handleResetBacklogFilters = useCallback(() => {
+        updateTech([])
+        updateStatus([])
+        updateAssignee([])
+    }, [updateTech, updateStatus, updateAssignee])
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="text-zinc-400">Cargando...</div>
+            </div>
+        )
     }
 
     if (!isAdmin) {
@@ -131,20 +130,19 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             Kanban
                         </h2>
 
-                        <Input
-                            placeholder="Buscar..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
+                        <SearchBar
+                            value={params.search || ''}
+                            onChange={updateSearch}
+                            className="w-48"
                         />
 
                         <FilterDropdown
                             icon={<BrainCircuit className="h-4 w-4" />}
                             label="Tecnología"
                             options={techOptions}
-                            selectedValues={techFilter}
+                            selectedValues={params.tech || []}
                             allValues={Object.values(TechStack)}
-                            onValuesChange={setTechFilter}
+                            onValuesChange={updateTech}
                         />
                     </div>
                 </div>
@@ -153,13 +151,12 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                     <KanbanBoard
                         initialTasks={kanbanTasksState}
                         onTaskUpdate={handleTaskUpdate}
-                        searchQuery={searchQuery}
-                        techFilter={techFilter}
+                        searchQuery={params.search || ''}
+                        techFilter={params.tech || []}
                         userId={userId}
-                        userFilter={userFilter}
-                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        userFilter={params.assignee || []}
+                        kanbanOnlyMyAssignments={false}
                         onResetFilters={handleResetKanbanFilters}
-                        isDev={true}
                     />
                 </div>
             </div>
@@ -175,20 +172,19 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         {viewMode === 'BACKLOG' ? 'Backlog' : 'Kanban'}
                     </h2>
 
-                    <Input
-                        placeholder="Buscar..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
+                    <SearchBar
+                        value={params.search || ''}
+                        onChange={updateSearch}
+                        className="w-48"
                     />
 
                     <FilterDropdown
                         icon={<BrainCircuit className="h-4 w-4" />}
                         label="Tecnología"
                         options={techOptions}
-                        selectedValues={techFilter}
+                        selectedValues={params.tech || []}
                         allValues={Object.values(TechStack)}
-                        onValuesChange={setTechFilter}
+                        onValuesChange={updateTech}
                     />
 
                     {viewMode === 'BACKLOG' && (
@@ -197,15 +193,13 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                                 icon={<LayoutDashboard className="h-4 w-4" />}
                                 label="Estado"
                                 options={statusOptions}
-                                selectedValues={statusFilter}
-                                allValues={statusOptions.map(o => o.value)}
-                                onValuesChange={setStatusFilter}
+                                selectedValues={params.status || []}
+                                allValues={statusOptions.map(opt => opt.value)}
+                                onValuesChange={updateStatus}
                                 resetValue={TaskStatus.BACKLOG}
                             />
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
-                                    checked={onlyMyAssignments}
-                                    onCheckedChange={(checked) => setOnlyMyAssignments(checked === true)}
                                     className="border-zinc-600"
                                 />
                                 <span className="text-sm text-zinc-400">Mis asignaciones</span>
@@ -219,14 +213,12 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                                 icon={<User className="h-4 w-4" />}
                                 label="Usuario"
                                 options={userOptions}
-                                selectedValues={userFilter}
-                                allValues={userOptions.map(o => o.value)}
-                                onValuesChange={setUserFilter}
+                                selectedValues={params.assignee || []}
+                                allValues={userOptions.map(opt => opt.value)}
+                                onValuesChange={updateAssignee}
                             />
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
-                                    checked={kanbanOnlyMyAssignments}
-                                    onCheckedChange={(checked) => setKanbanOnlyMyAssignments(checked === true)}
                                     className="border-zinc-600"
                                 />
                                 <span className="text-sm text-zinc-400">Mis asignaciones</span>
@@ -260,6 +252,21 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                 </div>
             </div>
 
+            <FilterChips
+                searchQuery={params.search}
+                selectedTech={params.tech}
+                selectedStatus={viewMode === 'BACKLOG' ? params.status : []}
+                selectedAssignee={viewMode === 'KANBAN' ? params.assignee : []}
+                techOptions={techOptions}
+                statusOptions={statusOptions}
+                assigneeOptions={userOptions}
+                onSearchChange={updateSearch}
+                onTechChange={updateTech}
+                onStatusChange={updateStatus}
+                onAssigneeChange={updateAssignee}
+                onResetFilters={resetFilters}
+            />
+
             <div className="flex-1 min-h-0 overflow-visible">
                 {viewMode === 'BACKLOG' ? (
                     <Backlog
@@ -268,25 +275,25 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         onOpenChange={setIsSheetOpen}
                         taskSelect={setSelectedTask}
                         onTaskUpdate={handleTaskUpdate}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        techFilter={techFilter}
-                        setTechFilter={setTechFilter}
-                        statusFilter={statusFilter}
-                        setStatusFilter={setStatusFilter}
-                        onlyMyAssignments={onlyMyAssignments}
-                        setOnlyMyAssignments={setOnlyMyAssignments}
+                        searchQuery={params.search || ''}
+                        setSearchQuery={updateSearch}
+                        techFilter={params.tech || []}
+                        setTechFilter={updateTech}
+                        statusFilter={params.status || []}
+                        setStatusFilter={updateStatus}
+                        onlyMyAssignments={false}
+                        setOnlyMyAssignments={() => {}}
                         onResetFilters={handleResetBacklogFilters}
                     />
                 ) : (
                     <KanbanBoard
                         initialTasks={kanbanTasksState}
                         onTaskUpdate={handleTaskUpdate}
-                        searchQuery={searchQuery}
-                        techFilter={techFilter}
+                        searchQuery={params.search || ''}
+                        techFilter={params.tech || []}
                         userId={userId}
-                        userFilter={userFilter}
-                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        userFilter={params.assignee || []}
+                        kanbanOnlyMyAssignments={false}
                         onResetFilters={handleResetKanbanFilters}
                     />
                 )}

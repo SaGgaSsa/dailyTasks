@@ -175,8 +175,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         }
     }
 
-    const allTechValues = Object.values(TechStack)
-    const hasFilters = searchQuery || techFilter.length !== allTechValues.length || userFilter.length > 0 || kanbanOnlyMyAssignments
+
 
     if (filteredTasks.length === 0) {
         return (
@@ -187,18 +186,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     </div>
                     <div className="flex flex-col items-center">
                         <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                        {hasFilters ? (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={onResetFilters}
-                                className="mt-2 text-blue-400 hover:text-blue-300"
-                            >
-                                Resetear filtros
-                            </Button>
-                        ) : (
-                            <p className="text-zinc-500 text-sm mt-1">Sin incidencias asignadas</p>
-                        )}
                     </div>
                 </div>
             </div>

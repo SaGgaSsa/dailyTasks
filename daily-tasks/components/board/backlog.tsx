@@ -338,18 +338,6 @@ export function Backlog({
                                         </div>
                                         <div>
                                             <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            {onResetFilters ? (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={onResetFilters}
-                                                    className="mt-2 text-blue-400 hover:text-blue-300"
-                                                >
-                                                    Resetear filtros
-                                                </Button>
-                                            ) : (
-                                                <p className="text-zinc-500 text-sm mt-1">Sin incidencias</p>
-                                            )}
                                         </div>
                                     </div>
                                 </TableCell>
