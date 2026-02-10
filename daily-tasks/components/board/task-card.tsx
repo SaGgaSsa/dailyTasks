@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckSquare, CheckCircle, Clock, User, List } from 'lucide-react'
+import { CheckSquare, CheckCircle, CheckCircle2, Clock, User, List } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IncidenceWithDetails } from '@/types'
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
 import { TaskStatus } from '@/types/enums'
+import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
+import { useSession } from 'next-auth/react'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
@@ -34,6 +36,8 @@ const typeColors: Record<string, string> = {
 }
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
+    const { data: session } = useSession()
+    const userId = session?.user?.id || undefined
     const {
         attributes,
         listeners,
@@ -57,6 +61,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const hasHours = (task.estimatedTime ?? 0) > 0
     const hasAssignees = task.assignments.length > 0
     const hasSubTasks = allSubTasks.length > 0
+
+    const completedHours = calculateCompletedHours(task)
+    const isComplete = isFullyCompleted(completedHours, task.estimatedTime)
+    const userAssignment = task.assignments.find(a => String(a.userId) === String(userId))
+    const userHours = userAssignment?.assignedHours || 0
 
     return (
         <Card
@@ -104,12 +113,20 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                     <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
                         {task.technology}
                     </Badge>
-                    {task.estimatedTime && (
-                        <span className="text-[10px] text-zinc-500">{task.estimatedTime}h</span>
-                    )}
+                    <span className="text-[10px] text-zinc-400">
+                        {formatHoursDisplay(completedHours, task.estimatedTime)}
+                    </span>
                 </div>
-
-                {/* Footnotes: Subtasks and Assignees */}
+                {task.estimatedTime && userId && userHours > 0 && (
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400">
+                            Mis horas: {userHours}h
+                        </span>
+                        {task.estimatedTime && isComplete && (
+                            <CheckCircle2 className="h-3 w-3 text-green-400" />
+                        )}
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-zinc-500">
                         <CheckSquare className="h-3 w-3" />

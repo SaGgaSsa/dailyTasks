@@ -18,17 +18,17 @@ import {
 } from '@/components/ui/table'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
-import { TaskStatus, TaskType, TechStack } from '@/types/enums'
+import { TaskStatus, TaskType } from '@/types/enums'
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -44,6 +44,7 @@ interface BacklogProps {
     setStatusFilter: (filter: string[]) => void
     onlyMyAssignments: boolean
     setOnlyMyAssignments: (value: boolean) => void
+    onResetFilters?: () => void
 }
 
 const statusColors: Record<TaskStatus, string> = {
@@ -81,45 +82,19 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
             const title = row.original.title
-            
-            // Calcular horas restantes
-            const estimatedHours = row.original.estimatedTime || 0
-            const remainingHours = row.original.assignments.reduce((acc, assignment) => {
-                const assignmentRemaining = assignment.remainingHours || 0
-                const allTasksCompleted = assignment.tasks.length > 0 && assignment.tasks.every((t: {isCompleted: boolean}) => t.isCompleted)
-                return acc + (allTasksCompleted ? 0 : assignmentRemaining)
-            }, 0)
-            const hoursLeft = Math.max(0, estimatedHours - remainingHours)
-            
-            // Calcular pendientes
-            const allTasks = row.original.assignments.flatMap(a => a.tasks)
-            const completedTasks = allTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
-            const totalTasks = allTasks.length
-            const isAllCompleted = totalTasks > 0 && completedTasks === totalTasks
+            const totalHours = row.original.estimatedTime || 0
+            const completedHours = calculateCompletedHours(row.original)
+            const isComplete = isFullyCompleted(completedHours, row.original.estimatedTime)
             
             return (
                 <div className="flex items-center gap-4 min-w-0">
                     <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
                         {title}
                     </span>
-                    <span className="text-xs text-zinc-400 whitespace-nowrap shrink-0">
-                        {hoursLeft}h
+                    <span className={`text-xs whitespace-nowrap shrink-0 ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+                        {formatHoursDisplay(completedHours, totalHours)}{totalHours > 0 ? 'h' : ''}
+                        {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
                     </span>
-                    {totalTasks > 0 && (
-                        <span className={`text-xs flex items-center gap-1 whitespace-nowrap shrink-0 ${isAllCompleted ? 'text-green-400' : 'text-zinc-400'}`}>
-                            {isAllCompleted ? (
-                                <>
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    <span>completado</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>{completedTasks}/{totalTasks}</span>
-                                    <span>pendientes</span>
-                                </>
-                            )}
-                        </span>
-                    )}
                 </div>
             )
         },
@@ -278,7 +253,8 @@ export function Backlog({
     statusFilter,
     setStatusFilter,
     onlyMyAssignments,
-    setOnlyMyAssignments
+    setOnlyMyAssignments,
+    onResetFilters,
 }: BacklogProps) {
     const { data: session } = useSession()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
@@ -362,7 +338,18 @@ export function Backlog({
                                         </div>
                                         <div>
                                             <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            <p className="text-zinc-500 text-sm mt-1">Intenta con otros filtros</p>
+                                            {onResetFilters ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={onResetFilters}
+                                                    className="mt-2 text-blue-400 hover:text-blue-300"
+                                                >
+                                                    Resetear filtros
+                                                </Button>
+                                            ) : (
+                                                <p className="text-zinc-500 text-sm mt-1">Sin incidencias</p>
+                                            )}
                                         </div>
                                     </div>
                                 </TableCell>

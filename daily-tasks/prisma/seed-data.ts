@@ -170,14 +170,14 @@ async function assignIncidences(incidences: { id: number }[], devs: { id: number
       
       // Crear assignments para cada desarrollador
       for (const dev of assignees) {
-        await prisma.assignment.create({
-          data: {
-            incidenceId: incidence.id,
-            userId: dev.id,
-            remainingHours: Math.random() < 0.7 ? randomInt(1, 40) : null,
-            isAssigned: true,
-          },
-        })
+      await prisma.assignment.create({
+            data: {
+              incidenceId: incidence.id,
+              userId: dev.id,
+              assignedHours: Math.random() < 0.7 ? randomInt(1, 40) : null,
+              isAssigned: true,
+            },
+          })
       }
       
       console.log(`Created ${assignees.length} assignment(s) for incidence ${incidence.id}`)

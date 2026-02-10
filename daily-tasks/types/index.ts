@@ -1,10 +1,13 @@
 import { Incidence, User, SubTask, Assignment } from '@prisma/client'
 import { TaskStatus, TaskType, TechStack, Priority } from './enums'
 
-// Tipo para crear asignaciones con horas restantes
+export type { TaskStatus, TaskType, TechStack, Priority }
+
+export type { SubTask }
+
 export interface AssigneeWithHours {
   userId: number
-  remainingHours: number | null
+  assignedHours: number | null
 }
 
 export type AssignmentWithDetails = Assignment & {

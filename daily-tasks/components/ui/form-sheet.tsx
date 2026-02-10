@@ -28,6 +28,8 @@ interface FormSheetProps {
     isSaving: boolean
     onSave: () => Promise<boolean> | void
     onClose: () => void
+    hasUnsavedChanges?: boolean
+    onDiscard?: () => void
     children: React.ReactNode
 }
 
@@ -39,6 +41,8 @@ export function FormSheet({
     isSaving,
     onSave,
     onClose,
+    hasUnsavedChanges,
+    onDiscard,
     children,
 }: FormSheetProps) {
     const handleSaveAndClose = async () => {
@@ -48,12 +52,20 @@ export function FormSheet({
         }
     }
 
+    const handleClose = () => {
+        if (hasUnsavedChanges && onDiscard) {
+            onDiscard()
+        } else {
+            onClose()
+        }
+    }
+
     return (
         <Sheet
             open={open}
             onOpenChange={(newOpen) => {
                 if (!newOpen) {
-                    onClose()
+                    handleClose()
                 }
             }}
         >
@@ -61,7 +73,9 @@ export function FormSheet({
                 showCloseButton={false}
                 onInteractOutside={(e) => {
                     e.preventDefault()
-                    if (isEditMode) {
+                    if (hasUnsavedChanges && !isEditMode && onDiscard) {
+                        onDiscard()
+                    } else if (isEditMode) {
                         handleSaveAndClose()
                     } else {
                         onClose()
@@ -69,7 +83,7 @@ export function FormSheet({
                 }}
                 className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
             >
-                <SheetHeader className="space-y-2 pb-4 border-b border-zinc-800">
+                <SheetHeader className="space-y-2 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 pt-1">
                             <Button
@@ -80,15 +94,12 @@ export function FormSheet({
                                 className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                                 title="Guardar"
                             >
-                                {isSaving ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Check className="h-4 w-4" />
-                                )}
-                            </Button>
-                            {isSaving && (
+                            {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+                            ) : (
+                                <Check className="h-4 w-4" />
                             )}
+                        </Button>
                         </div>
                         <SheetTitle className="text-zinc-100 pt-1">
                             {title}
@@ -99,16 +110,16 @@ export function FormSheet({
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                            title="Descartar cambios"
+                            title={hasUnsavedChanges ? "Descartar cambios" : "Cerrar"}
                         >
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                 </SheetHeader>
 
-                <div className="flex flex-col space-y-4 py-6 pl-8">
+                <div className="flex flex-col space-y-4 pt-4 py-6 px-8">
                     {children}
                 </div>
             </SheetContent>
@@ -218,3 +229,4 @@ export function FormRow3({ children }: { children: React.ReactNode }) {
 }
 
 export { Label }
+export type { FormSheetProps, FormFieldProps, FormInputProps, FormTextareaProps, FormSelectProps, SelectOption }

@@ -1,19 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
-import { LayoutDashboard, ListTodo, Plus, BrainCircuit } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { TaskStatus, TechStack } from '@/types/enums'
 
 interface DashboardClientProps {
@@ -38,185 +37,171 @@ const statusOptions = [
     { value: TaskStatus.DONE, label: 'Finalizado' },
 ]
 
-export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks: initialKanbanTasks, isAdmin }: DashboardClientProps) {
+export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const router = useRouter()
+    const { data: session } = useSession()
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
-    const [backlogTasks, setBacklogTasks] = useState(initialBacklogTasks)
-    const [kanbanTasks, setKanbanTasks] = useState(initialKanbanTasks)
-    
-    // Filtros compartidos
+    const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
+    const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
     const [searchQuery, setSearchQuery] = useState('')
-    const [techFilter, setTechFilter] = useState<string[]>((Object.values(TechStack) as string[]))
-    const [isTechDropdownOpen, setIsTechDropdownOpen] = useState(false)
-    
-    // Filtros solo para backlog
+    const [techFilter, setTechFilter] = useState<string[]>(Object.values(TechStack))
     const [statusFilter, setStatusFilter] = useState<string[]>([TaskStatus.BACKLOG])
-    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
     const [onlyMyAssignments, setOnlyMyAssignments] = useState(false)
+    const [kanbanOnlyMyAssignments, setKanbanOnlyMyAssignments] = useState(!isAdmin)
+    const [userFilter, setUserFilter] = useState<string[]>([])
 
-    useEffect(() => {
-        setBacklogTasks(initialBacklogTasks)
-        setKanbanTasks(initialKanbanTasks)
-    }, [initialBacklogTasks, initialKanbanTasks])
+    const userId = session?.user?.id ? Number(session.user.id) : undefined
 
-    const handleBacklogUpdate = (updatedTask: IncidenceWithDetails) => {
-        setBacklogTasks(prev => prev.map(task =>
-            task.id === updatedTask.id ? updatedTask : task
-        ))
-    }
+    const userOptions = useMemo(() => {
+        interface UserInfo {
+            id: number
+            name: string
+            username: string
+            role: string
+        }
+        const users = new Map<number, UserInfo>()
 
-    const handleTaskUpdate = (updatedTask: IncidenceWithDetails) => {
-        setBacklogTasks(prev => prev.map(task =>
-            task.id === updatedTask.id ? updatedTask : task
-        ))
-        setKanbanTasks(prev => prev.map(task =>
-            task.id === updatedTask.id ? updatedTask : task
-        ))
-    }
+        const addUsersFromTasks = (tasks: IncidenceWithDetails[]) => {
+            tasks.forEach(task => {
+                task.assignments
+                    .filter(a => a.isAssigned)
+                    .forEach(a => {
+                        users.set(a.user.id, {
+                            id: a.user.id,
+                            name: a.user.name || '',
+                            username: a.user.username || '',
+                            role: a.user.role
+                        })
+                    })
+            })
+        }
+
+        addUsersFromTasks(backlogTasks)
+        addUsersFromTasks(kanbanTasks)
+
+        return Array.from(users.values())
+            .sort((a, b) => {
+                if (a.role !== b.role) {
+                    return a.role === 'DEV' ? -1 : 1
+                }
+                const aLabel = a.name || a.username
+                const bLabel = b.name || b.username
+                return aLabel.localeCompare(bLabel)
+            })
+            .map(u => ({
+                value: String(u.id),
+                label: u.name || u.username
+            }))
+    }, [backlogTasks, kanbanTasks])
+
+    const handleTaskUpdate = useCallback((updatedTask: IncidenceWithDetails) => {
+        setBacklogTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
+        setKanbanTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
+    }, [])
 
     const handleIncidenceCreated = () => {
         router.refresh()
     }
 
-    if (!isAdmin) {
-        return <KanbanBoard initialTasks={kanbanTasks} onTaskUpdate={handleTaskUpdate} />
+    const handleResetKanbanFilters = () => {
+        setSearchQuery('')
+        setTechFilter(Object.values(TechStack))
+        setUserFilter([])
+        if (isAdmin) {
+            setKanbanOnlyMyAssignments(false)
+        }
     }
 
-    return (
-        <div className="flex flex-col h-full space-y-4">
-            {/* Header con título, filtros y tabs */}
-            <div className="flex justify-between items-center px-1">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        {viewMode === 'BACKLOG' ? 'Backlog' : 'Kanban'}
-                    </h2>
-                    
-                    {/* Filtros compartidos: Buscar y Tecnologia */}
-                    <div className="flex items-center gap-3">
+    const handleResetBacklogFilters = () => {
+        setSearchQuery('')
+        setTechFilter(Object.values(TechStack))
+        setStatusFilter([TaskStatus.BACKLOG])
+        setOnlyMyAssignments(false)
+    }
+
+    if (!isAdmin) {
+        return (
+            <div className="flex flex-col h-full space-y-4">
+                <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Kanban
+                        </h2>
+
                         <Input
                             placeholder="Buscar..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
                         />
-                        <Popover open={isTechDropdownOpen} onOpenChange={setIsTechDropdownOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed">
-                                    <BrainCircuit className="h-4 w-4" />
-                                    {techFilter.length > 0 && techFilter.length < Object.values(TechStack).length && (
-                                        <>
-                                            <Separator orientation="vertical" className="mx-2 h-4" />
-                                            <div className="hidden space-x-1 lg:flex">
-                                                {techFilter.length > 2 ? (
-                                                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                                                        {techFilter.length} seleccionados
-                                                    </Badge>
-                                                ) : (
-                                                    techFilter.map(value => (
-                                                        <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
-                                                            {techOptions.find(o => o.value === value)?.label || value}
-                                                        </Badge>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
-                                {techFilter.length > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setTechFilter(Object.values(TechStack) as string[])}
-                                        className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
-                                    >
-                                        Limpiar filtros
-                                    </Button>
-                                )}
-                                <div className="space-y-1">
-                                    {techOptions.map(opt => (
-                                        <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
-                                            <Checkbox
-                                                checked={techFilter.includes(opt.value)}
-                                                onCheckedChange={(checked) => {
-                                                    if (checked === true) {
-                                                        setTechFilter(prev => [...prev, opt.value])
-                                                    } else {
-                                                        setTechFilter(prev => prev.filter(t => t !== opt.value))
-                                                    }
-                                                }}
-                                                className="border-zinc-600"
-                                            />
-                                            <span className="text-sm text-zinc-300">{opt.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
 
-                    {/* Filtros solo para Backlog: Estado y Mis asignaciones */}
+                        <FilterDropdown
+                            icon={<BrainCircuit className="h-4 w-4" />}
+                            label="Tecnología"
+                            options={techOptions}
+                            selectedValues={techFilter}
+                            allValues={Object.values(TechStack)}
+                            onValuesChange={setTechFilter}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-visible">
+                    <KanbanBoard
+                        initialTasks={kanbanTasksState}
+                        onTaskUpdate={handleTaskUpdate}
+                        searchQuery={searchQuery}
+                        techFilter={techFilter}
+                        userId={userId}
+                        userFilter={userFilter}
+                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        onResetFilters={handleResetKanbanFilters}
+                        isDev={true}
+                    />
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex flex-col h-full space-y-4">
+            <div className="flex justify-between items-center px-1">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        {viewMode === 'BACKLOG' ? 'Backlog' : 'Kanban'}
+                    </h2>
+
+                    <Input
+                        placeholder="Buscar..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm"
+                    />
+
+                    <FilterDropdown
+                        icon={<BrainCircuit className="h-4 w-4" />}
+                        label="Tecnología"
+                        options={techOptions}
+                        selectedValues={techFilter}
+                        allValues={Object.values(TechStack)}
+                        onValuesChange={setTechFilter}
+                    />
+
                     {viewMode === 'BACKLOG' && (
-                        <div className="flex items-center gap-3">
-                            <Popover open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed">
-                                        <LayoutDashboard className="h-4 w-4" />
-                                        {statusFilter.length > 0 && statusFilter.length < statusOptions.length && (
-                                            <>
-                                                <Separator orientation="vertical" className="mx-2 h-4" />
-                                                <div className="hidden space-x-1 lg:flex">
-                                                    {statusFilter.length > 2 ? (
-                                                        <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                                                            {statusFilter.length} seleccionados
-                                                        </Badge>
-                                                    ) : (
-                                                        statusFilter.map(value => (
-                                                            <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
-                                                                {statusOptions.find(o => o.value === value)?.label || value}
-                                                            </Badge>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
-                                    {statusFilter.length > 0 && statusFilter.length !== 1 && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setStatusFilter([TaskStatus.BACKLOG])}
-                                            className="w-full mb-2 h-7 text-xs text-zinc-400 hover:text-zinc-200"
-                                        >
-                                            Restablecer a Backlog
-                                        </Button>
-                                    )}
-                                    <div className="space-y-1">
-                                        {statusOptions.map(opt => (
-                                            <label key={opt.value} className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer">
-                                                <Checkbox
-                                                    checked={statusFilter.includes(opt.value)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked === true) {
-                                                            setStatusFilter(prev => [...prev, opt.value])
-                                                        } else {
-                                                            setStatusFilter(prev => prev.filter(t => t !== opt.value))
-                                                        }
-                                                    }}
-                                                    className="border-zinc-600"
-                                                />
-                                                <span className="text-sm text-zinc-300">{opt.label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                        <>
+                            <FilterDropdown
+                                icon={<LayoutDashboard className="h-4 w-4" />}
+                                label="Estado"
+                                options={statusOptions}
+                                selectedValues={statusFilter}
+                                allValues={statusOptions.map(o => o.value)}
+                                onValuesChange={setStatusFilter}
+                                resetValue={TaskStatus.BACKLOG}
+                            />
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
                                     checked={onlyMyAssignments}
@@ -225,13 +210,34 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                                 />
                                 <span className="text-sm text-zinc-400">Mis asignaciones</span>
                             </label>
-                        </div>
+                        </>
+                    )}
+
+                    {viewMode === 'KANBAN' && (
+                        <>
+                            <FilterDropdown
+                                icon={<User className="h-4 w-4" />}
+                                label="Usuario"
+                                options={userOptions}
+                                selectedValues={userFilter}
+                                allValues={userOptions.map(o => o.value)}
+                                onValuesChange={setUserFilter}
+                            />
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                    checked={kanbanOnlyMyAssignments}
+                                    onCheckedChange={(checked) => setKanbanOnlyMyAssignments(checked === true)}
+                                    className="border-zinc-600"
+                                />
+                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                            </label>
+                        </>
                     )}
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                     {viewMode === 'BACKLOG' && (
-                        <Button 
+                        <Button
                             onClick={() => {
                                 setSelectedTask(null)
                                 setIsSheetOpen(true)
@@ -254,11 +260,10 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                 </div>
             </div>
 
-            {/* Contenido */}
             <div className="flex-1 min-h-0 overflow-visible">
                 {viewMode === 'BACKLOG' ? (
-                    <Backlog 
-                        initialTasks={backlogTasks}
+                    <Backlog
+                        initialTasks={backlogTasksState}
                         isSheetOpen={isSheetOpen}
                         onOpenChange={setIsSheetOpen}
                         taskSelect={setSelectedTask}
@@ -271,18 +276,22 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                         setStatusFilter={setStatusFilter}
                         onlyMyAssignments={onlyMyAssignments}
                         setOnlyMyAssignments={setOnlyMyAssignments}
+                        onResetFilters={handleResetBacklogFilters}
                     />
                 ) : (
-                    <KanbanBoard 
-                        initialTasks={kanbanTasks}
+                    <KanbanBoard
+                        initialTasks={kanbanTasksState}
                         onTaskUpdate={handleTaskUpdate}
                         searchQuery={searchQuery}
                         techFilter={techFilter}
+                        userId={userId}
+                        userFilter={userFilter}
+                        kanbanOnlyMyAssignments={kanbanOnlyMyAssignments}
+                        onResetFilters={handleResetKanbanFilters}
                     />
                 )}
             </div>
 
-            {/* Formulario compartido */}
             <IncidenceForm
                 open={isSheetOpen}
                 onOpenChange={(open) => {
@@ -292,6 +301,7 @@ export function DashboardClient({ backlogTasks: initialBacklogTasks, kanbanTasks
                 initialData={selectedTask}
                 onTaskUpdate={handleTaskUpdate}
                 onIncidenceCreated={handleIncidenceCreated}
+                isDev={!isAdmin}
             />
         </div>
     )
