@@ -179,12 +179,12 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
     if (filteredTasks.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <div className="flex flex-col items-center justify-center gap-3">
+            <div className="flex flex-col items-center pt-8">
+                <div className="flex flex-col items-center gap-3">
                     <div className="p-4 rounded-full bg-zinc-900/50">
                         <Inbox className="h-8 w-8 text-zinc-600" />
                     </div>
-                    <div>
+                    <div className="flex flex-col items-center">
                         <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
                         {hasFilters ? (
                             <Button
