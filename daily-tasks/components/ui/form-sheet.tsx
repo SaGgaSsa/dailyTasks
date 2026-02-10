@@ -229,3 +229,4 @@ export function FormRow3({ children }: { children: React.ReactNode }) {
 }
 
 export { Label }
+export type { FormSheetProps, FormFieldProps, FormInputProps, FormTextareaProps, FormSelectProps, SelectOption }

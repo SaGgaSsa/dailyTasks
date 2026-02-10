@@ -311,10 +311,59 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
     }
 }
 
-export async function toggleSubTask(subTaskId: number) {
+export async function createSubTask(assignmentId: number, title: string) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
     try {
-        const subTask = await db.subTask.findUnique({ where: { id: subTaskId } })
-        if (!subTask) return { success: false, error: 'No encontrada' }
+        const assignment = await db.assignment.findUnique({
+            where: { id: assignmentId },
+            include: { incidence: true }
+        })
+
+        if (!assignment) return { success: false, error: 'Asignación no encontrada' }
+
+        const isAssignedUser = assignment.userId === Number(session.user.id)
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isAssignedUser && !isAdmin) {
+            return { success: false, error: 'No autorizado' }
+        }
+
+        const subTask = await db.subTask.create({
+            data: {
+                title,
+                assignmentId,
+                isCompleted: false
+            }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, data: subTask }
+    } catch (error) {
+        console.error('Error creating subtask:', error)
+        return { success: false, error: 'Error al crear tarea' }
+    }
+}
+
+export async function toggleSubTask(subTaskId: number) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    try {
+        const subTask = await db.subTask.findUnique({
+            where: { id: subTaskId },
+            include: { assignment: { include: { incidence: true } } }
+        })
+
+        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+
+        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isAssignedUser && !isAdmin) {
+            return { success: false, error: 'No autorizado' }
+        }
 
         await db.subTask.update({
             where: { id: subTaskId },
@@ -324,6 +373,38 @@ export async function toggleSubTask(subTaskId: number) {
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
-        return { success: false, error: 'Error' }
+        console.error('Error toggling subtask:', error)
+        return { success: false, error: 'Error al actualizar tarea' }
+    }
+}
+
+export async function deleteSubTask(subTaskId: number) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    try {
+        const subTask = await db.subTask.findUnique({
+            where: { id: subTaskId },
+            include: { assignment: { include: { incidence: true } } }
+        })
+
+        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+
+        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isAssignedUser && !isAdmin) {
+            return { success: false, error: 'No autorizado' }
+        }
+
+        await db.subTask.delete({
+            where: { id: subTaskId }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error deleting subtask:', error)
+        return { success: false, error: 'Error al eliminar tarea' }
     }
 }

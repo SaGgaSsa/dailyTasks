@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
+import { Trash2, ChevronUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,9 +18,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { IncidenceWithDetails } from '@/types'
+import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
-import { createIncidence, updateIncidence, getIncidence } from '@/app/actions/incidence-actions'
+import { createIncidence, updateIncidence, getIncidence, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
 import { getUsers } from '@/app/actions/user-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
@@ -56,6 +56,12 @@ const techOptions = [
 interface AssigneeFormData {
     userId: number
     assignedHours: string
+}
+
+interface DraftTask {
+    tempId: string
+    title: string
+    assignmentId: number
 }
 
 interface FormData {
@@ -98,6 +104,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
     const [removedAssigneesHours, setRemovedAssigneesHours] = useState<Record<number, string>>({})
+    const [newTaskInputs, setNewTaskInputs] = useState<Record<number, string>>({})
+    const [draftTasks, setDraftTasks] = useState<DraftTask[]>([])
+    const [showCompletedTasks, setShowCompletedTasks] = useState(false)
+    const [expandedAssignees, setExpandedAssignees] = useState<Set<number>>(new Set())
 
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
     const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
@@ -228,6 +238,56 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         updateFormData({ subTasks: updated })
     }
 
+    const handleCreateTask = async (assignmentId: number, title: string) => {
+        if (!title.trim()) return
+        
+        const tempId = `${assignmentId}-${Date.now()}`
+        setDraftTasks(prev => [...prev, { tempId, title, assignmentId }])
+        setNewTaskInputs(prev => ({ ...prev, [assignmentId]: '' }))
+        
+        setTimeout(() => {
+            const input = document.querySelector(`[data-assignment-id="${assignmentId}"]`) as HTMLInputElement
+            if (input) {
+                input.focus()
+            }
+        }, 0)
+    }
+
+    const handleRemoveDraftTask = (tempId: string) => {
+        setDraftTasks(prev => prev.filter(t => t.tempId !== tempId))
+    }
+
+    const handleToggleTask = async (taskId: number) => {
+        const result = await toggleSubTask(taskId)
+        if (!result.success) {
+            toast.error(result.error || 'Error al actualizar tarea')
+        }
+    }
+
+    const handleDeleteTask = async (taskId: number) => {
+        const result = await deleteSubTask(taskId)
+        if (!result.success) {
+            toast.error(result.error || 'Error al eliminar tarea')
+        }
+    }
+
+    const toggleAssigneeExpanded = (userId: number) => {
+        setExpandedAssignees(prev => {
+            const next = new Set(prev)
+            if (next.has(userId)) {
+                next.delete(userId)
+            } else {
+                next.add(userId)
+            }
+            return next
+        })
+    }
+
+    const isAssigneeExpanded = (userId: number) => {
+        if (isAdmin) return true
+        return expandedAssignees.has(userId)
+    }
+
     const handleToggleAssignee = (userId: number) => {
         const exists = formData.assignees.find(a => a.userId === userId)
         if (exists) {
@@ -243,6 +303,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             updateFormData({
                 assignees: [...formData.assignees, { userId, assignedHours: restoredHours || previousHours }]
             })
+            setExpandedAssignees(prev => new Set(prev).add(userId))
         }
     }
 
@@ -286,6 +347,12 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
 
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
+                    
+                    for (const draft of draftTasks) {
+                        await createSubTask(draft.assignmentId, draft.title)
+                    }
+                    setDraftTasks([])
+                    
                     if (result.data) {
                         setFullIncidenceData(result.data)
                         if (onTaskUpdate) {
@@ -329,6 +396,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }
 
     const handleClose = () => {
+        setDraftTasks([])
+        setExpandedAssignees(new Set())
         onOpenChange(false)
     }
 
@@ -337,6 +406,8 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     }
 
     const confirmDiscard = () => {
+        setDraftTasks([])
+        setExpandedAssignees(new Set())
         setShowDiscardConfirm(false)
         onOpenChange(false)
     }
@@ -472,74 +543,103 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             {(isBacklog || (hasRequirements && isAdmin)) ? (
                 <div className="space-y-2">
                     <Label className="text-zinc-300">Asignar colaborador</Label>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                        <div className="space-y-2">
-                            {users.map(user => {
-                                const assigneeData = formData.assignees.find(a => a.userId === user.id)
-                                const isSelected = !!assigneeData
-                                
-                                const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
-                                const userTasks = userAssignment?.tasks || []
-                                const hasTasks = userTasks.length > 0
-                                const completedTasks = userTasks.filter((t: {isCompleted: boolean}) => t.isCompleted).length
-                                const totalTasks = userTasks.length
-                                const isAllCompleted = hasTasks && completedTasks === totalTasks
-                                
-                                return (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded"
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-md">
+                        {users.map(user => {
+                            const assigneeData = formData.assignees.find(a => a.userId === user.id)
+                            const isSelected = !!assigneeData
+                            const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
+                            const userTasks = userAssignment?.tasks || []
+                            const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted)
+                            const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted)
+                            const isExpanded = expandedAssignees.has(user.id)
+
+                            return (
+                                <div key={user.id} className="border-b border-zinc-800 last:border-b-0">
+                                    <div 
+                                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-zinc-800/50"
+                                        onClick={() => toggleAssigneeExpanded(user.id)}
                                     >
                                         <Checkbox
                                             checked={isSelected}
                                             onCheckedChange={() => handleToggleAssignee(user.id)}
+                                            onClick={(e) => e.stopPropagation()}
                                             className="border-zinc-600"
                                         />
                                         <span className="text-zinc-300 text-sm">{user.name}</span>
-                                        
-                                        {hasTasks && (
-                                            <div className="flex items-center gap-1 text-[11px]">
-                                                {isAllCompleted ? (
-                                                    <>
-                                                        <CheckCircle2 className="h-3 w-3 text-green-400" />
-                                                        <span className="text-green-400">completado</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="text-zinc-400">
-                                                            {completedTasks}/{totalTasks}
-                                                        </span>
-                                                        <span className="text-zinc-500">pendientes</span>
-                                                    </>
-                                                )}
-                                            </div>
+                                        {userTasks.length > 0 && (
+                                            <span className="text-zinc-500 text-xs">
+                                                {pendingTasks.length}/{userTasks.length} pendientes
+                                            </span>
                                         )}
-                                        
-                                        <div className="flex-1"></div>
-                                        
+                                        <div className="flex-1" />
                                         <div className="flex items-center gap-2">
-                                                <span className="text-zinc-500 text-xs">Horas Asignadas:</span>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    max="9999"
-                                                    step="1"
-                                                    value={assigneeData?.assignedHours || ''}
-                                                    disabled={!isSelected}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value;
-                                                        if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
-                                                            handleUpdateAssigneeHours(user.id, value);
-                                                        }
-                                                    }}
-                                                    className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-7 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    placeholder="0"
-                                                />
-                                            </div>
+                                            <span className="text-zinc-500 text-xs">Horas Asignadas:</span>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                max="9999"
+                                                step="1"
+                                                value={assigneeData?.assignedHours || ''}
+                                                disabled={!isSelected}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
+                                                        handleUpdateAssigneeHours(user.id, value);
+                                                    }
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        {isSelected && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => toggleAssigneeExpanded(user.id)}
+                                                className="h-6 w-6 text-zinc-500"
+                                            >
+                                                <ChevronUp className="h-3 w-3" />
+                                            </Button>
+                                        )}
                                     </div>
-                                )
-                            })}
-                        </div>
+                                    
+                                    {isSelected && (
+                                        <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            <Input
+                                                data-assignment-id={userAssignment?.id || user.id}
+                                                value={newTaskInputs[user.id] || ''}
+                                                onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [user.id]: e.target.value }))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        handleCreateTask(userAssignment?.id || user.id, newTaskInputs[user.id] || '')
+                                                        setNewTaskInputs(prev => ({ ...prev, [user.id]: '' }))
+                                                    }
+                                                }}
+                                                className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm w-full"
+                                                placeholder={`Nueva tarea para ${user.name}...`}
+                                            />
+                                            
+                                            {draftTasks.filter(t => t.assignmentId === userAssignment?.id).map(draft => (
+                                                <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
+                                                    <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleRemoveDraftTask(draft.tempId)}
+                                                        className="h-5 w-5 text-zinc-500 hover:text-red-400"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                     <p className="text-xs text-zinc-500">
                         Al asignar colaboradores, especifica las horas que cada uno aportará a la tarea.
@@ -548,9 +648,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             ) : initialData && initialData.assignments.length > 0 ? (
                 <div className="space-y-2">
                     <Label className="text-zinc-300">Colaborador asignado</Label>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
-                        {initialData.assignments.map(assignment => (
-                            <div key={assignment.userId} className="flex items-center justify-between p-2">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-md">
+                        {initialData.assignments.filter(a => a.isAssigned).map(assignment => (
+                            <div key={assignment.userId} className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 last:border-b-0">
                                 <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
                                 <span className="text-zinc-500 text-xs">
                                     {assignment.assignedHours !== null ? `${assignment.assignedHours}h asignadas` : 'Sin horas asignadas'}
@@ -561,61 +661,112 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 </div>
             ) : null}
 
-            <div className="space-y-2">
-                <Label className="text-zinc-300">Pendientes</Label>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3 space-y-2">
-                    <div className="flex gap-2">
+            {isEditMode && fullIncidenceData?.assignments && (() => {
+                const currentUserAssignment = fullIncidenceData.assignments.find(
+                    a => a.isAssigned && a.userId === Number(session?.user?.id)
+                )
+                const currentUserId = currentUserAssignment?.id || 0
+                const userTasks = currentUserAssignment?.tasks || []
+                const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted)
+                const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted)
+
+                return (
+                    <div className="space-y-3">
+                        <h3 className="text-zinc-100 font-medium">📋 Mi Trabajo</h3>
+                        
+                        {pendingTasks.length > 0 && (
+                            <div className="space-y-1">
+                                {pendingTasks.map((task) => (
+                                    <div
+                                        key={task.id}
+                                        className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group"
+                                    >
+                                        <Checkbox
+                                            checked={task.isCompleted}
+                                            onCheckedChange={() => handleToggleTask(task.id)}
+                                            className="border-zinc-600"
+                                        />
+                                        <span className="text-sm text-zinc-300 flex-1">{task.title}</span>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleDeleteTask(task.id)}
+                                            className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <Input
-                            value={newSubTask}
-                            onChange={(e) => setNewSubTask(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddSubTask()}
-                            className="bg-zinc-950 border-zinc-800 text-zinc-100 text-sm"
-                            placeholder="Nuevo ítem..."
+                                                data-assignment-id={currentUserId}
+                                                value={newTaskInputs[currentUserId] || ''}
+                                                onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [currentUserId]: e.target.value }))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && currentUserId > 0) {
+                                                        handleCreateTask(currentUserId, newTaskInputs[currentUserId] || '')
+                                                        setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
+                                                    }
+                                                }}
+                            className="bg-zinc-900 border-zinc-800 text-zinc-100 text-sm w-full"
+                            placeholder="+ Agregar tarea..."
                         />
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={handleAddSubTask}
-                            className="h-9 w-9 text-zinc-400 hover:text-zinc-100"
-                        >
-                            <Plus className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    
-                    <div className="space-y-1">
-                        {formData.subTasks.map((subTask, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center gap-2 p-2 hover:bg-zinc-800 rounded group"
-                            >
-                                <Checkbox
-                                    checked={subTask.isCompleted}
-                                    onCheckedChange={() => handleToggleSubTask(index)}
-                                    className="border-zinc-600"
-                                />
-                                <span className={`text-sm flex-1 ${subTask.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>
-                                    {subTask.title}
-                                </span>
+
+                        {draftTasks.filter(t => t.assignmentId === currentUserId).map(draft => (
+                            <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded">
+                                <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
                                 <Button
                                     type="button"
-                                    size="icon"
                                     variant="ghost"
-                                    onClick={() => handleRemoveSubTask(index)}
-                                    className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    size="icon"
+                                    onClick={() => handleRemoveDraftTask(draft.tempId)}
+                                    className="h-6 w-6 text-zinc-500 hover:text-red-400"
                                 >
                                     <Trash2 className="h-3 w-3" />
                                 </Button>
                             </div>
                         ))}
-                        {formData.subTasks.length === 0 && (
+
+                        {pendingTasks.length === 0 && draftTasks.filter(t => t.assignmentId === currentUserAssignment?.id).length === 0 && (
                             <p className="text-zinc-500 text-sm text-center py-2">
-                                No hay ítems en el checklist
+                                Sin tareas asignadas
                             </p>
                         )}
+
+                        {completedTasks.length > 0 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                                className="text-xs text-zinc-500 hover:text-zinc-300"
+                            >
+                                {showCompletedTasks ? 'Ocultar completadas' : `Mostrar completadas (${completedTasks.length})`}
+                            </Button>
+                        )}
+
+                        {showCompletedTasks && completedTasks.length > 0 && (
+                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
+                                {completedTasks.map((task) => (
+                                    <div
+                                        key={task.id}
+                                        className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group opacity-60"
+                                    >
+                                        <Checkbox
+                                            checked={task.isCompleted}
+                                            onCheckedChange={() => handleToggleTask(task.id)}
+                                            className="border-zinc-600"
+                                        />
+                                        <span className="text-sm text-zinc-500 line-through flex-1">{task.title}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
-            </div>
+                )
+            })()}
 
             <div className="space-y-2">
                 <Label htmlFor="description" className="text-zinc-300">Comentario</Label>

@@ -16,9 +16,7 @@ import {
 } from '@dnd-kit/core'
 import {
     arrayMove,
-    SortableContext,
     sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { BoardColumn } from './board-column'
 import { TaskCard } from './task-card'

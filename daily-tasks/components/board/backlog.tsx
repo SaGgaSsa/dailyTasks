@@ -19,10 +19,8 @@ import {
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
-import { TaskStatus, TaskType, TechStack } from '@/types/enums'
+import { TaskStatus, TaskType } from '@/types/enums'
 import {
     Tooltip,
     TooltipContent,

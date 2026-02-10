@@ -204,5 +204,3 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
         </FormSheet>
     )
 }
-
-export { UserForm as UserSheet }
