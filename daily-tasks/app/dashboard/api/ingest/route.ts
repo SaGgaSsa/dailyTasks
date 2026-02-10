@@ -17,7 +17,7 @@ interface TaskPayload {
   description?: string
   status: string
   userEmail?: string
-  estimatedHours: number
+  assignedHours: number
 }
 
 interface IngestResponse {
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
           throw new Error('El campo title es requerido')
         }
 
-        if (!taskData.estimatedHours && taskData.estimatedHours !== 0) {
-          throw new Error('El campo estimatedHours es requerido')
+        if (!taskData.assignedHours && taskData.assignedHours !== 0) {
+          throw new Error('El campo assignedHours es requerido')
         }
 
         // Mapear status

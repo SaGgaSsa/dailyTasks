@@ -9,7 +9,7 @@ export function calculateCompletedHours(incidence: IncidenceWithDetails): number
       if (!hasTasks) return false
       return a.tasks.every(t => t.isCompleted)
     })
-    .reduce((acc, a) => acc + (a.estimatedHours || 0), 0)
+    .reduce((acc, a) => acc + (a.assignedHours || 0), 0)
 }
 
 export function formatHoursDisplay(completed: number, total: number | null): string {

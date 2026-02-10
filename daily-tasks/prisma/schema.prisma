@@ -84,7 +84,7 @@ model Assignment {
   userId         Int
   user           User      @relation(fields: [userId], references: [id])
   
-  estimatedHours Int?
+  assignedHours Int?
   isAssigned     Boolean   @default(true)
   tasks          SubTask[]
   

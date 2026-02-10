@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,7 +55,7 @@ const techOptions = [
 
 interface AssigneeFormData {
     userId: number
-    estimatedHours: string
+    assignedHours: string
 }
 
 interface FormData {
@@ -71,8 +72,11 @@ interface FormData {
 
 export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated }: IncidenceFormProps) {
     const router = useRouter()
+    const { data: session } = useSession()
     const isEditMode = !!initialData?.id
     const isBacklog = !initialData || initialData.status === TaskStatus.BACKLOG
+    
+    const isAdmin = session?.user?.role === 'ADMIN'
 
     const [formData, setFormData] = useState<FormData>({
         type: TaskType.I_MODAPL,
@@ -94,6 +98,10 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
     const [removedAssigneesHours, setRemovedAssigneesHours] = useState<Record<number, string>>({})
+
+    const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
+    const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
+    const hasRequirements = isEditMode && hasHours && hasAssignees
 
     const sortUsers = (userList: User[], assignedUserIds: Set<number>) => {
         const sortByRoleAndName = (a: User, b: User) => {
@@ -163,7 +171,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             estimatedTime: fullData.estimatedTime?.toString() || '',
                             assignees: activeAssignments.map(a => ({
                                 userId: a.userId,
-                                estimatedHours: a.estimatedHours?.toString() || ''
+                                assignedHours: a.assignedHours?.toString() || ''
                             })),
                             subTasks: allAssignments.flatMap(assignment => 
                                 assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
@@ -223,7 +231,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const handleToggleAssignee = (userId: number) => {
         const exists = formData.assignees.find(a => a.userId === userId)
         if (exists) {
-            const hoursToSave = exists.estimatedHours
+            const hoursToSave = exists.assignedHours
             setRemovedAssigneesHours(prev => ({ ...prev, [userId]: hoursToSave }))
             updateFormData({
                 assignees: formData.assignees.filter(a => a.userId !== userId)
@@ -231,9 +239,9 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         } else {
             const restoredHours = removedAssigneesHours[userId] ?? ''
             const previousAssignment = fullIncidenceData?.assignments?.find(a => a.userId === userId)
-            const previousHours = previousAssignment?.estimatedHours?.toString() ?? ''
+            const previousHours = previousAssignment?.assignedHours?.toString() ?? ''
             updateFormData({
-                assignees: [...formData.assignees, { userId, estimatedHours: restoredHours || previousHours }]
+                assignees: [...formData.assignees, { userId, assignedHours: restoredHours || previousHours }]
             })
         }
     }
@@ -241,7 +249,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
     const handleUpdateAssigneeHours = (userId: number, hours: string) => {
         updateFormData({
             assignees: formData.assignees.map(a => 
-                a.userId === userId ? { ...a, estimatedHours: hours } : a
+                a.userId === userId ? { ...a, assignedHours: hours } : a
             )
         })
     }
@@ -258,7 +266,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
             
             const assigneeData = formData.assignees.map(a => ({
                 userId: a.userId,
-                estimatedHours: a.estimatedHours === '' ? null : parseInt(a.estimatedHours)
+                assignedHours: a.assignedHours === '' ? null : parseInt(a.assignedHours)
             }))
 
             if (isEditMode && initialData?.id) {
@@ -418,6 +426,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 label="Descripción"
                 value={formData.title}
                 onChange={(e) => updateFormData({ title: e.target.value })}
+                disabled={hasRequirements}
                 placeholder="Descripción breve de la incidencia"
             />
 
@@ -436,10 +445,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     value={formData.technology}
                     onValueChange={(value) => updateFormData({ technology: value as TechStack })}
                     options={techOptions}
+                    disabled={hasRequirements}
                 />
 
                 <div className="space-y-2">
-                    <Label htmlFor="estimatedTime" className="text-zinc-300">Horas</Label>
+                    <Label htmlFor="estimatedTime" className="text-zinc-300">Horas Estimadas</Label>
                     <Input
                         id="estimatedTime"
                         type="number"
@@ -459,7 +469,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 </div>
             </FormRow3>
 
-            {isBacklog ? (
+            {(isBacklog || (hasRequirements && isAdmin)) ? (
                 <div className="space-y-2">
                     <Label className="text-zinc-300">Asignar colaborador</Label>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3">
@@ -508,13 +518,13 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                         <div className="flex-1"></div>
                                         
                                         <div className="flex items-center gap-2">
-                                                <span className="text-zinc-500 text-xs">Horas asignadas:</span>
+                                                <span className="text-zinc-500 text-xs">Horas Estimadas:</span>
                                                 <Input
                                                     type="number"
                                                     min="0"
                                                     max="9999"
                                                     step="1"
-                                                    value={assigneeData?.estimatedHours || ''}
+                                                    value={assigneeData?.assignedHours || ''}
                                                     disabled={!isSelected}
                                                     onChange={(e) => {
                                                         const value = e.target.value;
@@ -543,7 +553,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             <div key={assignment.userId} className="flex items-center justify-between p-2">
                                 <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
                                 <span className="text-zinc-500 text-xs">
-                                    {assignment.estimatedHours !== null ? `${assignment.estimatedHours}h asignadas` : 'Sin horas asignadas'}
+                                    {assignment.assignedHours !== null ? `${assignment.assignedHours}h asignadas` : 'Sin horas asignadas'}
                                 </span>
                             </div>
                         ))}

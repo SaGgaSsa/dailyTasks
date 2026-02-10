@@ -6,7 +6,7 @@ export { TaskStatus, TaskType, TechStack, Priority }
 // Tipo para crear asignaciones con horas asignadas
 export interface AssigneeWithHours {
   userId: number
-  estimatedHours: number | null
+  assignedHours: number | null
 }
 
 export type AssignmentWithDetails = Assignment & {

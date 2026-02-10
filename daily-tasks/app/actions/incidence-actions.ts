@@ -239,13 +239,13 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
                         }
                     },
                     update: {
-                        estimatedHours: assignee.estimatedHours,
+                        assignedHours: assignee.assignedHours,
                         isAssigned: true
                     },
                     create: {
                         incidenceId: id,
                         userId: assignee.userId,
-                        estimatedHours: assignee.estimatedHours,
+                        assignedHours: assignee.assignedHours,
                         isAssigned: true
                     }
                 })

@@ -65,7 +65,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const completedHours = calculateCompletedHours(task)
     const isComplete = isFullyCompleted(completedHours, task.estimatedTime)
     const userAssignment = task.assignments.find(a => String(a.userId) === String(userId))
-    const userHours = userAssignment?.estimatedHours || 0
+    const userHours = userAssignment?.assignedHours || 0
 
     return (
         <Card
