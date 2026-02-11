@@ -81,32 +81,29 @@ export function FilterChips({
             />
           )}
           
-          {selectedTech.map(tech => (
+          {selectedTech.length > 0 && (
             <FilterChip
-              key={tech}
               label="Tecnología"
-              value={getTechLabel(tech)}
-              onRemove={() => onTechChange(selectedTech.filter(t => t !== tech))}
+              value={selectedTech.map(getTechLabel).join(', ')}
+              onRemove={() => onTechChange([])}
             />
-          ))}
+          )}
           
-          {selectedStatus.map(status => (
+          {selectedStatus.length > 0 && (
             <FilterChip
-              key={status}
               label="Estado"
-              value={getStatusLabel(status)}
-              onRemove={() => onStatusChange(selectedStatus.filter(s => s !== status))}
+              value={selectedStatus.map(getStatusLabel).join(', ')}
+              onRemove={() => onStatusChange([])}
             />
-          ))}
+          )}
           
-          {selectedAssignee.map(assignee => (
+          {selectedAssignee.length > 0 && (
             <FilterChip
-              key={assignee}
               label="Usuario"
-              value={getAssigneeLabel(assignee)}
-              onRemove={() => onAssigneeChange(selectedAssignee.filter(a => a !== assignee))}
+              value={selectedAssignee.map(getAssigneeLabel).join(', ')}
+              onRemove={() => onAssigneeChange([])}
             />
-          ))}
+          )}
         </div>
       )}
 
