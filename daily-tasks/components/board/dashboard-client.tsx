@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
@@ -15,7 +16,6 @@ import { SearchBar } from '@/components/ui/search-bar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
-import { getIncidences } from '@/app/actions/incidence-actions'
 
 interface DashboardClientProps {
     backlogTasks: IncidenceWithDetails[]
@@ -25,17 +25,17 @@ interface DashboardClientProps {
 
 export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const { data: session } = useSession()
+    const router = useRouter()
     const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(session?.user?.role === 'DEV' ? 'KANBAN' : 'BACKLOG')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
     const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
-    const [isViewLoading, setIsViewLoading] = useState(false)
+    
 
     const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, resetFilters, isLoading } = useSearchParamsSync()
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
-    const prevStatusRef = useRef<string | null>(null)
 
     const techOptions = [
         { value: TechStack.SISA, label: 'SISA' },
@@ -137,47 +137,18 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     }, [])
 
     const handleIncidenceCreated = useCallback(() => {
-        window.location.reload()
-    }, [])
+        router.refresh()
+    }, [router])
 
     const handleResetKanbanFilters = useCallback(() => {
         updateTech([])
         updateAssignee([])
     }, [updateTech, updateAssignee])
 
-    const handleViewChange = useCallback(async (newView: 'BACKLOG' | 'KANBAN') => {
-        if (newView === viewMode) return // No need to reload if same view
-        
-        setIsViewLoading(true)
+    const handleViewChange = useCallback((newView: 'BACKLOG' | 'KANBAN') => {
+        if (newView === viewMode) return
         setViewMode(newView)
-        
-        try {
-            // Get fresh data from server for both views
-            const [freshBacklog, freshKanban] = await Promise.all([
-                getIncidences({
-                    viewType: 'BACKLOG',
-                    search: params.search,
-                    tech: params.tech,
-                    status: params.status?.join(',') || '',
-                    assignee: params.assignee
-                }),
-                getIncidences({
-                    viewType: 'KANBAN',
-                    search: params.search,
-                    tech: params.tech,
-                    assignee: params.assignee
-                })
-            ])
-            
-            // Update both states with fresh data
-            setBacklogTasksState(freshBacklog)
-            setKanbanTasksState(freshKanban)
-        } catch (error) {
-            console.error('Error reloading data on view change:', error)
-        } finally {
-            setIsViewLoading(false)
-        }
-    }, [viewMode, params])
+    }, [viewMode])
 
     const handleResetBacklogFilters = useCallback(() => {
         updateTech([])
@@ -185,23 +156,9 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         updateAssignee([])
     }, [updateTech, updateStatus, updateAssignee])
 
-    useEffect(() => {
-        if (viewMode !== 'BACKLOG' || isLoading) return
+    
 
-        const currentStatus = params.status?.join(',') || ''
-        if (prevStatusRef.current === currentStatus) return
-        prevStatusRef.current = currentStatus
-
-        getIncidences({
-            viewType: 'BACKLOG',
-            search: params.search,
-            tech: params.tech,
-            status: currentStatus,
-            assignee: params.assignee
-        }).then(setBacklogTasksState).catch(console.error)
-    }, [viewMode, params.status, isLoading, params.search, params.tech, params.assignee])
-
-    if (isLoading || isViewLoading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
