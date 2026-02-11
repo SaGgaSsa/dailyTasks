@@ -167,9 +167,40 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     }
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
-        setTasks(prev => prev.map(task => 
-            task.id === updatedTask.id ? updatedTask : task
-        ))
+        setTasks(prev => {
+            // Update the task and then resort to maintain proper column ordering
+            const updated = prev.map(task => 
+                task.id === updatedTask.id ? updatedTask : task
+            )
+            
+            // Sort by status first, then by position within each status, then by priority, then by createdAt
+            return updated.sort((a, b) => {
+                // Primary sort: status order (TODO -> IN_PROGRESS -> REVIEW)
+                const statusOrder: Record<TaskStatus, number> = {
+                    [TaskStatus.TODO]: 1,
+                    [TaskStatus.IN_PROGRESS]: 2,
+                    [TaskStatus.REVIEW]: 3,
+                    [TaskStatus.BACKLOG]: 0, // Before kanban columns
+                    [TaskStatus.DONE]: 4, // After kanban columns
+                }
+                const statusDiff = statusOrder[a.status] - statusOrder[b.status]
+                if (statusDiff !== 0) return statusDiff
+                
+                // Secondary sort: position within column
+                const aPosition = a.position ?? 999
+                const bPosition = b.position ?? 999
+                const positionDiff = aPosition - bPosition
+                if (positionDiff !== 0) return positionDiff
+                
+                // Tertiary sort: priority (HIGH > MEDIUM > LOW)
+                const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+                if (priorityDiff !== 0) return priorityDiff
+                
+                // Final sort: createdAt (oldest first)
+                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            })
+        })
         if (onTaskUpdate) {
             onTaskUpdate(updatedTask)
         }

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
-import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { SearchBar } from '@/components/ui/search-bar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
+import { getIncidences } from '@/app/actions/incidence-actions'
 
 interface DashboardClientProps {
     backlogTasks: IncidenceWithDetails[]
@@ -29,6 +30,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
     const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
+    const [isViewLoading, setIsViewLoading] = useState(false)
 
     const { params, updateSearch, updateTech, updateStatus, updateAssignee, resetFilters, isLoading } = useSearchParamsSync()
 
@@ -93,8 +95,44 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     }, [backlogTasks, kanbanTasks])
 
     const handleTaskUpdate = useCallback((updatedTask: IncidenceWithDetails) => {
-        setBacklogTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
-        setKanbanTasksState(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
+        // Update backlog with proper sorting by priority (HIGH > MEDIUM > LOW) and createdAt
+        setBacklogTasksState(prev => {
+            const updated = prev.map(t => t.id === updatedTask.id ? updatedTask : t)
+            return updated.sort((a, b) => {
+                const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+                if (priorityDiff !== 0) return priorityDiff
+                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            })
+        })
+        
+        // Update kanban with proper sorting (status -> position -> priority -> createdAt)
+        setKanbanTasksState(prev => {
+            const updated = prev.map(t => t.id === updatedTask.id ? updatedTask : t)
+            return updated.sort((a, b) => {
+                // Primary sort: status order (TODO -> IN_PROGRESS -> REVIEW)
+                const statusOrder: Record<string, number> = {
+                    'TODO': 1, 'IN_PROGRESS': 2, 'REVIEW': 3,
+                    'BACKLOG': 0, 'DONE': 4,
+                }
+                const statusDiff = statusOrder[a.status] - statusOrder[b.status]
+                if (statusDiff !== 0) return statusDiff
+                
+                // Secondary sort: position within column
+                const aPosition = a.position ?? 999
+                const bPosition = b.position ?? 999
+                const positionDiff = aPosition - bPosition
+                if (positionDiff !== 0) return positionDiff
+                
+                // Tertiary sort: priority (HIGH > MEDIUM > LOW)
+                const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+                if (priorityDiff !== 0) return priorityDiff
+                
+                // Final sort: createdAt (oldest first)
+                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            })
+        })
     }, [])
 
     const handleIncidenceCreated = useCallback(() => {
@@ -106,15 +144,50 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         updateAssignee([])
     }, [updateTech, updateAssignee])
 
+    const handleViewChange = useCallback(async (newView: 'BACKLOG' | 'KANBAN') => {
+        if (newView === viewMode) return // No need to reload if same view
+        
+        setIsViewLoading(true)
+        setViewMode(newView)
+        
+        try {
+            // Get fresh data from server for both views
+            const [freshBacklog, freshKanban] = await Promise.all([
+                getIncidences({
+                    viewType: 'BACKLOG',
+                    search: params.search,
+                    tech: params.tech,
+                    status: params.status?.join(',') || '',
+                    assignee: params.assignee
+                }),
+                getIncidences({
+                    viewType: 'KANBAN',
+                    search: params.search,
+                    tech: params.tech,
+                    assignee: params.assignee
+                })
+            ])
+            
+            // Update both states with fresh data
+            setBacklogTasksState(freshBacklog)
+            setKanbanTasksState(freshKanban)
+        } catch (error) {
+            console.error('Error reloading data on view change:', error)
+        } finally {
+            setIsViewLoading(false)
+        }
+    }, [viewMode, params])
+
     const handleResetBacklogFilters = useCallback(() => {
         updateTech([])
         updateStatus([])
         updateAssignee([])
     }, [updateTech, updateStatus, updateAssignee])
 
-    if (isLoading) {
+    if (isLoading || isViewLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
                 <div className="text-zinc-400">Cargando...</div>
             </div>
         )
@@ -239,7 +312,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             <Plus className="h-4 w-4" />
                         </Button>
                     )}
-                    <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'BACKLOG' | 'KANBAN')}>
+                    <Tabs value={viewMode} onValueChange={(v) => handleViewChange(v as 'BACKLOG' | 'KANBAN')}>
                         <TabsList className="bg-zinc-900 border border-zinc-800 h-8">
                             <TabsTrigger value="BACKLOG" className="data-[state=active]:bg-zinc-800 px-3">
                                 <ListTodo className="h-4 w-4" />
