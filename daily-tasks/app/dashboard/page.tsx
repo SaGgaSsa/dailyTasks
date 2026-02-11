@@ -8,16 +8,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const session = await auth()
   const params = await searchParams
 
-  // Protección de ruta - solo ADMIN puede acceder a /dashboard
+  // Protección de ruta - todos los usuarios pueden acceder a /dashboard
   if (!session?.user) {
     redirect('/login')
   }
 
-  if (session.user.role !== 'ADMIN') {
-    redirect('/kanban')
-  }
-
-  const isAdmin = true
+  const isAdmin = session.user.role === 'ADMIN'
 
   // Parse search params para filtros múltiples y únicos
   const tech = params.tech 

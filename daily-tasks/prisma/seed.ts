@@ -79,16 +79,34 @@ function randomItems<T>(array: T[], min: number, max: number): T[] {
   return shuffled.slice(0, count)
 }
 
+function generateUniqueUsernames(count: number): string[] {
+  const used = new Set<string>()
+  const result: string[] = []
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+  while (result.length < count) {
+    const username = Array.from({ length: 3 }, () =>
+      letters[Math.floor(Math.random() * 26)]
+    ).join('')
+    if (!used.has(username)) {
+      used.add(username)
+      result.push(username)
+    }
+  }
+  return result
+}
+
 async function createAdmins(passwordHash: string) {
   const admins = []
-  for (let i = 1; i <= 2; i++) {
+  const usernames = generateUniqueUsernames(2)
+  for (let i = 0; i < 2; i++) {
     const admin = await prisma.user.upsert({
-      where: { username: `admin${i}` },
+      where: { username: usernames[i] },
       update: {},
       create: {
-        username: `admin${i}`,
-        name: `Admin ${i}`,
-        email: `admin${i}@gmail.com`,
+        username: usernames[i],
+        name: `Admin ${i + 1}`,
+        email: `admin${i + 1}@gmail.com`,
         password: passwordHash,
         role: UserRole.ADMIN,
         technologies: TECH_STACKS,
@@ -102,14 +120,15 @@ async function createAdmins(passwordHash: string) {
 
 async function createDevs(passwordHash: string) {
   const devs = []
-  for (let i = 1; i <= 8; i++) {
+  const usernames = generateUniqueUsernames(8)
+  for (let i = 0; i < 8; i++) {
     const dev = await prisma.user.upsert({
-      where: { username: `dev${i}` },
+      where: { username: usernames[i] },
       update: {},
       create: {
-        username: `dev${i}`,
-        name: `Developer ${i}`,
-        email: `dev${i}@gmail.com`,
+        username: usernames[i],
+        name: `Developer ${i + 1}`,
+        email: `dev${i + 1}@gmail.com`,
         password: passwordHash,
         role: UserRole.DEV,
         technologies: TECH_STACKS,
@@ -137,7 +156,6 @@ async function createIncidences(devs: { id: number }[]) {
 
     const type = randomItem(types)
     const title = randomItem(INCIDENCE_TITLES)
-    const description = `${type}${externalId}: ${title}`
     const status = randomItem(statuses)
     const priority = randomItem(priorities)
     const estimatedTime = Math.random() < 0.7 ? randomInt(1, 60) : null
@@ -148,8 +166,8 @@ async function createIncidences(devs: { id: number }[]) {
       create: {
         type,
         externalId,
-        title: description,
-        description,
+        title,
+        description: title,
         status,
         priority,
         technology: TechStack.SISA,

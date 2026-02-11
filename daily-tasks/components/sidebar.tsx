@@ -55,6 +55,7 @@ export function Sidebar({ userId }: SidebarProps) {
             </Button>
           </Link>
 
+          {/* Wiki Técnica - temporalmente oculto
           <Button
             variant="ghost"
             className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
@@ -62,6 +63,7 @@ export function Sidebar({ userId }: SidebarProps) {
             <BookOpen className="h-4 w-4" />
             {isOpen && <span>Wiki Técnica</span>}
           </Button>
+          */}
         </div>
       </nav>
 

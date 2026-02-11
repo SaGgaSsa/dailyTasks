@@ -1,11 +1,8 @@
 # Daily Tasks – AI Development Rules
 
-## Context
+## Stack
 
-Next.js 16 + TypeScript (strict) + Prisma + PostgreSQL
-Tailwind v4 + Radix UI + dnd-kit
-Authentication: NextAuth v5
-All commands run from `/daily-tasks` directory
+Next.js 16 + TypeScript (strict) + Prisma + PostgreSQL + Tailwind v4 + Radix UI + dnd-kit + NextAuth v5
 
 ---
 
@@ -20,8 +17,8 @@ npm run seed                   # Seed database
 
 # Linting
 npm run lint                   # Run ESLint on codebase
-npx eslint <file>             # Lint specific file
-npx eslint --fix <file>       # Auto-fix linting issues
+npx eslint <file>              # Lint specific file
+npx eslint --fix <file>        # Auto-fix linting issues
 
 # Database
 npx prisma generate            # Generate Prisma client (before build)
@@ -31,7 +28,6 @@ npx prisma migrate dev         # Run migrations
 
 # Docker
 docker-compose up -d           # Start PostgreSQL
-docker-compose logs postgres   # View DB logs
 docker-compose down            # Remove containers
 ```
 
@@ -54,21 +50,10 @@ docker-compose down            # Remove containers
 
 ---
 
-## Code Discipline
+## TypeScript
 
-- Respect existing architecture.
-- Follow current naming conventions exactly.
-- Keep changes minimal and scoped.
-- Prefer extending existing components over creating new ones.
-- No speculative improvements.
-
----
-
-## TypeScript Rules
-
-- Strict mode enabled throughout.
+- Strict mode enabled.
 - Use `interface` for object shapes, `type` for unions/intersections.
-- Use `Readonly<T>` for immutable data.
 - Import Prisma types from `@prisma/client` (e.g., `User`, `Incidence`).
 - Define shared types in `types/index.ts`.
 - Define all enums in `types/enums.ts` matching Prisma schema exactly.
@@ -99,15 +84,11 @@ import { IncidenceForm } from './incidence-form'
 | Functions/variables | camelCase | `getUsers()`, `isLoading` |
 | Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
 | Database columns | snake_case | `created_at`, `user_id` |
-| React props | camelCase | `onOpenChange`, `initialData` |
 | Types/Interfaces | PascalCase | `IncidenceWithDetails` |
-| Enums | PascalCase | `TaskStatus.BACKLOG` |
 
 ---
 
 ## Server Action Pattern
-
-All server-side mutations use `'use server'`:
 
 ```typescript
 'use server'
@@ -134,11 +115,7 @@ export async function upsertUser(data: UpsertUserData) {
 }
 ```
 
-**Required for all mutations:**
-- try/catch block
-- Handle Prisma P2002 unique constraint violations
-- Call `revalidatePath()` when data changes
-- Return `{ success: boolean, error?: string, data?: T }`
+**Required:** try/catch block, handle P2002 unique constraint violations, `revalidatePath()`, return `{ success, error?, data? }`.
 
 ---
 
@@ -170,14 +147,9 @@ export function MyForm({ onSubmit }: MyFormProps) {
 
 ---
 
-## Forms and Sheets (FormSheet)
+## FormSheet Components
 
-**ALWAYS use** `FormSheet` from `@/components/ui/form-sheet` for:
-- Create/edit forms
-- Detail view side panels
-- Any Sheet showing structured information
-
-### Available Components
+**ALWAYS use** `FormSheet` from `@/components/ui/form-sheet` for create/edit forms and detail panels.
 
 | Component | Purpose |
 |-----------|---------|
@@ -187,54 +159,6 @@ export function MyForm({ onSubmit }: MyFormProps) {
 | `FormTextarea` | Labeled textarea |
 | `FormRow` | Two-column grid |
 | `FormRow3` | Three-column grid |
-| `FormField` | Generic label + children container |
-
-### Required Structure
-
-```tsx
-export function MyForm({ open, onOpenChange, initialData }: MyFormProps) {
-    const [isSaving, setIsSaving] = useState(false)
-    const isEditMode = !!initialData
-
-    const handleSave = async () => {
-        // ... save logic
-        return true // or false if failed
-    }
-
-    const handleClose = () => onOpenChange(false)
-
-    return (
-        <FormSheet
-            open={open}
-            onOpenChange={onOpenChange}
-            title={isEditMode ? 'Editar Registro' : 'Nuevo Registro'}
-            isEditMode={isEditMode}
-            isSaving={isSaving}
-            onSave={handleSave}
-            onClose={handleClose}
-        >
-            <FormRow>
-                <FormInput
-                    id="name"
-                    label="Nombre"
-                    value={formData.name}
-                    onChange={(e) => updateFormData({ name: e.target.value })}
-                />
-                <FormSelect
-                    id="status"
-                    label="Estado"
-                    value={formData.status}
-                    onValueChange={(val) => updateFormData({ status: val })}
-                    options={[
-                        { value: 'ACTIVE', label: 'Activo' },
-                        { value: 'INACTIVE', label: 'Inactivo' },
-                    ]}
-                />
-            </FormRow>
-        </FormSheet>
-    )
-}
-```
 
 ---
 
@@ -242,57 +166,14 @@ export function MyForm({ open, onOpenChange, initialData }: MyFormProps) {
 
 - Models: `User`, `Incidence`, `Assignment`, `SubTask`
 - Use `@map("table_name")` for snake_case columns
-- Singleton client in `lib/db.ts` - import as `import { db } from '@/lib/db'`
-- Enums defined in Prisma schema match `types/enums.ts` exactly
+- Singleton client: `import { db } from '@/lib/db'`
+- Enums in Prisma schema match `types/enums.ts`
 
 ---
 
-## Authentication (NextAuth v5)
-
-- Config in `auth.config.ts`
-- JWT session strategy
-- Extended session: `{ id, email, username, role, avatarUrl }`
-- Use `bcryptjs` for password hashing
-
----
-
-## Tailwind CSS v4
-
-- Dark theme default (`dark` class on html)
-- CSS variables in `globals.css` for theming
-- Use `cn()` utility from `lib/utils.ts` for conditional classes
-- Color palette: `zinc-100` through `zinc-900` for dark UI
-
----
-
-## Output Format
-
-When modifying code:
-
-1. Explain briefly what will change (1-2 sentences).
-2. Show only the necessary diff.
-3. Do not include unchanged code or file reprints.
-
----
-
-## Git Commits (When Requested)
-
-Use Conventional Commits format:
-- `feat:` new features
-- `fix:` bug fixes
-- `refactor:` code cleanup
-- `style:` formatting/UI changes
-- `docs:` documentation
-- `chore:` config/dependencies
-
-**Group commits by theme/category** - not individual file changes.
-
----
-
-## Enums Reference
+## Enums
 
 ```typescript
-// types/enums.ts - must match Prisma schema
 TaskStatus: BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
 TaskType: I_MODAPL, I_CASO, I_CONS
 TechStack: SISA, WEB, ANDROID, ANGULAR, SPRING
@@ -302,9 +183,25 @@ UserRole: ADMIN, DEV
 
 ---
 
+## Tailwind CSS v4
+
+- Dark theme default (`dark` class on html)
+- CSS variables in `globals.css` for theming
+- Use `cn()` utility from `lib/utils.ts` for conditional classes
+- Color palette: `zinc-100` through `zinc-900`
+
+---
+
+## Git Commits
+
+Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
+
+Group commits by theme/category, not individual file changes.
+
+---
+
 ## Pre-commit Checklist
 
 1. `npm run lint` - Fix all linting errors
 2. `npm run build` - Verify build succeeds
-3. Docker running: `docker-compose up -d` (if available)
-4. Prisma client generated: `npx prisma generate`
+3. `npx prisma generate` - Generate Prisma client

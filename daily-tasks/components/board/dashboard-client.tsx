@@ -25,7 +25,7 @@ interface DashboardClientProps {
 
 export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const { data: session } = useSession()
-    const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(isAdmin ? 'BACKLOG' : 'KANBAN')
+    const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(session?.user?.role === 'DEV' ? 'KANBAN' : 'BACKLOG')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
