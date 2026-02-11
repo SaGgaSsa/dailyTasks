@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
@@ -35,6 +35,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, resetFilters, isLoading } = useSearchParamsSync()
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
+    const prevStatusRef = useRef<string | null>(null)
 
     const techOptions = [
         { value: TechStack.SISA, label: 'SISA' },
@@ -183,6 +184,22 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         updateStatus([])
         updateAssignee([])
     }, [updateTech, updateStatus, updateAssignee])
+
+    useEffect(() => {
+        if (viewMode !== 'BACKLOG' || isLoading) return
+
+        const currentStatus = params.status?.join(',') || ''
+        if (prevStatusRef.current === currentStatus) return
+        prevStatusRef.current = currentStatus
+
+        getIncidences({
+            viewType: 'BACKLOG',
+            search: params.search,
+            tech: params.tech,
+            status: currentStatus,
+            assignee: params.assignee
+        }).then(setBacklogTasksState).catch(console.error)
+    }, [viewMode, params.status, isLoading, params.search, params.tech, params.assignee])
 
     if (isLoading || isViewLoading) {
         return (
