@@ -268,7 +268,7 @@ export function Backlog({
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
-        return tasks.filter(task => {
+        const filtered = tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -282,6 +282,14 @@ export function Backlog({
 
             return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
         })
+        
+        // Always sort by priority and createdAt to ensure correct order
+        return filtered.sort((a, b) => {
+            const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+            const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+            if (priorityDiff !== 0) return priorityDiff
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        })
     }, [tasks, searchQuery, techFilter, statusFilter, onlyMyAssignments, session?.user?.id])
 
     const table = useReactTable({
@@ -291,9 +299,12 @@ export function Backlog({
     })
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
-        setTasks(prev => prev.map(task =>
-            task.id === updatedTask.id ? updatedTask : task
-        ))
+        setTasks(prev => {
+            // Just update task, sorting will be handled in filteredTasks
+            return prev.map(task =>
+                task.id === updatedTask.id ? updatedTask : task
+            )
+        })
         if (onTaskUpdate) {
             onTaskUpdate(updatedTask)
         }
@@ -338,18 +349,6 @@ export function Backlog({
                                         </div>
                                         <div>
                                             <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            {onResetFilters ? (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={onResetFilters}
-                                                    className="mt-2 text-blue-400 hover:text-blue-300"
-                                                >
-                                                    Resetear filtros
-                                                </Button>
-                                            ) : (
-                                                <p className="text-zinc-500 text-sm mt-1">Sin incidencias</p>
-                                            )}
                                         </div>
                                     </div>
                                 </TableCell>

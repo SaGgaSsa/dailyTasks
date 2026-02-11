@@ -9,7 +9,6 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 interface FilterOption {
@@ -30,7 +29,6 @@ interface FilterDropdownProps {
 
 export function FilterDropdown({
     icon,
-    label,
     options,
     selectedValues,
     allValues,
@@ -39,8 +37,6 @@ export function FilterDropdown({
     className,
 }: FilterDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
-
-    const showSelectedBadges = selectedValues.length > 0 && selectedValues.length < allValues.length
 
     const handleToggle = (value: string, checked: boolean) => {
         if (checked) {
@@ -69,24 +65,6 @@ export function FilterDropdown({
                     )}
                 >
                     {icon}
-                    {showSelectedBadges && (
-                        <>
-                            <Separator orientation="vertical" className="mx-2 h-4" />
-                            <div className="hidden space-x-1 lg:flex">
-                                {selectedValues.length > 2 ? (
-                                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                                        {selectedValues.length}
-                                    </Badge>
-                                ) : (
-                                    selectedValues.map(value => (
-                                        <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
-                                            {options.find(o => o.value === value)?.label || value}
-                                        </Badge>
-                                    ))
-                                )}
-                            </div>
-                        </>
-                    )}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">

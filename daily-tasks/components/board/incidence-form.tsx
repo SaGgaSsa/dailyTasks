@@ -172,6 +172,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 })
                 setFullIncidenceData(null)
                 setOriginalFormData(null)
+                setNewSubTask('')
+                setNewTaskInputs({})
+                setTaskInputErrors({})
+                setRemovedAssigneesHours({})
+                setDraftTasks([])
+                setExpandedAssignees(new Set())
+                setTasksToToggle(new Set())
+                setTasksToDelete(new Set())
+                setShowCompletedTasks(false)
                 
                 try {
                     const fullData = await getIncidence(initialData.id)
@@ -199,7 +208,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                         setOriginalFormData(data)
                     }
                 } catch (error) {
-                    console.error('Error loading incidence:', error)
+                    toast.error('Error cargando incidencia')
                 } finally {
                     setIsLoading(false)
                 }
@@ -216,6 +225,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     subTasks: [],
                 })
                 setOriginalFormData(null)
+                setNewSubTask('')
+                setNewTaskInputs({})
+                setTaskInputErrors({})
+                setRemovedAssigneesHours({})
+                setDraftTasks([])
+                setExpandedAssignees(new Set())
+                setTasksToToggle(new Set())
+                setTasksToDelete(new Set())
+                setShowCompletedTasks(false)
                 setIsLoading(false)
             }
         }
@@ -393,13 +411,20 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 }
                 setDraftTasks([])
 
+                let autoTransitionedToReview = false
+                let reviewMessage = ''
+
                 for (const taskId of tasksToToggle) {
-                    await toggleSubTask(taskId)
+                    const result = await toggleSubTask(taskId)
+                    if (result.success && result.autoTransitionedToReview) {
+                        autoTransitionedToReview = true
+                        reviewMessage = result.message || ''
+                    }
                 }
                 setTasksToToggle(new Set())
 
                 for (const taskId of tasksToDelete) {
-                    await deleteSubTask(taskId)
+                    const result = await deleteSubTask(taskId)
                 }
                 setTasksToDelete(new Set())
 
@@ -411,11 +436,14 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     }
                 }
 
-                toast.success('Guardado correctamente')
+                if (autoTransitionedToReview) {
+                    toast.success('🎉 ' + reviewMessage)
+                } else {
+                    toast.success('Guardado correctamente')
+                }
                 router.refresh()
                 return true
             } catch (error) {
-                console.error('Save error:', error)
                 toast.error('Error inesperado')
                 return false
             } finally {
@@ -455,20 +483,31 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 if (result.success) {
                     toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
 
+                    let autoTransitionedToReview = false
+                    let reviewMessage = ''
+
                     if (draftTasks.length > 0 && result.data) {
                         for (const draft of draftTasks) {
                             const assignment = result.data.assignments.find(
                                 a => a.id === draft.assignmentId || a.userId === draft.assignmentId
                             )
                             if (assignment) {
-                                await createSubTask(assignment.id, draft.title, draft.isCompleted)
+                                const createResult = await createSubTask(assignment.id, draft.title, draft.isCompleted)
+                                if (createResult.success && createResult.autoTransitionedToReview) {
+                                    autoTransitionedToReview = true
+                                    reviewMessage = createResult.message || ''
+                                }
                             }
                         }
                     }
                     setDraftTasks([])
 
                     for (const taskId of tasksToToggle) {
-                        await toggleSubTask(taskId)
+                        const toggleResult = await toggleSubTask(taskId)
+                        if (toggleResult.success && toggleResult.autoTransitionedToReview) {
+                            autoTransitionedToReview = true
+                            reviewMessage = toggleResult.message || ''
+                        }
                     }
                     setTasksToToggle(new Set())
 
@@ -484,6 +523,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                             onTaskUpdate(updatedData)
                         }
                     }
+
+                    if (autoTransitionedToReview) {
+                        toast.success('🎉 ' + reviewMessage)
+                    }
+
                     router.refresh()
                     return true
                 } else {
@@ -512,7 +556,6 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 }
             }
         } catch (error) {
-            console.error('Save error:', error)
             toast.error('Error inesperado')
             return false
         } finally {
@@ -525,6 +568,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
+        setNewSubTask('')
+        setNewTaskInputs({})
+        setTaskInputErrors({})
+        setRemovedAssigneesHours({})
+        setShowCompletedTasks(false)
         onOpenChange(false)
     }
 
@@ -537,6 +585,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
+        setNewSubTask('')
+        setNewTaskInputs({})
+        setTaskInputErrors({})
+        setRemovedAssigneesHours({})
+        setShowCompletedTasks(false)
         setShowDiscardConfirm(false)
         onOpenChange(false)
     }
@@ -733,6 +786,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                             checked={isSelected}
                                             onCheckedChange={() => handleToggleAssignee(user.id)}
                                             onClick={(e) => e.stopPropagation()}
+                                            disabled={isSelected && userTasks.length > 0}
                                             className="border-zinc-600"
                                         />
                                         <span className="text-zinc-300 text-sm">{user.name}</span>

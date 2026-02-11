@@ -138,7 +138,6 @@ export function UserDetailSheet({
       const data = await getUserDetails(userId)
       setDetails(data)
     } catch (error) {
-      console.error('Error loading user details:', error)
       toast.error('Error al cargar los detalles del usuario')
     } finally {
       setLoading(false)

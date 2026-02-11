@@ -2,19 +2,60 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
 import { DashboardClient } from '@/components/board/dashboard-client'
+import { TechStack, TaskStatus } from '@/types/enums'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
+  const params = await searchParams
 
+  // Protección de ruta - solo ADMIN puede acceder a /dashboard
   if (!session?.user) {
     redirect('/login')
   }
 
-  const isAdmin = session.user.role === 'ADMIN'
+  if (session.user.role !== 'ADMIN') {
+    redirect('/kanban')
+  }
 
-  // Fetch both if admin, or just kanban if dev
-  const backlogTasks = isAdmin ? await getIncidences('BACKLOG') : []
-  const kanbanTasks = await getIncidences('KANBAN')
+  const isAdmin = true
+
+  // Parse search params para filtros múltiples y únicos
+  const tech = params.tech 
+    ? (Array.isArray(params.tech) ? params.tech : [params.tech])
+        .flatMap(t => t.split(','))
+        .filter(Boolean)
+        .filter(t => Object.values(TechStack).includes(t as TechStack))
+    : Object.values(TechStack)
+  
+  const status = params.status 
+    ? (Array.isArray(params.status) ? params.status : [params.status])
+        .flatMap(s => s.split(','))
+        .filter(Boolean)
+        .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
+    : ['BACKLOG']
+  
+  const assignee = params.assignee 
+    ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
+        .flatMap(a => a.split(','))
+        .filter(Boolean)
+    : []
+  
+  const search = params.search || ''
+
+  // Fetch data con filtros
+  const backlogTasks = await getIncidences({
+    viewType: 'BACKLOG',
+    search,
+    tech,
+    status: status.length > 0 ? status.join(',') : '',
+    assignee
+  })
+  const kanbanTasks = await getIncidences({
+    viewType: 'KANBAN',
+    search,
+    tech,
+    assignee
+  })
 
   return (
     <div className="flex flex-col h-screen bg-background">

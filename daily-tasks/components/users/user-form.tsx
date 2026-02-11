@@ -112,7 +112,6 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                 return false
             }
         } catch (err) {
-            console.error(err)
             toast.error('Error inesperado al guardar')
             return false
         } finally {
