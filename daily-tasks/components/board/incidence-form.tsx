@@ -172,6 +172,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                 })
                 setFullIncidenceData(null)
                 setOriginalFormData(null)
+                setNewSubTask('')
+                setNewTaskInputs({})
+                setTaskInputErrors({})
+                setRemovedAssigneesHours({})
+                setDraftTasks([])
+                setExpandedAssignees(new Set())
+                setTasksToToggle(new Set())
+                setTasksToDelete(new Set())
+                setShowCompletedTasks(false)
                 
                 try {
                     const fullData = await getIncidence(initialData.id)
@@ -216,6 +225,15 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                     subTasks: [],
                 })
                 setOriginalFormData(null)
+                setNewSubTask('')
+                setNewTaskInputs({})
+                setTaskInputErrors({})
+                setRemovedAssigneesHours({})
+                setDraftTasks([])
+                setExpandedAssignees(new Set())
+                setTasksToToggle(new Set())
+                setTasksToDelete(new Set())
+                setShowCompletedTasks(false)
                 setIsLoading(false)
             }
         }
@@ -523,6 +541,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
+        setNewSubTask('')
+        setNewTaskInputs({})
+        setTaskInputErrors({})
+        setRemovedAssigneesHours({})
+        setShowCompletedTasks(false)
         onOpenChange(false)
     }
 
@@ -535,6 +558,11 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
+        setNewSubTask('')
+        setNewTaskInputs({})
+        setTaskInputErrors({})
+        setRemovedAssigneesHours({})
+        setShowCompletedTasks(false)
         setShowDiscardConfirm(false)
         onOpenChange(false)
     }
