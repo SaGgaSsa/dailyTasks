@@ -88,15 +88,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Demo credentials info */}
-          <div className="mt-4 p-3 bg-muted rounded-md">
-            <p className="text-sm text-muted-foreground text-center">
-              Usuario demo: sebastian.galarza@sisa.com.ar
-            </p>
-            <p className="text-sm text-muted-foreground text-center">
-              Contraseña: 123456
-            </p>
-          </div>
+
         </CardContent>
       </Card>
     </div>
