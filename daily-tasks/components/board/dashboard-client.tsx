@@ -32,7 +32,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
     const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
     const [isViewLoading, setIsViewLoading] = useState(false)
 
-    const { params, updateSearch, updateTech, updateStatus, updateAssignee, resetFilters, isLoading } = useSearchParamsSync()
+    const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, resetFilters, isLoading } = useSearchParamsSync()
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
 
@@ -273,6 +273,8 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             />
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
+                                    checked={params.mine || false}
+                                    onCheckedChange={updateMine}
                                     className="border-zinc-600"
                                 />
                                 <span className="text-sm text-zinc-400">Mis asignaciones</span>
@@ -292,6 +294,8 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             />
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <Checkbox
+                                    checked={params.mine || false}
+                                    onCheckedChange={updateMine}
                                     className="border-zinc-600"
                                 />
                                 <span className="text-sm text-zinc-400">Mis asignaciones</span>
@@ -354,8 +358,8 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         setTechFilter={updateTech}
                         statusFilter={params.status || []}
                         setStatusFilter={updateStatus}
-                        onlyMyAssignments={false}
-                        setOnlyMyAssignments={() => {}}
+                        onlyMyAssignments={params.mine || false}
+                        setOnlyMyAssignments={updateMine}
                         onResetFilters={handleResetBacklogFilters}
                     />
                 ) : (
@@ -366,7 +370,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         techFilter={params.tech || []}
                         userId={userId}
                         userFilter={params.assignee || []}
-                        kanbanOnlyMyAssignments={false}
+                        kanbanOnlyMyAssignments={params.mine || false}
                         onResetFilters={handleResetKanbanFilters}
                     />
                 )}

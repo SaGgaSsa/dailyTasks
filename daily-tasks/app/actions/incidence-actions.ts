@@ -29,6 +29,31 @@ interface UpdateIncidenceData {
     subTasks?: { title: string; isCompleted: boolean }[]
 }
 
+
+
+interface CreateIncidenceData {
+    type: TaskType
+    externalId: number
+    title: string
+    description?: string
+    tech: TechStack
+    priority: Priority
+    estimatedTime?: number | null
+    assignees?: AssigneeWithHours[]
+}
+
+interface UpdateIncidenceData {
+    status?: TaskStatus
+    priority?: Priority
+    description?: string
+    comment?: string
+    estimatedTime?: number | null
+    title?: string
+    technology?: TechStack
+    assignees?: AssigneeWithHours[]
+    subTasks?: { title: string; isCompleted: boolean }[]
+}
+
 export async function createIncidence(data: CreateIncidenceData) {
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
@@ -202,7 +227,8 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             where: { id: incidenceId },
             include: {
                 assignments: {
-                    where: { isAssigned: true }
+                    where: { isAssigned: true },
+                    include: { tasks: true }
                 }
             }
         })
@@ -229,8 +255,24 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             }
         }
 
-        if (newStatus === TaskStatus.DONE && session.user.role !== 'ADMIN') {
-            return { success: false, error: 'Solo los administradores pueden marcar como finalizado.' }
+        if (newStatus === TaskStatus.DONE) {
+            if (session.user.role !== 'ADMIN') {
+                return { success: false, error: 'Solo los administradores pueden marcar como finalizado.' }
+            }
+            
+            // NUEVA validación: todas las tareas deben estar completadas
+            const allSubTasks = incidence.assignments.flatMap((a) => a.tasks)
+            const hasTasks = allSubTasks.length > 0
+            const allTasksCompleted = hasTasks && allSubTasks.every((st) => st.isCompleted)
+            
+            if (!allTasksCompleted) {
+                return { 
+                    success: false, 
+                    error: hasTasks 
+                        ? 'No puede marcar como finalizada. Hay tareas pendientes por completar.' 
+                        : 'No puede marcar como finalizada. No hay tareas creadas.' 
+                }
+            }
         }
 
         if (session.user.role !== 'ADMIN') {
@@ -435,16 +477,58 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
             return { success: false, error: 'No autorizado' }
         }
 
-        const subTask = await db.subTask.create({
-            data: {
-                title,
-                assignmentId,
-                isCompleted
+        // Validaciones restrictivas para estados bloqueados
+        const currentStatus = assignment.incidence.status
+        
+        if (currentStatus === TaskStatus.DONE) {
+            return { success: false, error: 'No puede agregar tareas en una incidencia finalizada' }
+        }
+
+        if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+            return { success: false, error: 'Solo los administradores pueden agregar tareas en revisión' }
+        }
+
+        // Usar transacción para atomicidad
+        const result = await db.$transaction(async (tx) => {
+            const subTask = await tx.subTask.create({
+                data: {
+                    title,
+                    assignmentId,
+                    isCompleted
+                }
+            })
+
+            // Verificar si todas las subtareas están completadas para auto-transición
+            const assignments = await tx.assignment.findMany({
+                where: { incidenceId: assignment.incidenceId, isAssigned: true },
+                include: { tasks: true }
+            })
+            
+            const allSubTasks = assignments.flatMap((a) => a.tasks)
+            const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
+            
+            let autoTransitionedToReview = false
+            let message = 'Tarea creada'
+
+            if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
+                await tx.incidence.update({
+                    where: { id: assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedToReview = true
+                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
             }
+
+            return { subTask, autoTransitionedToReview, message }
         })
 
         revalidatePath('/dashboard')
-        return { success: true, data: subTask }
+        return { 
+            success: true, 
+            data: result.subTask,
+            autoTransitionedToReview: result.autoTransitionedToReview,
+            message: result.message
+        }
     } catch (error) {
         console.error('Error creating subtask:', error)
         return { success: false, error: 'Error al crear tarea' }
@@ -470,13 +554,56 @@ export async function toggleSubTask(subTaskId: number) {
             return { success: false, error: 'No autorizado' }
         }
 
-        await db.subTask.update({
-            where: { id: subTaskId },
-            data: { isCompleted: !subTask.isCompleted }
+        // Validaciones restrictivas para estados bloqueados
+        const currentStatus = subTask.assignment.incidence.status
+        
+        if (currentStatus === TaskStatus.DONE) {
+            return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
+        }
+
+        if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+            return { success: false, error: 'Solo los administradores pueden modificar tareas en revisión' }
+        }
+
+        const newCompletionStatus = !subTask.isCompleted
+
+        // Usar transacción para atomicidad
+        const result = await db.$transaction(async (tx) => {
+            await tx.subTask.update({
+                where: { id: subTaskId },
+                data: { isCompleted: newCompletionStatus }
+            })
+
+            // Verificar si todas las subtareas están completadas para auto-transición
+            const assignments = await tx.assignment.findMany({
+                where: { incidenceId: subTask.assignment.incidenceId, isAssigned: true },
+                include: { tasks: true }
+            })
+            
+            const allSubTasks = assignments.flatMap((a) => a.tasks)
+            const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
+            
+            let autoTransitionedToReview = false
+            let message = 'Tarea actualizada'
+
+            if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
+                await tx.incidence.update({
+                    where: { id: subTask.assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedToReview = true
+                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
+            }
+
+            return { autoTransitionedToReview, message }
         })
 
         revalidatePath('/dashboard')
-        return { success: true }
+        return { 
+            success: true, 
+            autoTransitionedToReview: result.autoTransitionedToReview,
+            message: result.message
+        }
     } catch (error) {
         console.error('Error toggling subtask:', error)
         return { success: false, error: 'Error al actualizar tarea' }
@@ -502,12 +629,24 @@ export async function deleteSubTask(subTaskId: number) {
             return { success: false, error: 'No autorizado' }
         }
 
+        // Validaciones restrictivas para estados bloqueados
+        const currentStatus = subTask.assignment.incidence.status
+        
+        if (currentStatus === TaskStatus.DONE) {
+            return { success: false, error: 'No puede eliminar tareas en una incidencia finalizada' }
+        }
+
+        if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+            return { success: false, error: 'Solo los administradores pueden eliminar tareas en revisión' }
+        }
+
+        // Eliminar la subtarea
         await db.subTask.delete({
             where: { id: subTaskId }
         })
 
         revalidatePath('/dashboard')
-        return { success: true }
+        return { success: true, message: 'Tarea eliminada' }
     } catch (error) {
         console.error('Error deleting subtask:', error)
         return { success: false, error: 'Error al eliminar tarea' }

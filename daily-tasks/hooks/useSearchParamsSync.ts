@@ -8,6 +8,7 @@ interface SearchParamsState {
   tech?: string[]
   status?: string[]
   assignee?: string[]
+  mine?: boolean
 }
 
 interface UseSearchParamsSyncReturn {
@@ -16,6 +17,7 @@ interface UseSearchParamsSyncReturn {
   updateTech: (values: string[]) => void
   updateStatus: (values: string[]) => void
   updateAssignee: (values: string[]) => void
+  updateMine: (value: boolean) => void
   resetFilters: () => void
   isLoading: boolean
 }
@@ -32,8 +34,9 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     const parsed: SearchParamsState = {
       search: searchParams.get('search') || '',
       tech: searchParams.getAll('tech').filter(Boolean),
-      status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'], // Default to BACKLOG if no status in URL
+      status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'],
       assignee: searchParams.getAll('assignee').filter(Boolean),
+      mine: searchParams.get('mine') === 'true',
     }
     
     // Use requestAnimationFrame to avoid synchronous setState
@@ -48,7 +51,9 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     const urlParams = new URLSearchParams()
     
     Object.entries(newParams).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
+      if (key === 'mine') {
+        if (value === true) urlParams.set('mine', 'true')
+      } else if (Array.isArray(value)) {
         value.forEach(v => v && urlParams.append(key, v))
       } else if (value && value !== '') {
         urlParams.set(key, value)
@@ -84,6 +89,12 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     updateURL(newParams)
   }, [params, updateURL])
 
+  const updateMine = useCallback((value: boolean) => {
+    const newParams = { ...params, mine: value || undefined }
+    setParams(newParams)
+    updateURL(newParams)
+  }, [params, updateURL])
+
   const resetFilters = useCallback(() => {
     router.push('/dashboard', { scroll: false })
   }, [router])
@@ -94,6 +105,7 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     updateTech,
     updateStatus,
     updateAssignee,
+    updateMine,
     resetFilters,
     isLoading
   }
