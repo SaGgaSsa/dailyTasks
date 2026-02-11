@@ -652,3 +652,49 @@ export async function deleteSubTask(subTaskId: number) {
         return { success: false, error: 'Error al eliminar tarea' }
     }
 }
+
+export async function updateSubTaskTitle(subTaskId: number, newTitle: string) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    try {
+        const subTask = await db.subTask.findUnique({
+            where: { id: subTaskId },
+            include: { assignment: { include: { incidence: true } } }
+        })
+
+        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+
+        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isAssignedUser && !isAdmin) {
+            return { success: false, error: 'No autorizado' }
+        }
+
+        if (subTask.isCompleted) {
+            return { success: false, error: 'No puede editar tareas completadas' }
+        }
+
+        const currentStatus = subTask.assignment.incidence.status
+
+        if (currentStatus === TaskStatus.DONE) {
+            return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
+        }
+
+        if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+            return { success: false, error: 'Solo los administradores pueden modificar tareas en revisión' }
+        }
+
+        await db.subTask.update({
+            where: { id: subTaskId },
+            data: { title: newTitle }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, message: 'Tarea actualizada' }
+    } catch (error) {
+        console.error('Error updating subtask title:', error)
+        return { success: false, error: 'Error al actualizar tarea' }
+    }
+}
