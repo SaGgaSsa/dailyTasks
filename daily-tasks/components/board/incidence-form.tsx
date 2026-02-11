@@ -786,6 +786,7 @@ export function IncidenceForm({ open, onOpenChange, initialData, onTaskUpdate, o
                                             checked={isSelected}
                                             onCheckedChange={() => handleToggleAssignee(user.id)}
                                             onClick={(e) => e.stopPropagation()}
+                                            disabled={isSelected && userTasks.length > 0}
                                             className="border-zinc-600"
                                         />
                                         <span className="text-zinc-300 text-sm">{user.name}</span>
