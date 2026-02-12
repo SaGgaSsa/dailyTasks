@@ -274,14 +274,14 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                                 onValuesChange={updateStatus}
                                 resetValue={TaskStatus.BACKLOG}
                             />
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={params.mine || false}
-                                    onCheckedChange={updateMine}
-                                    className="border-zinc-600"
-                                />
-                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
-                            </label>
+                            <FilterDropdown
+                                icon={<User className="h-4 w-4" />}
+                                label="Usuario"
+                                options={userOptions}
+                                selectedValues={params.assignee || []}
+                                allValues={userOptions.map(opt => opt.value)}
+                                onValuesChange={updateAssignee}
+                            />
                         </>
                     )}
 
@@ -309,15 +309,25 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
 
                 <div className="flex items-center gap-3">
                     {view === 'BACKLOG' && (
-                        <Button
-                            onClick={() => {
-                                setSelectedTask(null)
-                                setIsSheetOpen(true)
-                            }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white h-8 w-8 p-0"
-                        >
-                            <Plus className="h-4 w-4" />
-                        </Button>
+                        <>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                    checked={params.mine || false}
+                                    onCheckedChange={updateMine}
+                                    className="border-zinc-600"
+                                />
+                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                            </label>
+                            <Button
+                                onClick={() => {
+                                    setSelectedTask(null)
+                                    setIsSheetOpen(true)
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white h-8 w-8 p-0"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </>
                     )}
                     <Tabs value={view.toLowerCase()} onValueChange={(v) => handleViewChange(v as 'backlog' | 'kanban')}>
                         <TabsList className="bg-zinc-900 border border-zinc-800 h-8">

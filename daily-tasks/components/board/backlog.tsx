@@ -265,10 +265,7 @@ export function Backlog({
     const setIsSheetOpen = onOpenChange || setInternalSheetOpen
 
     useEffect(() => {
-        setTasks(prev => {
-            if (prev.length === 0) return initialTasks
-            return initialTasks
-        })
+        setTasks(initialTasks)
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
@@ -281,10 +278,7 @@ export function Backlog({
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
             const matchesStatus = statusFilter.length === 0 || statusFilter.includes(task.status)
 
-            const matchesMyAssignments = !onlyMyAssignments ||
-                (session?.user?.id && task.assignments.some(a => a.userId === Number(session.user.id)))
-
-            return matchesSearch && matchesTech && matchesStatus && matchesMyAssignments
+            return matchesSearch && matchesTech && matchesStatus
         })
         
         // Always sort by priority and createdAt to ensure correct order
@@ -294,7 +288,7 @@ export function Backlog({
             if (priorityDiff !== 0) return priorityDiff
             return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         })
-    }, [tasks, searchQuery, techFilter, statusFilter, onlyMyAssignments, session?.user?.id])
+    }, [tasks, searchQuery, techFilter, statusFilter])
 
     const table = useReactTable({
         data: filteredTasks,

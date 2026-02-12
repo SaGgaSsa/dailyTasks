@@ -53,9 +53,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     const [isSheetOpen, setIsSheetOpen] = useState(false)
 
     useEffect(() => {
-        if (tasks.length === 0) {
-            setTasks(initialTasks)
-        }
+        setTasks(initialTasks)
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
@@ -69,11 +67,9 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
             const matchesUserFilter = userFilter.length === 0 || task.assignments.some(a => a.userId === Number(userId) || userFilter.includes(String(a.userId)))
 
-            const matchesMyAssignments = !kanbanOnlyMyAssignments || task.assignments.some(a => a.userId === userId && a.isAssigned)
-
-            return matchesSearch && matchesTech && matchesUserFilter && matchesMyAssignments
+            return matchesSearch && matchesTech && matchesUserFilter
         })
-    }, [tasks, searchQuery, techFilter, userId, userFilter, kanbanOnlyMyAssignments])
+    }, [tasks, searchQuery, techFilter, userId, userFilter])
 
     const sortedTasks = useMemo(() => {
         return [...filteredTasks].sort((a, b) => {

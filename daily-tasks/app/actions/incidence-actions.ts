@@ -161,7 +161,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                 }
             }
         } else if (mine || (assignee && assignee.length > 0)) {
-            const userIds = assignee ? assignee.map(Number) : [Number(session.user.id)]
+            const userIds = assignee && assignee.length > 0 ? assignee.map(Number) : [Number(session.user.id)]
             where.assignments = {
                 some: {
                     isAssigned: true,
