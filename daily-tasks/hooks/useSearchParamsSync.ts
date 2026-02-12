@@ -34,7 +34,7 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     const parsed: SearchParamsState = {
       search: searchParams.get('search') || '',
       tech: searchParams.getAll('tech').filter(Boolean),
-      status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'],
+      status: urlStatus.length > 0 ? urlStatus : [],
       assignee: searchParams.getAll('assignee').filter(Boolean),
       mine: searchParams.get('mine') === 'true',
     }

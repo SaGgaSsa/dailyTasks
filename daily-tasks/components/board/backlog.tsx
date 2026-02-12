@@ -264,7 +264,10 @@ export function Backlog({
     const setIsSheetOpen = onOpenChange || setInternalSheetOpen
 
     useEffect(() => {
-        setTasks(initialTasks)
+        setTasks(prev => {
+            if (prev.length === 0) return initialTasks
+            return initialTasks
+        })
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {

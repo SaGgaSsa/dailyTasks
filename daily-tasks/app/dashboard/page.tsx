@@ -23,12 +23,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .filter(t => Object.values(TechStack).includes(t as TechStack))
     : Object.values(TechStack)
   
-  const status = params.status 
+  const statusParam = params.status 
     ? (Array.isArray(params.status) ? params.status : [params.status])
         .flatMap(s => s.split(','))
         .filter(Boolean)
         .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
-    : ['BACKLOG']
+    : undefined
   
   const assignee = params.assignee 
     ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
@@ -45,7 +45,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     viewType: 'BACKLOG',
     search,
     tech,
-    status: status.length > 0 ? status.join(',') : '',
+    status: statusParam ? statusParam.join(',') : undefined,
     assignee,
     mine
   })
