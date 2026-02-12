@@ -170,35 +170,13 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => {
-            const taskExists = prev.some(t => t.id === updatedTask.id)
-            if (!taskExists) return prev
-            
-            const updated = prev.map(task => 
-                task.id === updatedTask.id ? updatedTask : task
+            const exists = prev.some(t => t.id === updatedTask.id)
+            if (!exists && updatedTask.status !== 'BACKLOG') {
+                return [...prev, updatedTask]
+            }
+            return prev.map(t =>
+                t.id === updatedTask.id ? updatedTask : t
             )
-            
-            return updated.sort((a, b) => {
-                const statusOrder: Record<TaskStatus, number> = {
-                    [TaskStatus.TODO]: 1,
-                    [TaskStatus.IN_PROGRESS]: 2,
-                    [TaskStatus.REVIEW]: 3,
-                    [TaskStatus.BACKLOG]: 0,
-                    [TaskStatus.DONE]: 4,
-                }
-                const statusDiff = statusOrder[a.status] - statusOrder[b.status]
-                if (statusDiff !== 0) return statusDiff
-                
-                const aPosition = a.position ?? 999
-                const bPosition = b.position ?? 999
-                const positionDiff = aPosition - bPosition
-                if (positionDiff !== 0) return positionDiff
-                
-                const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
-                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-                if (priorityDiff !== 0) return priorityDiff
-                
-                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            })
         })
         if (onTaskUpdate) {
             onTaskUpdate(updatedTask)

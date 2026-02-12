@@ -300,7 +300,9 @@ export function Backlog({
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => {
-            // Just update task, sorting will be handled in filteredTasks
+            if (updatedTask.status !== 'BACKLOG') {
+                return prev.filter(t => t.id !== updatedTask.id)
+            }
             return prev.map(task =>
                 task.id === updatedTask.id ? updatedTask : task
             )
