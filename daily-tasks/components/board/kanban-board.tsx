@@ -75,6 +75,17 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         })
     }, [tasks, searchQuery, techFilter, userId, userFilter, kanbanOnlyMyAssignments])
 
+    const sortedTasks = useMemo(() => {
+        return [...filteredTasks].sort((a, b) => {
+            const prioOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+            const aPri = prioOrder[a.priority] ?? 9;
+            const bPri = prioOrder[b.priority] ?? 9;
+            if (aPri !== bPri) return aPri - bPri;
+            if (a.createdAt.getTime() !== b.createdAt.getTime()) return a.createdAt.getTime() - b.createdAt.getTime();
+            return a.position - b.position;
+        });
+    }, [filteredTasks])
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -150,8 +161,28 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         }
 
         const task = tasks.find((t) => t.id === active.id)
-        if (task) {
-            const result = await updateIncidenceStatus(task.id, task.status, tasks.indexOf(task))
+        if (!task) return
+
+        const overId = over.id
+        // Tasks belonging to the target column
+        const targetColumnTasks = filteredTasks.filter(t => t.status === overId)
+        // New position is the index within that column
+        const newPosition = targetColumnTasks.findIndex(t => t.id === task.id)
+        // New status is the column's status (drop target)
+        const newStatus = overId as TaskStatus
+
+        // Guard: if task is not in target column, abort
+        if (newPosition === -1) {
+            setActiveTask(null)
+            return
+        }
+
+        // Only send update if either status or position changed
+        const statusChanged = task.status !== newStatus
+        const positionChanged = task.position !== newPosition
+
+        if ((statusChanged || positionChanged) && newPosition >= 0) {
+            const result = await updateIncidenceStatus(task.id, newStatus, newPosition)
             if (!result.success && result.error) {
                 toast.error(result.error)
                 setTasks(prev => prev.map(t => 
@@ -209,15 +240,15 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             onDragEnd={handleDragEnd}
         >
             <div className="flex h-full min-h-0 gap-6 overflow-x-auto overflow-y-hidden pb-4">
-                {COLUMNS.map((col) => (
-                    <BoardColumn
-                        key={col.id}
-                        id={col.id}
-                        title={col.title}
-                        tasks={filteredTasks.filter((t) => t.status === col.id)}
-                        onCardClick={handleCardClick}
-                    />
-                ))}
+                    {COLUMNS.map((col) => (
+                        <BoardColumn
+                            key={col.id}
+                            id={col.id}
+                            title={col.title}
+                            tasks={sortedTasks.filter(t => t.status === col.id)}
+                            onCardClick={handleCardClick}
+                        />
+                    ))}
             </div>
 
             <IncidenceForm

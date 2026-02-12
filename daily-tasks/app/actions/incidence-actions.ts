@@ -186,7 +186,6 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                 }
             },
             orderBy: viewType === 'BACKLOG' ? [
-                // En backlog: ordenar por prioridad (desc) y luego por fecha de creación (asc)
                 {
                     priority: 'desc'
                 },
@@ -194,7 +193,12 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     createdAt: 'asc'
                 }
             ] : [
-                // En kanban: mantener el orden actual por posición
+                {
+                    priority: 'desc'
+                },
+                {
+                    createdAt: 'asc'
+                },
                 {
                     position: 'asc'
                 }
