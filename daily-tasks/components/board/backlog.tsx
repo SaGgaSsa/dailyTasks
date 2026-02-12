@@ -92,7 +92,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                         {title}
                     </span>
                     <span className={`text-xs whitespace-nowrap shrink-0 ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
-                        {formatHoursDisplay(completedHours, totalHours)}{totalHours > 0 ? 'h' : ''}
+                        {formatHoursDisplay(completedHours, totalHours)}
                         {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
                     </span>
                 </div>

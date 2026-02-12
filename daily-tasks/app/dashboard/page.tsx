@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .flatMap(s => s.split(','))
         .filter(Boolean)
         .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
-    : undefined
+    : ['BACKLOG']
   
   const assignee = params.assignee 
     ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
@@ -45,7 +45,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     viewType: 'BACKLOG',
     search,
     tech,
-    status: statusParam ? statusParam.join(',') : undefined,
+    status: statusParam.join(','),
     assignee,
     mine
   })

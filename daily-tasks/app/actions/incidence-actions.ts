@@ -103,8 +103,8 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
     try {
         const where: Record<string, unknown> = {}
 
-        // View type filtering
-        if (viewType === 'KANBAN') {
+        // View type filtering - only apply if no status filter
+        if (!status && viewType === 'KANBAN') {
             where.status = { not: TaskStatus.BACKLOG }
         }
 
