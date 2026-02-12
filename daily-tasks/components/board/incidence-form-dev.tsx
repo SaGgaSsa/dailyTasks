@@ -202,6 +202,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate
                     hasErrors = true
                 } else if (result.autoTransitionedToReview) {
                     toast.success('🎉 ' + result.message)
+                } else if (result.autoTransitionedToInProgress) {
+                    toast.success('🚀 ' + result.message)
                 }
             }
             setTasksToUpdate(new Set())
@@ -233,9 +235,13 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate
             }
 
             if (!hasErrors) {
-                const updatedData = await getIncidence(initialData!.id)
-                if (updatedData && onTaskUpdate) {
-                    onTaskUpdate(updatedData)
+                if (initialData && onTaskUpdate) {
+                    const updatedData = await getIncidence(initialData!.id)
+                    if (updatedData) {
+                        onTaskUpdate(updatedData)
+                    } else {
+                        onTaskUpdate(initialData)
+                    }
                 }
             }
 

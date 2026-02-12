@@ -209,10 +209,12 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
 
 export async function getIncidence(id: number): Promise<IncidenceWithDetails | null> {
     try {
+        await new Promise(resolve => setTimeout(resolve, 50))
         const incidence = await db.incidence.findUnique({
             where: { id },
             include: {
                 assignments: {
+                    where: { isAssigned: true },
                     include: {
                         user: true,
                         tasks: {
@@ -519,8 +521,9 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
             
             const allSubTasks = assignments.flatMap((a) => a.tasks)
             const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
+            const anyCompleted = allSubTasks.some((st) => st.isCompleted)
             
-            let autoTransitionedToReview = false
+            let autoTransitionedTo = null as string | null
             let message = 'Tarea creada'
 
             if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
@@ -528,18 +531,33 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                     where: { id: assignment.incidenceId },
                     data: { status: TaskStatus.REVIEW }
                 })
-                autoTransitionedToReview = true
+                autoTransitionedTo = 'REVIEW'
                 message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
+            } else if (allCompleted && currentStatus === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedTo = 'REVIEW'
+                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
+            } else if (anyCompleted && currentStatus === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: assignment.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS }
+                })
+                autoTransitionedTo = 'IN_PROGRESS'
+                message = "¡Tarea iniciada! La incidencia pasó a en progreso"
             }
 
-            return { subTask, autoTransitionedToReview, message }
+            return { subTask, autoTransitionedTo, message }
         })
 
         revalidatePath('/dashboard')
         return { 
             success: true, 
             data: result.subTask,
-            autoTransitionedToReview: result.autoTransitionedToReview,
+            autoTransitionedToReview: result.autoTransitionedTo === 'REVIEW',
+            autoTransitionedToInProgress: result.autoTransitionedTo === 'IN_PROGRESS',
             message: result.message
         }
     } catch (error) {
@@ -595,8 +613,9 @@ export async function toggleSubTask(subTaskId: number) {
             
             const allSubTasks = assignments.flatMap((a) => a.tasks)
             const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
+            const anyCompleted = allSubTasks.some((st) => st.isCompleted)
             
-            let autoTransitionedToReview = false
+            let autoTransitionedTo = null as string | null
             let message = 'Tarea actualizada'
 
             if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
@@ -604,17 +623,32 @@ export async function toggleSubTask(subTaskId: number) {
                     where: { id: subTask.assignment.incidenceId },
                     data: { status: TaskStatus.REVIEW }
                 })
-                autoTransitionedToReview = true
+                autoTransitionedTo = 'REVIEW'
                 message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
+            } else if (allCompleted && currentStatus === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: subTask.assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedTo = 'REVIEW'
+                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
+            } else if (anyCompleted && currentStatus === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: subTask.assignment.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS }
+                })
+                autoTransitionedTo = 'IN_PROGRESS'
+                message = "¡Tarea iniciada! La incidencia pasó a en progreso"
             }
 
-            return { autoTransitionedToReview, message }
+            return { autoTransitionedTo, message }
         })
 
         revalidatePath('/dashboard')
         return { 
             success: true, 
-            autoTransitionedToReview: result.autoTransitionedToReview,
+            autoTransitionedToReview: result.autoTransitionedTo === 'REVIEW',
+            autoTransitionedToInProgress: result.autoTransitionedTo === 'IN_PROGRESS',
             message: result.message
         }
     } catch (error) {
