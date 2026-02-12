@@ -91,11 +91,14 @@ interface GetIncidencesOptions {
     tech?: string[]
     status?: string
     assignee?: string[]
+    mine?: boolean
 }
 
-export async function getIncidences({ viewType, search, tech, status, assignee }: GetIncidencesOptions): Promise<IncidenceWithDetails[]> {
+export async function getIncidences({ viewType, search, tech, status, assignee, mine }: GetIncidencesOptions): Promise<IncidenceWithDetails[]> {
     const session = await auth()
     if (!session?.user) return []
+
+    const isDev = session.user.role === 'DEV'
 
     try {
         const where: Record<string, unknown> = {}
@@ -148,11 +151,21 @@ export async function getIncidences({ viewType, search, tech, status, assignee }
         }
 
         // Assignee filter
-        if (assignee && assignee.length > 0) {
+        // DEV: always filter by logged user
+        // ADMIN: filter only if mine is true or assignee filter is applied
+        if (isDev) {
             where.assignments = {
                 some: {
                     isAssigned: true,
-                    userId: { in: assignee.map(Number) }
+                    userId: Number(session.user.id)
+                }
+            }
+        } else if (mine || (assignee && assignee.length > 0)) {
+            const userIds = assignee ? assignee.map(Number) : [Number(session.user.id)]
+            where.assignments = {
+                some: {
+                    isAssigned: true,
+                    userId: { in: userIds }
                 }
             }
         }

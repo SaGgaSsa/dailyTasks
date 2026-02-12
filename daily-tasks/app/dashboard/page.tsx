@@ -36,6 +36,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .filter(Boolean)
     : []
   
+  const mine = params.mine === 'true'
+  
   const search = params.search || ''
 
   // Fetch data con filtros
@@ -44,13 +46,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     search,
     tech,
     status: status.length > 0 ? status.join(',') : '',
-    assignee
+    assignee,
+    mine
   })
   const kanbanTasks = await getIncidences({
     viewType: 'KANBAN',
     search,
     tech,
-    assignee
+    assignee,
+    mine
   })
 
   return (
