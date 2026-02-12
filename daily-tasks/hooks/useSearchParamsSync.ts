@@ -100,8 +100,10 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
   }, [params, updateURL])
 
   const resetFilters = useCallback(() => {
-    router.push('/dashboard', { scroll: false })
-  }, [router])
+    // Keep the current view parameter when resetting filters
+    const viewParam = params.view ? `?view=${params.view}` : ''
+    router.replace(`/dashboard${viewParam}`, { scroll: false })
+  }, [router, params.view])
 
   const updateView = useCallback((value: 'backlog' | 'kanban') => {
     const newParams = { ...params, view: value }
