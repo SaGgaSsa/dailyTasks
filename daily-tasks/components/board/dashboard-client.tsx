@@ -198,6 +198,24 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     </div>
                 </div>
 
+                <FilterChips
+                    searchQuery={params.search}
+                    selectedTech={params.tech}
+                    selectedStatus={[]}
+                    selectedAssignee={[]}
+                    techOptions={techOptions}
+                    statusOptions={statusOptions}
+                    assigneeOptions={[]}
+                    onSearchChange={updateSearch}
+                    onTechChange={updateTech}
+                    onStatusChange={() => {}}
+                    onAssigneeChange={() => {}}
+                    onResetFilters={() => {
+                        updateSearch('')
+                        updateTech([])
+                    }}
+                />
+
                 <div className="flex-1 min-h-0 overflow-visible">
                     <KanbanBoard
                         initialTasks={kanbanTasksState}
