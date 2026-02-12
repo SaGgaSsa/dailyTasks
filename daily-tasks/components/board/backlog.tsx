@@ -16,6 +16,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -316,80 +317,89 @@ export function Backlog({
     }
 
     return (
-        <div className="flex flex-col gap-3">
-            <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner">
-                <Table className="table-fixed w-full">
-                    <TableHeader>
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map(header => {
-                                    const widthClass = header.column.id === 'type' ? 'w-24' :
-                                        header.column.id === 'title' ? 'w-full' :
-                                        header.column.id === 'priority' ? 'w-20' :
-                                        header.column.id === 'status' ? 'w-24' :
-                                        header.column.id === 'actions' ? 'w-20' :
-                                        header.column.id === 'technology' ? 'w-16' :
-                                        header.column.id === 'assignees' ? 'w-16' : ''
-                                    return (
-                                        <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass}`}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </TableHead>
-                                    )
-                                })}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody className="divide-y divide-zinc-900">
-                        {filteredTasks.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="p-12 text-center w-full">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <div className="p-4 rounded-full bg-zinc-900/50">
-                                            <Inbox className="h-8 w-8 text-zinc-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            table.getRowModel().rows.map(row => (
-                                <TableRow
-                                    key={row.id}
-                                    className="cursor-pointer hover:bg-zinc-900/50 transition-colors"
-                                    onClick={() => {
-                                        if (taskSelect) {
-                                            taskSelect(row.original)
-                                        }
-                                        setIsSheetOpen(true)
-                                    }}
-                                >
-                                    {row.getVisibleCells().map(cell => {
-                                        const widthClass = cell.column.id === 'type' ? 'w-24' :
-                                            cell.column.id === 'title' ? 'w-full' :
-                                            cell.column.id === 'priority' ? 'w-20' :
-                                            cell.column.id === 'status' ? 'w-24' :
-                                            cell.column.id === 'actions' ? 'w-20' :
-                                            cell.column.id === 'technology' ? 'w-16' :
-                                            cell.column.id === 'assignees' ? 'w-16' : ''
-                                        const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
+        <div className="flex flex-col gap-3 h-full">
+            <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner flex flex-col h-full overflow-hidden">
+                {/* Header sticky */}
+                <div className="flex-shrink-0">
+                    <Table className="table-fixed w-full">
+                        <TableHeader className="sticky top-0 z-10">
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <TableRow key={headerGroup.id} className="border-b border-zinc-800">
+                                    {headerGroup.headers.map(header => {
+                                        const widthClass = header.column.id === 'type' ? 'w-24' :
+                                            header.column.id === 'title' ? 'w-full' :
+                                            header.column.id === 'priority' ? 'w-20' :
+                                            header.column.id === 'status' ? 'w-24' :
+                                            header.column.id === 'actions' ? 'w-20' :
+                                            header.column.id === 'technology' ? 'w-16' :
+                                            header.column.id === 'assignees' ? 'w-16' : ''
                                         return (
-                                            <TableCell key={cell.id} className={`py-3 ${widthClass} ${extraClass}`.trim()}>
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </TableCell>
+                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10`}>
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext()
+                                                    )}
+                                            </TableHead>
                                         )
                                     })}
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ))}
+                        </TableHeader>
+                    </Table>
+                </div>
+                
+                {/* Body con scroll */}
+                <ScrollArea className="flex-1">
+                    <Table className="table-fixed w-full">
+                        <TableBody className="divide-y divide-zinc-900">
+                            {filteredTasks.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="p-12 text-center w-full">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="p-4 rounded-full bg-zinc-900/50">
+                                                <Inbox className="h-8 w-8 text-zinc-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                table.getRowModel().rows.map(row => (
+                                    <TableRow
+                                        key={row.id}
+                                        className="cursor-pointer hover:bg-zinc-900/50 transition-colors"
+                                        onClick={() => {
+                                            if (taskSelect) {
+                                                taskSelect(row.original)
+                                            }
+                                            setIsSheetOpen(true)
+                                        }}
+                                    >
+                                        {row.getVisibleCells().map(cell => {
+                                            const widthClass = cell.column.id === 'type' ? 'w-24' :
+                                                cell.column.id === 'title' ? 'w-full' :
+                                                cell.column.id === 'priority' ? 'w-20' :
+                                                cell.column.id === 'status' ? 'w-24' :
+                                                cell.column.id === 'actions' ? 'w-20' :
+                                                cell.column.id === 'technology' ? 'w-16' :
+                                                cell.column.id === 'assignees' ? 'w-16' : ''
+                                            const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
+                                            return (
+                                                <TableCell key={cell.id} className={`py-3 ${widthClass} ${extraClass}`.trim()}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            )
+                                        })}
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
             </div>
         </div>
     )

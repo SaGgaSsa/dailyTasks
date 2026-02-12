@@ -340,7 +340,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                 onResetFilters={resetFilters}
             />
 
-            <div className="flex-1 min-h-0 overflow-visible">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 {view === 'BACKLOG' ? (
                     <Backlog
                         initialTasks={backlogTasksState}

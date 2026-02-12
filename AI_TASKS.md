@@ -4,11 +4,17 @@ Documento para rastrear tareas pendientes, bugs conocidos y mejoras técnicas id
 
 ---
 
-## 🔴 Pendiente: Sticky Header en Backlog
-- **Archivo:** components/board/backlog.tsx (línea ~359)
+## ✅ Resuelto: Sticky Header en Backlog
+- **Archivo:** components/board/backlog.tsx, components/board/dashboard-client.tsx, components/ui/scroll-area.tsx
 - **Problema:** La tabla scrollea con la página en lugar de tener scroll interno. El header se pierde al hacer scroll.
-- **Intento fallido:** Se probó `sticky top-0`, `max-h-[calc(100vh-280px)]`, `z-20`, `bg-[#0F0F0F]` pero algo en el layout padre lo rompe.
-- **Solución sugerida:** Revisar el layout contenedor principal o usar `ScrollArea` de Radix rodeando la tabla.
+- **Solución implementada:** 
+  - Creado componente `ScrollArea` basado en Radix UI (`components/ui/scroll-area.tsx`)
+  - Separado el `TableHeader` del `TableBody` en el Backlog
+  - Header ahora es sticky con `sticky top-0 z-10` y fondo sólido `bg-[#0F0F0F]`
+  - El body está envuelto en `ScrollArea` con altura flexible (`flex-1`)
+  - Contenedor principal ahora usa `overflow-hidden` en lugar de `overflow-visible`
+  - Estructura: contenedor flex con header fijo y body scrollable
+- **Resultado:** El header permanece visible mientras se scrollea la tabla, comportamiento sticky funcional
 
 ---
 
