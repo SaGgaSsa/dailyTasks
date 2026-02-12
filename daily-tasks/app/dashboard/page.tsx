@@ -3,19 +3,57 @@ import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
 import { DashboardClient } from '@/components/board/dashboard-client'
 import { TechStack, TaskStatus } from '@/types/enums'
+import { IncidenceWithDetails } from '@/types'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
   const params = await searchParams
 
-  // Protección de ruta - todos los usuarios pueden acceder a /dashboard
   if (!session?.user) {
     redirect('/login')
   }
 
   const isAdmin = session.user.role === 'ADMIN'
 
-  // Parse search params para filtros múltiples y únicos
+  const viewParam = params.view
+
+  if (!viewParam) {
+    const defaultView = isAdmin ? 'backlog' : 'kanban'
+    const otherParams = new URLSearchParams()
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (key !== 'view' && value) {
+        otherParams.set(key, value)
+      }
+    })
+    
+    const queryString = otherParams.toString()
+    const redirectUrl = queryString 
+      ? `/dashboard?view=${defaultView}&${queryString}`
+      : `/dashboard?view=${defaultView}`
+    
+    redirect(redirectUrl)
+  }
+
+  const currentView = viewParam === 'kanban' ? 'KANBAN' : 'BACKLOG'
+
+  if (!isAdmin && currentView === 'BACKLOG') {
+    const otherParams = new URLSearchParams()
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (key !== 'view' && value) {
+        otherParams.set(key, value)
+      }
+    })
+    
+    const queryString = otherParams.toString()
+    const redirectUrl = queryString 
+      ? `/dashboard?view=kanban&${queryString}`
+      : '/dashboard?view=kanban'
+    
+    redirect(redirectUrl)
+  }
+
   const tech = params.tech 
     ? (Array.isArray(params.tech) ? params.tech : [params.tech])
         .flatMap(t => t.split(','))
@@ -23,12 +61,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .filter(t => Object.values(TechStack).includes(t as TechStack))
     : Object.values(TechStack)
   
-  const statusParam = params.status 
-    ? (Array.isArray(params.status) ? params.status : [params.status])
-        .flatMap(s => s.split(','))
-        .filter(Boolean)
-        .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
-    : ['BACKLOG']
+  const statusParam = currentView === 'KANBAN' 
+    ? [] 
+    : params.status 
+      ? (Array.isArray(params.status) ? params.status : [params.status])
+          .flatMap(s => s.split(','))
+          .filter(Boolean)
+          .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
+      : ['BACKLOG']
   
   const assignee = params.assignee 
     ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
@@ -40,27 +80,33 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   
   const search = params.search || ''
 
-  // Fetch data con filtros
-  const backlogTasks = await getIncidences({
-    viewType: 'BACKLOG',
-    search,
-    tech,
-    status: statusParam.join(','),
-    assignee,
-    mine
-  })
-  const kanbanTasks = await getIncidences({
-    viewType: 'KANBAN',
-    search,
-    tech,
-    assignee,
-    mine
-  })
+  let backlogTasks: IncidenceWithDetails[] = []
+  let kanbanTasks: IncidenceWithDetails[] = []
+
+  if (currentView === 'BACKLOG') {
+    backlogTasks = await getIncidences({
+      viewType: 'BACKLOG',
+      search,
+      tech,
+      status: statusParam.join(','),
+      assignee,
+      mine
+    })
+  } else {
+    kanbanTasks = await getIncidences({
+      viewType: 'KANBAN',
+      search,
+      tech,
+      assignee,
+      mine
+    })
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background">
       <div className="flex-1 p-2">
         <DashboardClient
+          view={currentView}
           backlogTasks={backlogTasks}
           kanbanTasks={kanbanTasks}
           isAdmin={isAdmin}

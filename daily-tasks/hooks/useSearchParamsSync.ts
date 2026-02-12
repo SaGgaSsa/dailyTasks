@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useCallback, useEffect } from 'react'
 
 interface SearchParamsState {
+  view?: 'backlog' | 'kanban'
   search?: string
   tech?: string[]
   status?: string[]
@@ -18,6 +19,7 @@ interface UseSearchParamsSyncReturn {
   updateStatus: (values: string[]) => void
   updateAssignee: (values: string[]) => void
   updateMine: (value: boolean) => void
+  updateView: (value: 'backlog' | 'kanban') => void
   resetFilters: () => void
   isLoading: boolean
 }
@@ -31,7 +33,9 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
   // Parse initial params from URL
   useEffect(() => {
     const urlStatus = searchParams.getAll('status').filter(Boolean)
+    const viewParam = searchParams.get('view')
     const parsed: SearchParamsState = {
+      view: viewParam === 'kanban' ? 'kanban' : viewParam === 'backlog' ? 'backlog' : undefined,
       search: searchParams.get('search') || '',
       tech: searchParams.getAll('tech').filter(Boolean),
       status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'],
@@ -99,6 +103,12 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     router.push('/dashboard', { scroll: false })
   }, [router])
 
+  const updateView = useCallback((value: 'backlog' | 'kanban') => {
+    const newParams = { ...params, view: value }
+    setParams(newParams)
+    updateURL(newParams)
+  }, [params, updateURL])
+
   return {
     params,
     updateSearch,
@@ -106,6 +116,7 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     updateStatus,
     updateAssignee,
     updateMine,
+    updateView,
     resetFilters,
     isLoading
   }

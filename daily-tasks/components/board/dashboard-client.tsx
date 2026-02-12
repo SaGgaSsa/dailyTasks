@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
@@ -18,22 +18,30 @@ import { TaskStatus, TechStack } from '@/types/enums'
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
 
 interface DashboardClientProps {
+    view: 'BACKLOG' | 'KANBAN'
     backlogTasks: IncidenceWithDetails[]
     kanbanTasks: IncidenceWithDetails[]
     isAdmin: boolean
 }
 
-export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
+export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const { data: session } = useSession()
     const router = useRouter()
-    const [viewMode, setViewMode] = useState<'BACKLOG' | 'KANBAN'>(session?.user?.role === 'DEV' ? 'KANBAN' : 'BACKLOG')
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
     const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
-    
 
-    const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, resetFilters, isLoading } = useSearchParamsSync()
+    // Sincronizar estado local cuando cambian las props (por cambios en filtros URL)
+    useEffect(() => {
+        setBacklogTasksState(backlogTasks)
+    }, [backlogTasks])
+
+    useEffect(() => {
+        setKanbanTasksState(kanbanTasks)
+    }, [kanbanTasks])
+
+    const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, updateView, resetFilters, isLoading } = useSearchParamsSync()
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
 
@@ -143,18 +151,16 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
         updateAssignee([])
     }, [updateTech, updateAssignee])
 
-    const handleViewChange = useCallback((newView: 'BACKLOG' | 'KANBAN') => {
-        if (newView === viewMode) return
-        setViewMode(newView)
-    }, [viewMode])
+    const handleViewChange = useCallback((newView: 'backlog' | 'kanban') => {
+        if ((newView === 'backlog' && view === 'BACKLOG') || (newView === 'kanban' && view === 'KANBAN')) return
+        updateView(newView)
+    }, [view, updateView])
 
     const handleResetBacklogFilters = useCallback(() => {
         updateTech([])
         updateStatus([])
         updateAssignee([])
     }, [updateTech, updateStatus, updateAssignee])
-
-    
 
     if (isLoading) {
         return (
@@ -214,7 +220,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        {viewMode === 'BACKLOG' ? 'Backlog' : 'Kanban'}
+                        {view === 'BACKLOG' ? 'Backlog' : 'Kanban'}
                     </h2>
 
                     <SearchBar
@@ -232,7 +238,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         onValuesChange={updateTech}
                     />
 
-                    {viewMode === 'BACKLOG' && (
+                    {view === 'BACKLOG' && (
                         <>
                             <FilterDropdown
                                 icon={<LayoutDashboard className="h-4 w-4" />}
@@ -254,7 +260,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                         </>
                     )}
 
-                    {viewMode === 'KANBAN' && (
+                    {view === 'KANBAN' && (
                         <>
                             <FilterDropdown
                                 icon={<User className="h-4 w-4" />}
@@ -277,7 +283,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {viewMode === 'BACKLOG' && (
+                    {view === 'BACKLOG' && (
                         <Button
                             onClick={() => {
                                 setSelectedTask(null)
@@ -288,12 +294,12 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
                             <Plus className="h-4 w-4" />
                         </Button>
                     )}
-                    <Tabs value={viewMode} onValueChange={(v) => handleViewChange(v as 'BACKLOG' | 'KANBAN')}>
+                    <Tabs value={view.toLowerCase()} onValueChange={(v) => handleViewChange(v as 'backlog' | 'kanban')}>
                         <TabsList className="bg-zinc-900 border border-zinc-800 h-8">
-                            <TabsTrigger value="BACKLOG" className="data-[state=active]:bg-zinc-800 px-3">
+                            <TabsTrigger value="backlog" className="data-[state=active]:bg-zinc-800 px-3">
                                 <ListTodo className="h-4 w-4" />
                             </TabsTrigger>
-                            <TabsTrigger value="KANBAN" className="data-[state=active]:bg-zinc-800 px-3">
+                            <TabsTrigger value="kanban" className="data-[state=active]:bg-zinc-800 px-3">
                                 <LayoutDashboard className="h-4 w-4" />
                             </TabsTrigger>
                         </TabsList>
@@ -304,8 +310,8 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
             <FilterChips
                 searchQuery={params.search}
                 selectedTech={params.tech}
-                selectedStatus={viewMode === 'BACKLOG' ? params.status : []}
-                selectedAssignee={viewMode === 'KANBAN' ? params.assignee : []}
+                selectedStatus={view === 'BACKLOG' ? params.status : []}
+                selectedAssignee={view === 'KANBAN' ? params.assignee : []}
                 techOptions={techOptions}
                 statusOptions={statusOptions}
                 assigneeOptions={userOptions}
@@ -317,7 +323,7 @@ export function DashboardClient({ backlogTasks, kanbanTasks, isAdmin }: Dashboar
             />
 
             <div className="flex-1 min-h-0 overflow-visible">
-                {viewMode === 'BACKLOG' ? (
+                {view === 'BACKLOG' ? (
                     <Backlog
                         initialTasks={backlogTasksState}
                         isSheetOpen={isSheetOpen}
