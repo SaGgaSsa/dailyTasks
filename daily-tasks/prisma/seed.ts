@@ -31,6 +31,16 @@ const INCIDENCE_TITLES = [
   'Problema de rendimiento en consulta',
   'Inconsistencia en datos mostrados',
   'Error al guardar registro',
+  'Bug en cálculo de totales',
+  'Falla en autenticación de usuarios',
+  'Error al generar reporte PDF',
+  'Problema con exportación Excel',
+  'Timeout en consulta de datos',
+  'Memory leak en proceso batch',
+  'Error en envío de notificaciones',
+  'Falla en carga de archivos',
+  'Problema de concurrencia',
+  'Error en validación de reglas de negocio',
 ]
 
 const STATUSES: TaskStatus[] = [TaskStatus.BACKLOG, TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW, TaskStatus.DONE]
@@ -72,49 +82,52 @@ async function createDev(passwordHash: string) {
 async function createIncidencesForUser(user: { id: number }, userType: 'admin' | 'dev') {
   const incidences: { id: number; type: string; externalId: number }[] = []
   let externalId = userType === 'admin' ? 1000 : 2000
+  const INCIDENCES_PER_STATUS = 50
 
   for (const status of STATUSES) {
-    const title = INCIDENCE_TITLES[incidences.length % INCIDENCE_TITLES.length]
+    for (let i = 0; i < INCIDENCES_PER_STATUS; i++) {
+      const titleIndex = (incidences.length) % INCIDENCE_TITLES.length
+      const title = `${INCIDENCE_TITLES[titleIndex]} #${i + 1}`
 
-    const incidence = await prisma.incidence.upsert({
-      where: { type_externalId: { type: TaskType.I_MODAPL, externalId } },
-      update: {},
-      create: {
-        type: TaskType.I_MODAPL,
-        externalId,
-        title,
-        description: title,
-        status,
-        priority: Priority.MEDIUM,
-        technology: TechStack.SISA,
-        estimatedTime: 8,
-      },
-    })
-    incidences.push(incidence)
-    console.log(`Created incidence: ${incidence.type}${incidence.externalId} (${status})`)
+      const incidence = await prisma.incidence.upsert({
+        where: { type_externalId: { type: TaskType.I_MODAPL, externalId } },
+        update: {},
+        create: {
+          type: TaskType.I_MODAPL,
+          externalId,
+          title,
+          description: title,
+          status,
+          priority: Priority.MEDIUM,
+          technology: TechStack.SISA,
+          estimatedTime: 8,
+        },
+      })
+      incidences.push(incidence)
 
-    await prisma.assignment.create({
-      data: {
-        incidenceId: incidence.id,
-        userId: user.id,
-        assignedHours: 8,
-        isAssigned: true,
-      },
-    })
-    console.log(`Assigned incidence to ${userType}`)
+      await prisma.assignment.create({
+        data: {
+          incidenceId: incidence.id,
+          userId: user.id,
+          assignedHours: 8,
+          isAssigned: true,
+        },
+      })
 
-    await prisma.subTask.create({
-      data: {
-        title: TASK_TITLES[incidences.length % TASK_TITLES.length],
-        isCompleted: false,
-        assignmentId: incidence.id,
-      },
-    })
-    console.log(`Created task for incidence ${incidence.type}${incidence.externalId}`)
+      await prisma.subTask.create({
+        data: {
+          title: TASK_TITLES[incidences.length % TASK_TITLES.length],
+          isCompleted: false,
+          assignmentId: incidence.id,
+        },
+      })
 
-    externalId++
+      externalId++
+    }
+    console.log(`Created ${INCIDENCES_PER_STATUS} incidences with status ${status} for ${userType}`)
   }
 
+  console.log(`Total incidences for ${userType}: ${incidences.length}`)
   return incidences
 }
 

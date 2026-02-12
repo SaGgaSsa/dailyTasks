@@ -7,6 +7,7 @@ import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
 import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
@@ -179,6 +180,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                             Kanban
+                            <Badge variant="outline" className="text-xs bg-zinc-800 text-zinc-400 border-zinc-700 font-mono">
+                                {kanbanTasksState.length}
+                            </Badge>
                         </h2>
 
                         <SearchBar
@@ -239,6 +243,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                         {view === 'BACKLOG' ? 'Backlog' : 'Kanban'}
+                        <Badge variant="outline" className="text-xs bg-zinc-800 text-zinc-400 border-zinc-700 font-mono">
+                            {view === 'BACKLOG' ? backlogTasksState.length : kanbanTasksState.length}
+                        </Badge>
                     </h2>
 
                     <SearchBar
