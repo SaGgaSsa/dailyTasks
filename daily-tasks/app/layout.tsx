@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Providers } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeSync } from "@/components/theme-sync";
+import { PerformanceErrorBoundary } from "@/components/performance-error-boundary";
 import { auth } from "@/auth";
 
 const geistSans = Geist({
@@ -45,6 +46,26 @@ const themeScript = `
   })();
 `;
 
+// Script para suprimir errores de performance.measure con timestamp negativo
+const performanceErrorScript = `
+  (function() {
+    if (typeof window !== 'undefined' && window.performance && window.performance.measure) {
+      const originalMeasure = window.performance.measure.bind(window.performance);
+      window.performance.measure = function() {
+        try {
+          return originalMeasure.apply(this, arguments);
+        } catch (e) {
+          if (e && e.message && e.message.includes('cannot have a negative time stamp')) {
+            console.warn('[Performance] Ignorado error de timestamp negativo');
+            return;
+          }
+          throw e;
+        }
+      };
+    }
+  })();
+`;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -56,6 +77,7 @@ export default async function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: performanceErrorScript }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -68,9 +90,11 @@ export default async function RootLayout({
             storageKey="dailytasks-theme"
             disableTransitionOnChange={false}
           >
-            <ThemeSync />
-            {children}
-            <Toaster />
+            <PerformanceErrorBoundary>
+              <ThemeSync />
+              {children}
+              <Toaster />
+            </PerformanceErrorBoundary>
           </ThemeProvider>
         </Providers>
       </body>
