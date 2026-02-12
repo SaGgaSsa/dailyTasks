@@ -105,7 +105,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
 
         // View type filtering - only apply if no status filter
         if (!status && viewType === 'KANBAN') {
-            where.status = { not: TaskStatus.BACKLOG }
+            where.status = { in: [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] }
         }
 
         // Search across multiple fields
