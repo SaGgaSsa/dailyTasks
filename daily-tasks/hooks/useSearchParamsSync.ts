@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useTransition, useRef } from 'react'
 
 interface SearchParamsState {
   view?: 'backlog' | 'kanban'
@@ -29,6 +29,8 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [params, setParams] = useState<SearchParamsState>({})
+  const [isPending, startTransition] = useTransition()
+  const lastUrlRef = useRef<string>('')
 
   // Parse initial params from URL
   useEffect(() => {
@@ -38,11 +40,14 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
       view: viewParam === 'kanban' ? 'kanban' : viewParam === 'backlog' ? 'backlog' : undefined,
       search: searchParams.get('search') || '',
       tech: searchParams.getAll('tech').filter(Boolean),
-      status: urlStatus.length > 0 ? urlStatus : ['BACKLOG'],
+      status: urlStatus.length > 0 ? urlStatus : [],
       assignee: searchParams.getAll('assignee').filter(Boolean),
       mine: searchParams.get('mine') === 'true',
     }
-    
+
+    // Update lastUrlRef to match current URL
+    lastUrlRef.current = window.location.pathname + window.location.search
+
     // Use requestAnimationFrame to avoid synchronous setState
     requestAnimationFrame(() => {
       setParams(parsed)
@@ -50,10 +55,10 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     })
   }, [searchParams])
 
-  // Update URL with new params
+  // Update URL with new params - only if actually changed
   const updateURL = useCallback((newParams: SearchParamsState) => {
     const urlParams = new URLSearchParams()
-    
+
     Object.entries(newParams).forEach(([key, value]) => {
       if (key === 'mine') {
         if (value === true) urlParams.set('mine', 'true')
@@ -66,7 +71,15 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
 
     const queryString = urlParams.toString()
     const newUrl = queryString ? `/dashboard?${queryString}` : '/dashboard'
-    router.replace(newUrl, { scroll: false })
+
+    // Only update URL if it's different from current and from last update
+    const currentUrl = window.location.pathname + window.location.search
+    if (newUrl !== currentUrl && newUrl !== lastUrlRef.current) {
+      lastUrlRef.current = newUrl
+      startTransition(() => {
+        router.replace(newUrl, { scroll: false })
+      })
+    }
   }, [router])
 
   const updateSearch = useCallback((value: string) => {

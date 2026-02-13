@@ -17,24 +17,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const viewParam = params.view
 
-  if (!viewParam) {
-    const defaultView = isAdmin ? 'backlog' : 'kanban'
-    const otherParams = new URLSearchParams()
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (key !== 'view' && value) {
-        otherParams.set(key, value)
-      }
-    })
-    
-    const queryString = otherParams.toString()
-    const redirectUrl = queryString 
-      ? `/dashboard?view=${defaultView}&${queryString}`
-      : `/dashboard?view=${defaultView}`
-    
-    redirect(redirectUrl)
-  }
-
   const currentView = viewParam === 'kanban' ? 'KANBAN' : 'BACKLOG'
 
   if (!isAdmin && currentView === 'BACKLOG') {

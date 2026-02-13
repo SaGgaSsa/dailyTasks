@@ -199,6 +199,15 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                             allValues={Object.values(TechStack)}
                             onValuesChange={updateTech}
                         />
+
+                        <FilterDropdown
+                            icon={<User className="h-4 w-4" />}
+                            label="Usuario"
+                            options={userOptions}
+                            selectedValues={params.assignee || []}
+                            allValues={userOptions.map(opt => opt.value)}
+                            onValuesChange={updateAssignee}
+                        />
                     </div>
                 </div>
 
@@ -206,17 +215,18 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     searchQuery={params.search}
                     selectedTech={params.tech}
                     selectedStatus={[]}
-                    selectedAssignee={[]}
+                    selectedAssignee={params.assignee || []}
                     techOptions={techOptions}
                     statusOptions={statusOptions}
-                    assigneeOptions={[]}
+                    assigneeOptions={userOptions}
                     onSearchChange={updateSearch}
                     onTechChange={updateTech}
                     onStatusChange={() => {}}
-                    onAssigneeChange={() => {}}
+                    onAssigneeChange={updateAssignee}
                     onResetFilters={() => {
                         updateSearch('')
                         updateTech([])
+                        updateAssignee([])
                     }}
                 />
 
@@ -264,70 +274,48 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     />
 
                     {view === 'BACKLOG' && (
-                        <>
-                            <FilterDropdown
-                                icon={<LayoutDashboard className="h-4 w-4" />}
-                                label="Estado"
-                                options={statusOptions}
-                                selectedValues={params.status || []}
-                                allValues={statusOptions.map(opt => opt.value)}
-                                onValuesChange={updateStatus}
-                                resetValue={TaskStatus.BACKLOG}
-                            />
-                            <FilterDropdown
-                                icon={<User className="h-4 w-4" />}
-                                label="Usuario"
-                                options={userOptions}
-                                selectedValues={params.assignee || []}
-                                allValues={userOptions.map(opt => opt.value)}
-                                onValuesChange={updateAssignee}
-                            />
-                        </>
+                        <FilterDropdown
+                            icon={<LayoutDashboard className="h-4 w-4" />}
+                            label="Estado"
+                            options={statusOptions}
+                            selectedValues={params.status || []}
+                            allValues={statusOptions.map(opt => opt.value)}
+                            onValuesChange={updateStatus}
+                            resetValue={TaskStatus.BACKLOG}
+                        />
                     )}
 
-                    {view === 'KANBAN' && (
-                        <>
-                            <FilterDropdown
-                                icon={<User className="h-4 w-4" />}
-                                label="Usuario"
-                                options={userOptions}
-                                selectedValues={params.assignee || []}
-                                allValues={userOptions.map(opt => opt.value)}
-                                onValuesChange={updateAssignee}
-                            />
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={params.mine || false}
-                                    onCheckedChange={updateMine}
-                                    className="border-zinc-600"
-                                />
-                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
-                            </label>
-                        </>
-                    )}
+                    <FilterDropdown
+                        icon={<User className="h-4 w-4" />}
+                        label="Usuario"
+                        options={userOptions}
+                        selectedValues={params.assignee || []}
+                        allValues={userOptions.map(opt => opt.value)}
+                        onValuesChange={updateAssignee}
+                    />
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {isAdmin && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                                checked={params.mine || false}
+                                onCheckedChange={updateMine}
+                                className="border-zinc-600"
+                            />
+                            <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                        </label>
+                    )}
                     {view === 'BACKLOG' && (
-                        <>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={params.mine || false}
-                                    onCheckedChange={updateMine}
-                                    className="border-zinc-600"
-                                />
-                                <span className="text-sm text-zinc-400">Mis asignaciones</span>
-                            </label>
-                            <Button
-                                onClick={() => {
-                                    setSelectedTask(null)
-                                    setIsSheetOpen(true)
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white h-8 w-8 p-0"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </>
+                        <Button
+                            onClick={() => {
+                                setSelectedTask(null)
+                                setIsSheetOpen(true)
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white h-8 w-8 p-0"
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
                     )}
                     <Tabs value={view.toLowerCase()} onValueChange={(v) => handleViewChange(v as 'backlog' | 'kanban')}>
                         <TabsList className="bg-zinc-900 border border-zinc-800 h-8">
@@ -346,7 +334,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                 searchQuery={params.search}
                 selectedTech={params.tech}
                 selectedStatus={view === 'BACKLOG' ? params.status : []}
-                selectedAssignee={view === 'KANBAN' ? params.assignee : []}
+                selectedAssignee={params.assignee || []}
                 techOptions={techOptions}
                 statusOptions={statusOptions}
                 assigneeOptions={userOptions}
