@@ -87,15 +87,26 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             const completedHours = calculateCompletedHours(row.original)
             const isComplete = isFullyCompleted(completedHours, row.original.estimatedTime)
             
+            const allTasks = row.original.assignments.flatMap(a => a.tasks)
+            const pendingTasks = allTasks.filter(t => !t.isCompleted)
+            const hasTasks = allTasks.length > 0
+            
             return (
                 <div className="flex items-center gap-4 min-w-0">
                     <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
                         {title}
                     </span>
-                    <span className={`text-xs whitespace-nowrap shrink-0 ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
-                        {formatHoursDisplay(completedHours, totalHours)}
-                        {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
-                    </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                        {hasTasks && (
+                            <span className="text-[10px] text-zinc-400 whitespace-nowrap">
+                                {pendingTasks.length}/{allTasks.length} pendientes
+                            </span>
+                        )}
+                        <span className={`text-xs whitespace-nowrap ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+                            {formatHoursDisplay(completedHours, totalHours)}
+                            {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
+                        </span>
+                    </div>
                 </div>
             )
         },

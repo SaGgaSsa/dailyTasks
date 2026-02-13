@@ -772,6 +772,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                             const isSelected = !!assigneeData
                             const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
                             const userTasks = userAssignment?.tasks || []
+                            const userDraftTasks = draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id)
                             const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted)
                             const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted)
                             const isExpanded = expandedAssignees.has(user.id)
@@ -779,20 +780,20 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                             return (
                                 <div key={user.id} className="border-b border-zinc-800 last:border-b-0">
                                     <div 
-                                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-zinc-800/50"
-                                        onClick={() => toggleAssigneeExpanded(user.id)}
+                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-zinc-800/50' : 'cursor-not-allowed opacity-60'}`}
+                                        onClick={() => isSelected && toggleAssigneeExpanded(user.id)}
                                     >
                                         <Checkbox
                                             checked={isSelected}
                                             onCheckedChange={() => handleToggleAssignee(user.id)}
                                             onClick={(e) => e.stopPropagation()}
-                                            disabled={isSelected && userTasks.length > 0}
+                                            disabled={isSelected && (userTasks.length > 0 || userDraftTasks.length > 0)}
                                             className="border-zinc-600"
                                         />
                                         <span className="text-zinc-300 text-sm">{user.name}</span>
-                                        {userTasks.length > 0 && (
+                                        {(userTasks.length > 0 || userDraftTasks.length > 0) && (
                                             <span className="text-zinc-500 text-xs">
-                                                {pendingTasks.length}/{userTasks.length} pendientes
+                                                {pendingTasks.length + userDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
                                             </span>
                                         )}
                                         <div className="flex-1" />
@@ -821,11 +822,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
+                                                disabled={!isSelected}
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     toggleAssigneeExpanded(user.id)
                                                 }}
-                                                className="h-6 w-6 text-zinc-500"
+                                                className="h-6 w-6 text-zinc-500 disabled:opacity-30"
                                             >
                                                 <ChevronUp className="h-3 w-3" />
                                             </Button>
@@ -834,18 +836,19 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
+                                                disabled={!isSelected}
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     toggleAssigneeExpanded(user.id)
                                                 }}
-                                                className="h-6 w-6 text-zinc-500"
+                                                className="h-6 w-6 text-zinc-500 disabled:opacity-30"
                                             >
                                                 <ChevronDown className="h-3 w-3" />
                                             </Button>
                                         )}
                                     </div>
                                     
-                                    {isExpanded && (
+                                    {isExpanded && isSelected && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
                                                 <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
