@@ -29,31 +29,6 @@ interface UpdateIncidenceData {
     subTasks?: { title: string; isCompleted: boolean }[]
 }
 
-
-
-interface CreateIncidenceData {
-    type: TaskType
-    externalId: number
-    title: string
-    description?: string
-    tech: TechStack
-    priority: Priority
-    estimatedTime?: number | null
-    assignees?: AssigneeWithHours[]
-}
-
-interface UpdateIncidenceData {
-    status?: TaskStatus
-    priority?: Priority
-    description?: string
-    comment?: string
-    estimatedTime?: number | null
-    title?: string
-    technology?: TechStack
-    assignees?: AssigneeWithHours[]
-    subTasks?: { title: string; isCompleted: boolean }[]
-}
-
 export async function createIncidence(data: CreateIncidenceData) {
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
@@ -94,9 +69,14 @@ interface GetIncidencesOptions {
     mine?: boolean
 }
 
-export async function getIncidences({ viewType, search, tech, status, assignee, mine }: GetIncidencesOptions): Promise<IncidenceWithDetails[]> {
+interface GetIncidencesResult {
+    data: IncidenceWithDetails[]
+    error?: string
+}
+
+export async function getIncidences({ viewType, search, tech, status, assignee, mine }: GetIncidencesOptions): Promise<GetIncidencesResult> {
     const session = await auth()
-    if (!session?.user) return []
+    if (!session?.user) return { data: [], error: 'No autorizado' }
 
     const isDev = session.user.role === 'DEV'
 
@@ -204,10 +184,10 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                 }
             ]
         })
-        return incidences as unknown as IncidenceWithDetails[]
+        return { data: incidences as IncidenceWithDetails[] }
     } catch (error) {
         console.error('Error getting incidences:', error)
-        return []
+        return { data: [], error: 'Error al obtener las incidencias' }
     }
 }
 
@@ -230,7 +210,7 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
                 }
             }
         })
-        return incidence as unknown as IncidenceWithDetails
+        return incidence as IncidenceWithDetails
     } catch (error) {
         console.error('Error getting incidence:', error)
         return null
@@ -281,7 +261,7 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
         ])
 
         return {
-            incidence: incidence as unknown as IncidenceWithDetails,
+            incidence: incidence as IncidenceWithDetails,
             users
         }
     } catch (error) {
@@ -491,7 +471,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
         })
 
         revalidatePath('/dashboard')
-        return { success: true, data: finalIncidence as unknown as IncidenceWithDetails }
+        return { success: true, data: finalIncidence as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }

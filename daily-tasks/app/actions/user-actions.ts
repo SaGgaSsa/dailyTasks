@@ -3,17 +3,22 @@
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { TaskStatus, TaskType, TechStack, Priority } from '@/types/enums'
-import { UserRole } from '@prisma/client'
+import { User, UserRole } from '@prisma/client'
 
-export async function getUsers() {
+interface GetUsersResult {
+    data: User[]
+    error?: string
+}
+
+export async function getUsers(): Promise<GetUsersResult> {
     try {
         const users = await db.user.findMany({
             orderBy: { username: 'asc' }
         })
-        return users
+        return { data: users }
     } catch (error) {
         console.error('Error getting users:', error)
-        return []
+        return { data: [], error: 'Error al obtener los usuarios' }
     }
 }
 

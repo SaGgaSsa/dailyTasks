@@ -13,7 +13,12 @@ export default async function UsersPage() {
     redirect('/dashboard')
   }
 
-  const users = await getUsers()
+  const usersResult = await getUsers()
+  const users = usersResult.data
+  
+  if (usersResult.error) {
+    console.error(usersResult.error)
+  }
 
   return (
     <div className="flex-1 space-y-4 p-2">

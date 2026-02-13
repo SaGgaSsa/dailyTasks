@@ -110,7 +110,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         const status = params.status || []
         const assignee = params.assignee || []
         
-        const newTasks = await getIncidences({
+        const result = await getIncidences({
             viewType: currentView,
             search: params.search || '',
             tech,
@@ -118,6 +118,12 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
             assignee,
             mine: params.mine || false
         })
+
+        if (result.error) {
+            console.error(result.error)
+        }
+
+        const newTasks = result.data
 
         if (currentView === 'BACKLOG') {
             setBacklogTasksState(newTasks)

@@ -66,7 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let kanbanTasks: IncidenceWithDetails[] = []
 
   if (currentView === 'BACKLOG') {
-    backlogTasks = await getIncidences({
+    const backlogResult = await getIncidences({
       viewType: 'BACKLOG',
       search,
       tech,
@@ -74,14 +74,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       assignee,
       mine
     })
+    backlogTasks = backlogResult.data
+    if (backlogResult.error) {
+      console.error(backlogResult.error)
+    }
   } else {
-    kanbanTasks = await getIncidences({
+    const kanbanResult = await getIncidences({
       viewType: 'KANBAN',
       search,
       tech,
       assignee,
       mine
     })
+    kanbanTasks = kanbanResult.data
+    if (kanbanResult.error) {
+      console.error(kanbanResult.error)
+    }
   }
 
   return (
