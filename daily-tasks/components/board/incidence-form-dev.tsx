@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { IncidenceWithDetails, SubTask } from '@/types'
+import { TaskType } from '@/types/enums'
 import { FormSheet } from '@/components/ui/form-sheet'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -11,13 +12,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Trash2, Edit2, Loader2 } from 'lucide-react'
-import { toggleSubTask, deleteSubTask, createSubTask, getIncidence, updateSubTaskTitle, updateIncidenceComment } from '@/app/actions/incidence-actions'
+import { toggleSubTask, deleteSubTask, createSubTask, getIncidenceWithUsers, updateSubTaskTitle, updateIncidenceComment } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
 
 interface IncidenceFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     initialData?: IncidenceWithDetails | null
+    type?: TaskType
+    externalId?: number
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     onIncidenceCreated?: () => void
     isDev?: boolean
@@ -31,7 +34,7 @@ interface DraftTask {
     isCompleted: boolean
 }
 
-export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate, isKanban = false }: IncidenceFormProps) {
+export function IncidenceFormDev({ open, onOpenChange, initialData, type, externalId, onTaskUpdate, isKanban = false }: IncidenceFormProps) {
     const { data: session } = useSession()
     const currentUserId = session?.user?.id ? Number(session.user.id) : 0
 
@@ -61,16 +64,16 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate
 
     useEffect(() => {
         const loadUserTasks = async () => {
-            if (open && initialData?.id) {
+            if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
                 try {
-                    const fullData = await getIncidence(initialData.id)
-                    if (fullData) {
-                        setFullIncidenceData(fullData)
-                        setDescription(fullData.description || '')
-                        setOriginalDescription(fullData.description || '')
-                        const userAssignment = fullData.assignments.find(
-                            a => a.isAssigned && a.userId === currentUserId
+                    const { incidence } = await getIncidenceWithUsers(type, externalId)
+                    if (incidence) {
+                        setFullIncidenceData(incidence)
+                        setDescription(incidence.description || '')
+                        setOriginalDescription(incidence.description || '')
+                        const userAssignment = incidence.assignments.find(
+                            (a: { isAssigned: boolean; userId: number }) => a.isAssigned && a.userId === currentUserId
                         )
                         if (userAssignment) {
                             setTasks(userAssignment.tasks)
@@ -93,7 +96,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate
             }
         }
         loadUserTasks()
-    }, [open, initialData, currentUserId])
+    }, [open, initialData, type, externalId, currentUserId])
 
     const assignmentId = useMemo(() => {
         return fullIncidenceData?.assignments.find(
@@ -235,8 +238,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, onTaskUpdate
             }
 
             if (!hasErrors) {
-                if (initialData && onTaskUpdate) {
-                    const updatedData = await getIncidence(initialData!.id)
+                if (initialData && onTaskUpdate && type && externalId) {
+                    const { incidence: updatedData } = await getIncidenceWithUsers(type, externalId)
                     if (updatedData) {
                         onTaskUpdate(updatedData)
                     } else {

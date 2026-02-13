@@ -259,6 +259,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
+                type={selectedTask?.type}
+                externalId={selectedTask?.externalId}
                 onTaskUpdate={handleTaskUpdate}
                 isDev={isDev}
                 isKanban={true}

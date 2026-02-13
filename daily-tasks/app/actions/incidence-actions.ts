@@ -237,6 +237,59 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
     }
 }
 
+interface GetIncidenceWithUsersResult {
+    incidence: IncidenceWithDetails | null
+    users: { id: number; name: string | null; username: string; role: string }[]
+}
+
+export async function getIncidenceWithUsers(type: TaskType, externalId: number): Promise<GetIncidenceWithUsersResult> {
+    try {
+        const [incidence, users] = await Promise.all([
+            db.incidence.findUnique({
+                where: {
+                    type_externalId: {
+                        type,
+                        externalId
+                    }
+                },
+                include: {
+                    assignments: {
+                        where: { isAssigned: true },
+                        include: {
+                            user: true,
+                            tasks: {
+                                orderBy: {
+                                    createdAt: 'asc'
+                                }
+                            }
+                        }
+                    }
+                }
+            }),
+            db.user.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    role: true
+                },
+                orderBy: [
+                    { role: 'asc' },
+                    { username: 'asc' }
+                ]
+            })
+        ])
+
+        return {
+            incidence: incidence as unknown as IncidenceWithDetails,
+            users
+        }
+    } catch (error) {
+        console.error('Error getting incidence with users:', error)
+        return { incidence: null, users: [] }
+    }
+}
+
 export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
     try {
         const session = await auth()

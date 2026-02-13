@@ -21,8 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
-import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
-import { getUsers } from '@/app/actions/user-actions'
+import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
 
@@ -30,6 +29,8 @@ interface IncidenceFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     initialData?: IncidenceWithDetails | null
+    type?: TaskType
+    externalId?: number
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     onIncidenceCreated?: () => void
     isDev?: boolean
@@ -80,7 +81,7 @@ interface FormData {
     subTasks: { title: string; isCompleted: boolean }[]
 }
 
-export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpdate, onIncidenceCreated, isDev = false, isKanban = false }: IncidenceFormProps) {
+export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, externalId, onTaskUpdate, onIncidenceCreated, isDev = false, isKanban = false }: IncidenceFormProps) {
     const router = useRouter()
     const { data: session } = useSession()
     const isEditMode = !!initialData?.id
@@ -138,26 +139,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
     }
 
     useEffect(() => {
-        const loadUsers = async () => {
-            const userList = await getUsers()
-            const assignedUserIds = new Set<number>()
-            
-            if (initialData?.id) {
-                const fullData = await getIncidence(initialData.id)
-                if (fullData) {
-                    fullData.assignments.filter(a => a.isAssigned).forEach(a => assignedUserIds.add(a.userId))
-                }
-            }
-            
-            const sortedUsers = sortUsers(userList, assignedUserIds)
-            setUsers(sortedUsers)
-        }
-        loadUsers()
-    }, [initialData?.id])
-
-    useEffect(() => {
-        const fetchFullData = async () => {
-            if (open && initialData?.id) {
+        const fetchData = async () => {
+            if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
                 setFormData({
                     type: TaskType.I_MODAPL,
@@ -183,19 +166,20 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                 setShowCompletedTasks(false)
                 
                 try {
-                    const fullData = await getIncidence(initialData.id)
-                    if (fullData) {
-                        setFullIncidenceData(fullData)
-                        const allAssignments = fullData.assignments
+                    const { incidence, users } = await getIncidenceWithUsers(type, externalId)
+                    
+                    if (incidence) {
+                        setFullIncidenceData(incidence)
+                        const allAssignments = incidence.assignments
                         const activeAssignments = allAssignments.filter(a => a.isAssigned)
                         const data = {
-                            type: fullData.type,
-                            externalId: fullData.externalId?.toString() || '',
-                            title: fullData.title || '',
-                            description: fullData.description || '',
-                            priority: fullData.priority,
-                            technology: fullData.technology,
-                            estimatedTime: fullData.estimatedTime?.toString() || '',
+                            type: incidence.type,
+                            externalId: incidence.externalId?.toString() || '',
+                            title: incidence.title || '',
+                            description: incidence.description || '',
+                            priority: incidence.priority,
+                            technology: incidence.technology,
+                            estimatedTime: incidence.estimatedTime?.toString() || '',
                             assignees: activeAssignments.map(a => ({
                                 userId: a.userId,
                                 assignedHours: a.assignedHours?.toString() || ''
@@ -206,6 +190,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                         }
                         setFormData(data)
                         setOriginalFormData(data)
+                        
+                        // Sort users with assigned users first
+                        const assignedUserIds = new Set<number>()
+                        activeAssignments.forEach(a => assignedUserIds.add(a.userId))
+                        const sortedUsers = sortUsers(users as User[], assignedUserIds)
+                        setUsers(sortedUsers)
                     }
                 } catch (error) {
                     toast.error('Error cargando incidencia')
@@ -213,6 +203,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                     setIsLoading(false)
                 }
             } else if (open && !initialData) {
+                // Creating new incidence - just load users
                 setFormData({
                     type: TaskType.I_MODAPL,
                     externalId: '',
@@ -235,10 +226,19 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                 setTasksToDelete(new Set())
                 setShowCompletedTasks(false)
                 setIsLoading(false)
+                
+                // Load users for new incidence form
+                try {
+                    const userList = await getIncidenceWithUsers(TaskType.I_MODAPL, 0)
+                    const sortedUsers = sortUsers(userList.users as User[], new Set())
+                    setUsers(sortedUsers)
+                } catch (error) {
+                    console.error('Error loading users:', error)
+                }
             }
         }
-        fetchFullData()
-    }, [open, initialData])
+        fetchData()
+    }, [open, initialData, type, externalId])
 
     useEffect(() => {
         if (isEditMode && !isLoading && open) {
@@ -441,7 +441,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                 } else {
                     toast.success('Guardado correctamente')
                 }
-                router.refresh()
                 return true
             } catch (error) {
                 toast.error('Error inesperado')
@@ -528,7 +527,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                         toast.success('🎉 ' + reviewMessage)
                     }
 
-                    router.refresh()
                     return true
                 } else {
                     toast.error(result.error || 'Error al actualizar')
@@ -548,7 +546,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
 
                 if (result.success) {
                     toast.success(`${formData.type} ${formData.externalId} creada`)
-                    router.refresh()
+                    if (onIncidenceCreated) {
+                        onIncidenceCreated()
+                    }
                     return true
                 } else {
                     toast.error(result.error || 'Error al crear')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
@@ -17,6 +17,7 @@ import { SearchBar } from '@/components/ui/search-bar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
+import { getIncidences } from '@/app/actions/incidence-actions'
 
 interface DashboardClientProps {
     view: 'BACKLOG' | 'KANBAN'
@@ -30,11 +31,18 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
     const router = useRouter()
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
-    // Usar props directamente - el Server Component es la fuente de verdad
-    const backlogTasksState = backlogTasks
-    const kanbanTasksState = kanbanTasks
+    const [backlogTasksState, setBacklogTasksState] = useState<IncidenceWithDetails[]>(backlogTasks)
+    const [kanbanTasksState, setKanbanTasksState] = useState<IncidenceWithDetails[]>(kanbanTasks)
 
     const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, updateView, resetFilters, isLoading } = useSearchParamsSync()
+
+    useEffect(() => {
+        setBacklogTasksState(backlogTasks)
+    }, [backlogTasks])
+
+    useEffect(() => {
+        setKanbanTasksState(kanbanTasks)
+    }, [kanbanTasks])
 
     const userId = session?.user?.id ? Number(session.user.id) : undefined
 
@@ -96,10 +104,27 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
             }))
     }, [backlogTasks, kanbanTasks])
 
-    const handleTaskUpdate = useCallback(() => {
-        // Refresh data from server to ensure consistency
-        router.refresh()
-    }, [router])
+    const handleTaskUpdate = useCallback(async () => {
+        const currentView = view === 'BACKLOG' ? 'BACKLOG' : 'KANBAN'
+        const tech = params.tech || []
+        const status = params.status || []
+        const assignee = params.assignee || []
+        
+        const newTasks = await getIncidences({
+            viewType: currentView,
+            search: params.search || '',
+            tech,
+            status: status.join(','),
+            assignee,
+            mine: params.mine || false
+        })
+
+        if (currentView === 'BACKLOG') {
+            setBacklogTasksState(newTasks)
+        } else {
+            setKanbanTasksState(newTasks)
+        }
+    }, [view, params])
 
     const handleIncidenceCreated = useCallback(() => {
         router.refresh()
@@ -342,6 +367,8 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
+                type={selectedTask?.type}
+                externalId={selectedTask?.externalId}
                 onTaskUpdate={handleTaskUpdate}
                 onIncidenceCreated={handleIncidenceCreated}
                 isDev={!isAdmin}
