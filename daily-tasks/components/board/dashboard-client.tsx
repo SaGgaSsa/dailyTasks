@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { KanbanBoard } from '@/components/board/kanban-board'
@@ -30,17 +30,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
     const router = useRouter()
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
-    const [backlogTasksState, setBacklogTasksState] = useState(backlogTasks)
-    const [kanbanTasksState, setKanbanTasksState] = useState(kanbanTasks)
-
-    // Sincronizar estado local cuando cambian las props (por cambios en filtros URL)
-    useEffect(() => {
-        setBacklogTasksState(backlogTasks)
-    }, [backlogTasks])
-
-    useEffect(() => {
-        setKanbanTasksState(kanbanTasks)
-    }, [kanbanTasks])
+    // Usar props directamente - el Server Component es la fuente de verdad
+    const backlogTasksState = backlogTasks
+    const kanbanTasksState = kanbanTasks
 
     const { params, updateSearch, updateTech, updateStatus, updateAssignee, updateMine, updateView, resetFilters, isLoading } = useSearchParamsSync()
 
@@ -104,44 +96,10 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
             }))
     }, [backlogTasks, kanbanTasks])
 
-    const handleTaskUpdate = useCallback((updatedTask: IncidenceWithDetails) => {
-        const wasBacklog = updatedTask.status === 'BACKLOG'
-        
-        // Update backlog with proper sorting by priority (HIGH > MEDIUM > LOW) and createdAt
-        setBacklogTasksState(prev => {
-            if (wasBacklog && updatedTask.status !== 'BACKLOG') {
-                return prev.filter(t => t.id !== updatedTask.id)
-            }
-            const updated = prev.map(t => t.id === updatedTask.id ? updatedTask : t)
-            return updated.sort((a, b) => {
-                const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
-                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-                if (priorityDiff !== 0) return priorityDiff
-                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            })
-        })
-        
-        // Update kanban - add task if it wasn't there or update it
-        setKanbanTasksState(prev => {
-            const exists = prev.some(t => t.id === updatedTask.id)
-            if (!exists && updatedTask.status !== 'BACKLOG') {
-                return [...prev, updatedTask].sort((a, b) => {
-                    const statusOrder: Record<string, number> = {
-                        'TODO': 1, 'IN_PROGRESS': 2, 'REVIEW': 3,
-                        'BACKLOG': 0, 'DONE': 4,
-                    }
-                    const statusDiff = statusOrder[a.status] - statusOrder[b.status]
-                    if (statusDiff !== 0) return statusDiff
-                    
-                    const aPosition = a.position ?? 999
-                    const bPosition = b.position ?? 999
-                    return aPosition - bPosition
-                })
-            }
-            const updated = prev.map(t => t.id === updatedTask.id ? updatedTask : t)
-            return updated
-        })
-    }, [])
+    const handleTaskUpdate = useCallback(() => {
+        // Refresh data from server to ensure consistency
+        router.refresh()
+    }, [router])
 
     const handleIncidenceCreated = useCallback(() => {
         router.refresh()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     DndContext,
     DragOverlay,
@@ -51,9 +51,14 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const initialTasksRef = useRef(initialTasks)
 
+    // Solo actualizar estado cuando initialTasks cambie realmente (no en cada render)
     useEffect(() => {
-        setTasks(initialTasks)
+        if (JSON.stringify(initialTasksRef.current) !== JSON.stringify(initialTasks)) {
+            initialTasksRef.current = initialTasks
+            setTasks(initialTasks)
+        }
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {

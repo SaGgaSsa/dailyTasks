@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import {
     ColumnDef,
@@ -271,12 +271,17 @@ export function Backlog({
     const { data: session } = useSession()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
+    const initialTasksRef = useRef(initialTasks)
 
     const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
     const setIsSheetOpen = onOpenChange || setInternalSheetOpen
 
+    // Solo actualizar estado cuando initialTasks cambie realmente (no en cada render)
     useEffect(() => {
-        setTasks(initialTasks)
+        if (JSON.stringify(initialTasksRef.current) !== JSON.stringify(initialTasks)) {
+            initialTasksRef.current = initialTasks
+            setTasks(initialTasks)
+        }
     }, [initialTasks])
 
     const filteredTasks = useMemo(() => {
