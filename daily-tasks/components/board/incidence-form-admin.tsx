@@ -821,7 +821,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => toggleAssigneeExpanded(user.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    toggleAssigneeExpanded(user.id)
+                                                }}
                                                 className="h-6 w-6 text-zinc-500"
                                             >
                                                 <ChevronUp className="h-3 w-3" />
@@ -831,7 +834,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, onTaskUpda
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => toggleAssigneeExpanded(user.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    toggleAssigneeExpanded(user.id)
+                                                }}
                                                 className="h-6 w-6 text-zinc-500"
                                             >
                                                 <ChevronDown className="h-3 w-3" />
