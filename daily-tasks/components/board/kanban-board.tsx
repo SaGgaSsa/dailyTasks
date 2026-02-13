@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { toast } from 'sonner'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
@@ -40,18 +41,19 @@ interface KanbanBoardProps {
     isDev?: boolean
 }
 
-const COLUMNS = [
-    { id: TaskStatus.TODO, title: 'Por Hacer' },
-    { id: TaskStatus.IN_PROGRESS, title: 'En Progreso' },
-    { id: TaskStatus.REVIEW, title: 'Revisión' },
-]
-
 export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters, isDev = false }: KanbanBoardProps) {
+    const { t, locale } = useI18n()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const initialTasksRef = useRef(initialTasks)
+
+    const COLUMNS = useMemo(() => [
+        { id: TaskStatus.TODO, title: t.kanban.toDo },
+        { id: TaskStatus.IN_PROGRESS, title: t.kanban.inProgress },
+        { id: TaskStatus.REVIEW, title: t.kanban.review },
+    ], [t.kanban])
 
     // Solo actualizar estado cuando initialTasks cambie realmente (no en cada render)
     useEffect(() => {
@@ -183,7 +185,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         const positionChanged = task.position !== newPosition
 
         if ((statusChanged || positionChanged) && newPosition >= 0) {
-            const result = await updateIncidenceStatus(task.id, newStatus, newPosition)
+            const result = await updateIncidenceStatus(task.id, newStatus, newPosition, locale)
             if (!result.success && result.error) {
                 toast.error(result.error)
                 setTasks(prev => prev.map(t => 
@@ -225,7 +227,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                         <Inbox className="h-8 w-8 text-zinc-600" />
                     </div>
                     <div className="flex flex-col items-center">
-                        <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                        <p className="text-zinc-400 font-medium">{t.incidences.noIncidences}</p>
                     </div>
                 </div>
             </div>

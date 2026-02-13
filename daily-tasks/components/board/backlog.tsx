@@ -30,6 +30,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -62,7 +63,7 @@ const typeColors: Record<TaskType, string> = {
     I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 }
 
-const priorityLabels: Record<string, string> = {
+const defaultPriorityLabels: Record<string, string> = {
     HIGH: 'Alta',
     MEDIUM: 'Media',
     LOW: 'Baja',
@@ -123,7 +124,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             }
             return (
                 <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${colors[priority as keyof typeof colors] || 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20'}`}>
-                    {priorityLabels[priority] || priority}
+                    {defaultPriorityLabels[priority] || priority}
                 </Badge>
             )
         },
@@ -269,9 +270,16 @@ export function Backlog({
     onResetFilters,
 }: BacklogProps) {
     const { data: session } = useSession()
+    const { t } = useI18n()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [internalSheetOpen, setInternalSheetOpen] = useState(false)
     const initialTasksRef = useRef(initialTasks)
+
+    const priorityLabels = useMemo(() => ({
+        HIGH: t.priorities.HIGH,
+        MEDIUM: t.priorities.MEDIUM,
+        LOW: t.priorities.LOW,
+    }), [t.priorities])
 
     const isSheetOpen = externalSheetOpen !== undefined ? externalSheetOpen : internalSheetOpen
     const setIsSheetOpen = onOpenChange || setInternalSheetOpen

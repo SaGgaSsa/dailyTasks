@@ -12,6 +12,7 @@ import {
   Settings,
   Terminal
 } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface SidebarProps {
   userId?: string
@@ -21,6 +22,7 @@ export function Sidebar({ userId }: SidebarProps) {
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(true)
   const pathname = usePathname()
+  const { t } = useI18n()
 
   const isAdmin = session?.user?.role === 'ADMIN'
 
@@ -42,7 +44,7 @@ export function Sidebar({ userId }: SidebarProps) {
         <div className="space-y-1 px-2">
           {isOpen && (
             <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-              Gestión
+              {t.navigation.dashboard}
             </div>
           )}
           <Link href="/dashboard">
@@ -51,7 +53,7 @@ export function Sidebar({ userId }: SidebarProps) {
               className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
             >
               <LayoutDashboard className="h-4 w-4" />
-              {isOpen && <span>Incidencias</span>}
+              {isOpen && <span>{t.incidences.title}</span>}
             </Button>
           </Link>
 
@@ -73,7 +75,7 @@ export function Sidebar({ userId }: SidebarProps) {
           <div className="space-y-1">
             {isOpen && (
               <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Administración
+                Administration
               </div>
             )}
             <Link href="/dashboard/users">
@@ -82,7 +84,7 @@ export function Sidebar({ userId }: SidebarProps) {
                 className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
               >
                 <Users className="h-4 w-4" />
-                {isOpen && <span>Colaborador</span>}
+                {isOpen && <span>{t.users.title}</span>}
               </Button>
             </Link>
 
@@ -91,7 +93,7 @@ export function Sidebar({ userId }: SidebarProps) {
               className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
             >
               <Settings className="h-4 w-4" />
-              {isOpen && <span>Configuración</span>}
+              {isOpen && <span>Settings</span>}
             </Button>
           </div>
         </div>
@@ -106,7 +108,7 @@ export function Sidebar({ userId }: SidebarProps) {
             className="w-full text-zinc-600 hover:text-zinc-400 px-0 h-6"
             onClick={() => setIsOpen(false)}
           >
-            Colapsar Menú
+            Collapse Menu
           </Button>
         )}
         {!isOpen && (

@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeSync } from "@/components/theme-sync";
 import { PerformanceErrorBoundary } from "@/components/performance-error-boundary";
 import { auth } from "@/auth";
+import { I18nProvider } from "@/components/providers/i18n-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -83,19 +84,21 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers session={session}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            storageKey="dailytasks-theme"
-            disableTransitionOnChange={false}
-          >
-            <PerformanceErrorBoundary>
-              <ThemeSync />
-              {children}
-              <Toaster />
-            </PerformanceErrorBoundary>
-          </ThemeProvider>
+          <I18nProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem={false}
+              storageKey="dailytasks-theme"
+              disableTransitionOnChange={false}
+            >
+              <PerformanceErrorBoundary>
+                <ThemeSync />
+                {children}
+                <Toaster />
+              </PerformanceErrorBoundary>
+            </ThemeProvider>
+          </I18nProvider>
         </Providers>
       </body>
     </html>

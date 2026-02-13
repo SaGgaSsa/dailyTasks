@@ -6,20 +6,28 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import {
   Bell,
   Menu,
-  X
+  X,
+  Globe
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/lib/use-theme'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
+import { useI18n } from '@/components/providers/i18n-provider'
+import { Locale } from '@/lib/i18n'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { mounted, toggleTheme, isDark } = useTheme()
   const { data: session } = useSession()
+  const { locale, setLocale, t } = useI18n()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const handleLanguageChange = (newLocale: Locale) => {
+    setLocale(newLocale)
   }
 
   return (
@@ -37,6 +45,29 @@ export function Navbar() {
  
         {/* Right side items */}
         <div className="flex items-center space-x-2 ml-auto">
+          {/* Language Switcher */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title={t.common.filter}>
+                <Globe className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleLanguageChange('es')}
+                className={locale === 'es' ? 'bg-accent' : ''}
+              >
+                Español
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleLanguageChange('en')}
+                className={locale === 'en' ? 'bg-accent' : ''}
+              >
+                English
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Notifications */}
           <Button variant="ghost" size="icon">
             <Bell className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { Priority, TechStack, TaskStatus, TaskType } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
+import { t, Locale } from '@/lib/i18n'
 
 interface CreateIncidenceData {
     type: TaskType
@@ -29,10 +30,10 @@ interface UpdateIncidenceData {
     subTasks?: { title: string; isCompleted: boolean }[]
 }
 
-export async function createIncidence(data: CreateIncidenceData) {
+export async function createIncidence(data: CreateIncidenceData, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
-        return { success: false, error: 'Solo los administradores pueden crear incidencias.' }
+        return { success: false, error: t(locale, 'business.adminOnly') }
     }
 
     try {
@@ -54,9 +55,9 @@ export async function createIncidence(data: CreateIncidenceData) {
     } catch (error) {
         console.error('Error creating incidence:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'Ya existe una incidencia con este tipo y número.' }
+            return { success: false, error: t(locale, 'business.alreadyExists') }
         }
-        return { success: false, error: 'Error al crear la incidencia.' }
+        return { success: false, error: t(locale, 'errors.saveError') }
     }
 }
 
@@ -67,6 +68,7 @@ interface GetIncidencesOptions {
     status?: string
     assignee?: string[]
     mine?: boolean
+    locale?: Locale
 }
 
 interface GetIncidencesResult {
@@ -74,9 +76,9 @@ interface GetIncidencesResult {
     error?: string
 }
 
-export async function getIncidences({ viewType, search, tech, status, assignee, mine }: GetIncidencesOptions): Promise<GetIncidencesResult> {
+export async function getIncidences({ viewType, search, tech, status, assignee, mine, locale = 'es' }: GetIncidencesOptions): Promise<GetIncidencesResult> {
     const session = await auth()
-    if (!session?.user) return { data: [], error: 'No autorizado' }
+    if (!session?.user) return { data: [], error: t(locale, 'errors.unauthorized') }
 
     const isDev = session.user.role === 'DEV'
 
@@ -187,7 +189,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         return { data: incidences as IncidenceWithDetails[] }
     } catch (error) {
         console.error('Error getting incidences:', error)
-        return { data: [], error: 'Error al obtener las incidencias' }
+        return { data: [], error: t(locale as Locale, 'errors.fetchError') }
     }
 }
 
@@ -270,10 +272,10 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
     }
 }
 
-export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number) {
+export async function updateIncidenceStatus(incidenceId: number, newStatus: TaskStatus, newPosition: number, locale: Locale = 'es') {
     try {
         const session = await auth()
-        if (!session?.user) return { success: false, error: 'No autorizado' }
+        if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
 
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
@@ -286,7 +288,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         })
 
         if (!incidence) {
-            return { success: false, error: 'Incidencia no encontrada' }
+            return { success: false, error: t(locale, 'errors.notFound') }
         }
 
         const isBacklogToTodo = incidence.status === TaskStatus.BACKLOG && newStatus === TaskStatus.TODO
@@ -295,24 +297,23 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             const errors: string[] = []
 
             if (!incidence.estimatedTime || incidence.estimatedTime <= 0) {
-                errors.push('Debe asignar horas estimadas')
+                errors.push(t(locale, 'business.estimatedTimeRequired'))
             }
 
             if (incidence.assignments.length === 0) {
-                errors.push('Debe asignar al menos un colaborador')
+                errors.push(t(locale, 'business.assigneeRequired'))
             }
 
             if (errors.length > 0) {
-                return { success: false, error: `No puede mover a desarrollo: ${errors.join(', ')}` }
+                return { success: false, error: t(locale, 'business.cannotMoveToDev', { errors: errors.join(', ') }) }
             }
         }
 
         if (newStatus === TaskStatus.DONE) {
             if (session.user.role !== 'ADMIN') {
-                return { success: false, error: 'Solo los administradores pueden marcar como finalizado.' }
+                return { success: false, error: t(locale, 'business.adminOnly') }
             }
             
-            // NUEVA validación: todas las tareas deben estar completadas
             const allSubTasks = incidence.assignments.flatMap((a) => a.tasks)
             const hasTasks = allSubTasks.length > 0
             const allTasksCompleted = hasTasks && allSubTasks.every((st) => st.isCompleted)
@@ -321,8 +322,8 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
                 return { 
                     success: false, 
                     error: hasTasks 
-                        ? 'No puede marcar como finalizada. Hay tareas pendientes por completar.' 
-                        : 'No puede marcar como finalizada. No hay tareas creadas.' 
+                        ? t(locale, 'business.tasksPending')
+                        : t(locale, 'business.noTasksCreated')
                 }
             }
         }
@@ -330,7 +331,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         if (session.user.role !== 'ADMIN') {
             const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
             if (!isAssigned) {
-                return { success: false, error: 'Solo los desarrolladores asignados pueden mover esta tarea.' }
+                return { success: false, error: t(locale, 'business.assigneeOnly') }
             }
         }
 
@@ -346,13 +347,13 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         return { success: true }
     } catch (error) {
         console.error('Error updating status:', error)
-        return { success: false, error: 'Error al actualizar el estado.' }
+        return { success: false, error: t(locale, 'errors.updateError') }
     }
 }
 
-export async function updateIncidence(id: number, data: UpdateIncidenceData) {
+export async function updateIncidence(id: number, data: UpdateIncidenceData, locale: Locale = 'es') {
     const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
 
     try {
         const currentIncidence = await db.incidence.findUnique({
@@ -363,7 +364,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData) {
         })
 
         if (!currentIncidence) {
-            return { success: false, error: 'Incidencia no encontrada' }
+            return { success: false, error: t(locale, 'errors.notFound') }
         }
 
         const updateData: Record<string, unknown> = {
