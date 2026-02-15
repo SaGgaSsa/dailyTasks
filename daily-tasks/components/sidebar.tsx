@@ -10,7 +10,8 @@ import {
   BookOpen,
   Users,
   Settings,
-  Terminal
+  Terminal,
+  BarChart3
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 
@@ -54,6 +55,16 @@ export function Sidebar({ userId }: SidebarProps) {
             >
               <LayoutDashboard className="h-4 w-4" />
               {isOpen && <span>{t.incidences.title}</span>}
+            </Button>
+          </Link>
+
+          <Link href="/analytics">
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/analytics' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+            >
+              <BarChart3 className="h-4 w-4" />
+              {isOpen && <span>Métricas</span>}
             </Button>
           </Link>
 
