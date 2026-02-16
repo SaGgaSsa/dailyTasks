@@ -82,7 +82,7 @@ async function createDev(passwordHash: string) {
 async function createIncidencesForUser(user: { id: number }, userType: 'admin' | 'dev') {
   const incidences: { id: number; type: string; externalId: number }[] = []
   let externalId = userType === 'admin' ? 1000 : 2000
-  const INCIDENCES_PER_STATUS = 50
+  const INCIDENCES_PER_STATUS = 5
 
   for (const status of STATUSES) {
     for (let i = 0; i < INCIDENCES_PER_STATUS; i++) {

@@ -172,14 +172,11 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     priority: 'desc'
                 },
                 {
-                    createdAt: 'asc'
+                    position: 'asc'
                 }
             ] : [
                 {
                     priority: 'desc'
-                },
-                {
-                    createdAt: 'asc'
                 },
                 {
                     position: 'asc'
@@ -347,6 +344,113 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         return { success: true }
     } catch (error) {
         console.error('Error updating status:', error)
+        return { success: false, error: t(locale, 'errors.updateError') }
+    }
+}
+
+interface UpdateTaskOrderParams {
+    taskId: number
+    overTaskId: number
+    status: TaskStatus
+}
+
+export async function updateTaskOrder({ taskId, overTaskId, status }: UpdateTaskOrderParams, locale: Locale = 'es') {
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+
+        // Obtener todas las tareas de la columna ordenadas por position ASC, luego por id para consistencia
+        const tasksInColumn = await db.incidence.findMany({
+            where: { status },
+            orderBy: [
+                { position: 'asc' },
+                { id: 'asc' }
+            ]
+        })
+
+        // Encontrar índices de las tareas
+        const activeIndex = tasksInColumn.findIndex(t => t.id === taskId)
+        const overIndex = tasksInColumn.findIndex(t => t.id === overTaskId)
+
+        if (activeIndex === -1 || overIndex === -1) {
+            return { success: false, error: 'Tarea no encontrada' }
+        }
+
+        // Detectar si todas las tareas tienen posiciones duplicadas (caso inicial)
+        const uniquePositions = new Set(tasksInColumn.map(t => t.position))
+        const needsRebalance = uniquePositions.size !== tasksInColumn.length || 
+                               (uniquePositions.size === 1 && tasksInColumn.length > 1)
+
+        // Si necesita rebalanceo, asignar posiciones secuenciales
+        if (needsRebalance) {
+            for (let i = 0; i < tasksInColumn.length; i++) {
+                await db.incidence.update({
+                    where: { id: tasksInColumn[i].id },
+                    data: { position: i * 1000 }
+                })
+                tasksInColumn[i].position = i * 1000
+            }
+        }
+
+        // Determinar dirección del movimiento
+        const movingDown = activeIndex < overIndex
+        
+        // Calcular nueva posición basada en la dirección
+        let newPosition: number
+
+        if (movingDown) {
+            // Moviendo hacia abajo: colocar DESPUÉS de la tarea objetivo
+            if (overIndex >= tasksInColumn.length - 1) {
+                // Soltar después de la última
+                const lastPos = tasksInColumn[tasksInColumn.length - 1]?.position ?? 0
+                newPosition = lastPos + 100
+            } else {
+                // Soltar entre la tarea objetivo y la siguiente
+                const overTask = tasksInColumn[overIndex]
+                const nextTask = tasksInColumn[overIndex + 1]
+                newPosition = (overTask.position + nextTask.position) / 2
+            }
+        } else {
+            // Moviendo hacia arriba: colocar ANTES de la tarea objetivo
+            if (overIndex <= 0) {
+                // Soltar antes de la primera
+                const firstPos = tasksInColumn[0]?.position ?? 0
+                newPosition = firstPos - 100
+            } else {
+                // Soltar entre la tarea anterior y la objetivo
+                const prevTask = tasksInColumn[overIndex - 1]
+                const overTask = tasksInColumn[overIndex]
+                newPosition = (prevTask.position + overTask.position) / 2
+            }
+        }
+
+        // Verificar permisos
+        const incidence = await db.incidence.findUnique({
+            where: { id: taskId },
+            include: { assignments: { where: { isAssigned: true } } }
+        })
+
+        if (!incidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (session.user.role !== 'ADMIN') {
+            const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
+            if (!isAssigned) {
+                return { success: false, error: t(locale, 'business.assigneeOnly') }
+            }
+        }
+
+        // Actualizar la posición
+        await db.incidence.update({
+            where: { id: taskId },
+            data: { position: newPosition }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, newPosition }
+    } catch (error) {
+        console.error('Error updating task order:', error)
         return { success: false, error: t(locale, 'errors.updateError') }
     }
 }

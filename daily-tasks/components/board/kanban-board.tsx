@@ -24,7 +24,7 @@ import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
+import { updateIncidenceStatus, updateTaskOrder } from '@/app/actions/incidence-actions'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { toast } from 'sonner'
 import { useI18n } from '@/components/providers/i18n-provider'
@@ -84,7 +84,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             const aPri = prioOrder[a.priority] ?? 9;
             const bPri = prioOrder[b.priority] ?? 9;
             if (aPri !== bPri) return aPri - bPri;
-            if (a.createdAt.getTime() !== b.createdAt.getTime()) return a.createdAt.getTime() - b.createdAt.getTime();
             return a.position - b.position;
         });
     }, [filteredTasks])
@@ -120,19 +119,31 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
         if (!isActiveATask) return
 
+        const activeTask = tasks.find((t) => t.id === activeId)
+        if (!activeTask) return
+
         const activeIndex = tasks.findIndex((t) => t.id === activeId)
         if (activeIndex === -1) return
 
         if (isOverATask) {
+            const overTask = tasks.find((t) => t.id === overId)
+            if (!overTask) return
+
             const overIndex = tasks.findIndex((t) => t.id === overId)
             if (overIndex === -1) return
 
-            if (tasks[activeIndex].status !== tasks[overIndex].status) {
+            // Solo permitir reordenamiento dentro del mismo grupo de prioridad
+            if (activeTask.priority !== overTask.priority && activeTask.status === overTask.status) {
+                // Mismo status pero diferente prioridad - no permitir reordenar
+                return
+            }
+
+            if (activeTask.status !== overTask.status) {
                 setTasks((prev) => {
                     const newTasks = [...prev]
                     newTasks[activeIndex] = {
                         ...newTasks[activeIndex],
-                        status: prev[overIndex].status
+                        status: overTask.status
                     }
                     return arrayMove(newTasks, activeIndex, overIndex)
                 })
@@ -143,7 +154,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
         const isOverAColumn = COLUMNS.some((col) => col.id === overId)
         if (isOverAColumn) {
-            if (tasks[activeIndex].status !== overId) {
+            if (activeTask.status !== overId) {
                 setTasks((prev) => {
                     const newTasks = [...prev]
                     newTasks[activeIndex] = {
@@ -167,30 +178,57 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         if (!task) return
 
         const overId = over.id
-        // Tasks belonging to the target column
-        const targetColumnTasks = filteredTasks.filter(t => t.status === overId)
-        // New position is the index within that column
-        const newPosition = targetColumnTasks.findIndex(t => t.id === task.id)
-        // New status is the column's status (drop target)
-        const newStatus = overId as TaskStatus
 
-        // Guard: if task is not in target column, abort
-        if (newPosition === -1) {
-            setActiveTask(null)
-            return
-        }
+        // Check if dropping over a column or a task
+        const isOverColumn = COLUMNS.some(col => col.id === overId)
 
-        // Only send update if either status or position changed
-        const statusChanged = task.status !== newStatus
-        const positionChanged = task.position !== newPosition
+        if (isOverColumn) {
+            // Dropping directly on a column - update status
+            const newStatus = overId as TaskStatus
+            if (task.status !== newStatus) {
+                const result = await updateIncidenceStatus(task.id, newStatus, 0, locale)
+                if (!result.success && result.error) {
+                    toast.error(result.error)
+                    setTasks(prev => prev.map(t =>
+                        t.id === task.id ? { ...t, status: task.status } : t
+                    ))
+                }
+            }
+        } else {
+            // Dropping over another task - could be reorder or column change
+            const overTask = tasks.find(t => t.id === overId)
+            if (!overTask) {
+                setActiveTask(null)
+                return
+            }
 
-        if ((statusChanged || positionChanged) && newPosition >= 0) {
-            const result = await updateIncidenceStatus(task.id, newStatus, newPosition, locale)
-            if (!result.success && result.error) {
-                toast.error(result.error)
-                setTasks(prev => prev.map(t => 
-                    t.id === task.id ? { ...t, status: task.status } : t
-                ))
+            const newStatus = overTask.status
+
+            if (task.status !== newStatus) {
+                // Moving to different column
+                const result = await updateIncidenceStatus(task.id, newStatus, 0, locale)
+                if (!result.success && result.error) {
+                    toast.error(result.error)
+                    setTasks(prev => prev.map(t =>
+                        t.id === task.id ? { ...t, status: task.status } : t
+                    ))
+                }
+            } else {
+                // Same column - check if same priority group
+                if (task.priority === overTask.priority) {
+                    // Reordering within same priority group
+                    const result = await updateTaskOrder({
+                        taskId: task.id,
+                        overTaskId: overTask.id,
+                        status: newStatus
+                    }, locale)
+                    if (!result.success && result.error) {
+                        toast.error(result.error)
+                    }
+                } else {
+                    // Different priority - this shouldn't happen visually but handle gracefully
+                    toast.info('Las tareas se mantienen agrupadas por prioridad')
+                }
             }
         }
 
