@@ -21,6 +21,10 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
         id,
     })
 
+    const sortableItems = tasks.length > 0 
+        ? tasks.map((t) => t.id) 
+        : [id] // Placeholder para permitir drop en columnas vacías
+
     return (
         <div className="flex flex-col flex-1 min-w-[300px] h-full bg-zinc-900/30 rounded-xl overflow-hidden">
             <div className="p-4 py-3 flex items-center justify-between shrink-0">
@@ -35,10 +39,10 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
 
             <div
                 ref={setNodeRef}
-                className="flex-1 px-3 overflow-y-auto min-h-0"
+                className="flex-1 px-3 overflow-y-auto"
             >
                 <SortableContext
-                    items={tasks.map((t) => t.id)}
+                    items={sortableItems}
                     strategy={verticalListSortingStrategy}
                 >
                     {tasks.map((task) => (
