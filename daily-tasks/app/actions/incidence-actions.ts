@@ -351,75 +351,96 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
 interface UpdateTaskOrderParams {
     taskId: number
     overTaskId: number
-    status: TaskStatus
 }
 
-export async function updateTaskOrder({ taskId, overTaskId, status }: UpdateTaskOrderParams, locale: Locale = 'es') {
+export async function updateTaskOrder({ taskId, overTaskId }: UpdateTaskOrderParams, locale: Locale = 'es') {
     try {
         const session = await auth()
         if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
 
-        // Obtener todas las tareas de la columna ordenadas por position ASC, luego por id para consistencia
-        const tasksInColumn = await db.incidence.findMany({
-            where: { status },
+        // Obtener todas las tareas ordenadas por prioridad DESC, luego por position ASC, luego por createdAt ASC
+        const allTasks = await db.incidence.findMany({
             orderBy: [
+                { priority: 'desc' },
                 { position: 'asc' },
-                { id: 'asc' }
+                { createdAt: 'asc' }
             ]
         })
 
         // Encontrar índices de las tareas
-        const activeIndex = tasksInColumn.findIndex(t => t.id === taskId)
-        const overIndex = tasksInColumn.findIndex(t => t.id === overTaskId)
+        const activeIndex = allTasks.findIndex(t => t.id === taskId)
+        const overIndex = allTasks.findIndex(t => t.id === overTaskId)
 
-        if (activeIndex === -1 || overIndex === -1) {
-            return { success: false, error: 'Tarea no encontrada' }
+        if (activeIndex === -1) {
+            console.error(`Task ${taskId} not found. Available tasks:`, allTasks.map(t => ({ id: t.id, status: t.status })))
+            return { success: false, error: 'Tarea activa no encontrada' }
         }
 
-        // Detectar si todas las tareas tienen posiciones duplicadas (caso inicial)
-        const uniquePositions = new Set(tasksInColumn.map(t => t.position))
-        const needsRebalance = uniquePositions.size !== tasksInColumn.length || 
-                               (uniquePositions.size === 1 && tasksInColumn.length > 1)
+        if (overIndex === -1) {
+            console.error(`Over task ${overTaskId} not found. Available tasks:`, allTasks.map(t => ({ id: t.id, status: t.status })))
+            return { success: false, error: 'Tarea objetivo no encontrada' }
+        }
 
-        // Si necesita rebalanceo, asignar posiciones secuenciales
-        if (needsRebalance) {
-            for (let i = 0; i < tasksInColumn.length; i++) {
-                await db.incidence.update({
-                    where: { id: tasksInColumn[i].id },
-                    data: { position: i * 1000 }
-                })
-                tasksInColumn[i].position = i * 1000
+        // Detectar si hay tareas con la misma prioridad y posiciones duplicadas
+        const tasksByPriority = allTasks.reduce((acc, task) => {
+            const key = task.priority
+            if (!acc[key]) acc[key] = []
+            acc[key].push(task)
+            return acc
+        }, {} as Record<string, typeof allTasks>)
+
+        // Rebalancear posiciones dentro de cada grupo de prioridad si es necesario
+        for (const priority of Object.keys(tasksByPriority)) {
+            const group = tasksByPriority[priority]
+            const uniquePositions = new Set(group.map(t => t.position))
+            const needsRebalance = uniquePositions.size !== group.length || 
+                                   (uniquePositions.size === 1 && group.length > 1)
+
+            if (needsRebalance) {
+                for (let i = 0; i < group.length; i++) {
+                    await db.incidence.update({
+                        where: { id: group[i].id },
+                        data: { position: i * 1000 }
+                    })
+                    group[i].position = i * 1000
+                }
             }
         }
 
-        // Determinar dirección del movimiento
+        // Determinar dirección del movimiento usando índices originales
         const movingDown = activeIndex < overIndex
         
-        // Calcular nueva posición basada en la dirección
+        // Crear array sin la tarea movida para calcular posición correctamente
+        const tasksWithoutActive = allTasks.filter(t => t.id !== taskId)
+        
+        // Encontrar el índice donde se soltó en el nuevo array
+        const newOverIndex = tasksWithoutActive.findIndex(t => t.id === overTaskId)
+
+        // Calcular nueva posición según la dirección del movimiento
         let newPosition: number
 
         if (movingDown) {
             // Moviendo hacia abajo: colocar DESPUÉS de la tarea objetivo
-            if (overIndex >= tasksInColumn.length - 1) {
+            if (newOverIndex >= tasksWithoutActive.length - 1) {
                 // Soltar después de la última
-                const lastPos = tasksInColumn[tasksInColumn.length - 1]?.position ?? 0
+                const lastPos = tasksWithoutActive[tasksWithoutActive.length - 1]?.position ?? 0
                 newPosition = lastPos + 100
             } else {
                 // Soltar entre la tarea objetivo y la siguiente
-                const overTask = tasksInColumn[overIndex]
-                const nextTask = tasksInColumn[overIndex + 1]
+                const overTask = tasksWithoutActive[newOverIndex]
+                const nextTask = tasksWithoutActive[newOverIndex + 1]
                 newPosition = (overTask.position + nextTask.position) / 2
             }
         } else {
             // Moviendo hacia arriba: colocar ANTES de la tarea objetivo
-            if (overIndex <= 0) {
+            if (newOverIndex <= 0) {
                 // Soltar antes de la primera
-                const firstPos = tasksInColumn[0]?.position ?? 0
+                const firstPos = tasksWithoutActive[0]?.position ?? 0
                 newPosition = firstPos - 100
             } else {
                 // Soltar entre la tarea anterior y la objetivo
-                const prevTask = tasksInColumn[overIndex - 1]
-                const overTask = tasksInColumn[overIndex]
+                const prevTask = tasksWithoutActive[newOverIndex - 1]
+                const overTask = tasksWithoutActive[newOverIndex]
                 newPosition = (prevTask.position + overTask.position) / 2
             }
         }

@@ -219,8 +219,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     // Reordering within same priority group
                     const result = await updateTaskOrder({
                         taskId: task.id,
-                        overTaskId: overTask.id,
-                        status: newStatus
+                        overTaskId: overTask.id
                     }, locale)
                     if (!result.success && result.error) {
                         toast.error(result.error)
