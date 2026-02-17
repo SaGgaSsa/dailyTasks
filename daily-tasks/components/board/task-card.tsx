@@ -178,9 +178,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 )}
 
                 {/* Debug: Position */}
-                <div className="text-[9px] text-zinc-600 font-mono">
+                {/* <div className="text-[9px] text-zinc-600 font-mono">
                     pos: {task.position}
-                </div>
+                </div> */}
 
                 {/* Indicadores de requisitos (solo en BACKLOG) */}
                 {isBacklog && (
