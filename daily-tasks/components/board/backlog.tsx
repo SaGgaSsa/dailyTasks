@@ -120,7 +120,7 @@ function SortableRow({ row, onClick }: SortableRowProps) {
         >
             {row.getVisibleCells().map((cell: any) => {
                 const widthClass = cell.column.id === 'drag-handle' ? 'w-10' :
-                    cell.column.id === 'type' ? 'w-24' :
+                    cell.column.id === 'type' ? 'w-32 text-center' :
                     cell.column.id === 'title' ? 'w-full' :
                     cell.column.id === 'priority' ? 'w-20' :
                     cell.column.id === 'status' ? 'w-24' :
@@ -133,7 +133,7 @@ function SortableRow({ row, onClick }: SortableRowProps) {
                 return (
                     <TableCell 
                         key={cell.id} 
-                        className={`py-3 ${widthClass} ${extraClass}`.trim()}
+                        className={`py-3 ${widthClass} ${extraClass} border-r border-zinc-800 last:border-r-0`.trim()}
                         {...(isDragHandle ? { 
                             ...listeners,
                             onClick: (e: React.MouseEvent) => {
@@ -164,11 +164,13 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'type',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tramite</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Tramite</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 whitespace-nowrap ${typeColors[row.original.type]}`}>
-                {row.original.type} {row.original.externalId}
-            </Badge>
+            <div className="flex justify-center">
+                <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 whitespace-nowrap ${typeColors[row.original.type]}`}>
+                    {row.original.type} {row.original.externalId}
+                </Badge>
+            </div>
         ),
     },
     {
@@ -223,15 +225,17 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'status',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Estado</div>,
+        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Estado</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
-                {row.original.status === 'BACKLOG' ? 'Backlog' :
-                    row.original.status === 'TODO' ? 'Por Hacer' :
-                        row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
-                            row.original.status === 'REVIEW' ? 'Revision' :
-                                row.original.status === 'DONE' ? 'Finalizado' : row.original.status}
-            </Badge>
+            <div className="flex justify-center">
+                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
+                    {row.original.status === 'BACKLOG' ? 'Backlog' :
+                        row.original.status === 'TODO' ? 'Por Hacer' :
+                            row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
+                                row.original.status === 'REVIEW' ? 'Revision' :
+                                    row.original.status === 'DONE' ? 'Finalizado' : row.original.status}
+                </Badge>
+            </div>
         ),
     },
     {
@@ -497,20 +501,21 @@ export function Backlog({
                 {/* Header sticky */}
                 <div className="flex-shrink-0">
                     <Table className="table-fixed w-full">
-                        <TableHeader className="sticky top-0 z-10">
+                        <TableHeader className="sticky top-0 z-10 border-b-2 border-zinc-700">
                             {table.getHeaderGroups().map(headerGroup => (
-                                <TableRow key={headerGroup.id} className="border-b border-zinc-800">
+                                <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map(header => {
                                         const widthClass = header.column.id === 'drag-handle' ? 'w-10' :
-                                            header.column.id === 'type' ? 'w-24' :
-                                            header.column.id === 'title' ? 'w-full' :
+                                            header.column.id === 'type' ? 'w-32 text-center' :
+                                            header.column.id === 'title' ? 'flex-1' :
                                             header.column.id === 'priority' ? 'w-20' :
-                                            header.column.id === 'status' ? 'w-24' :
-                                            header.column.id === 'actions' ? 'w-20' :
+                                            header.column.id === 'status' ? 'w-24 text-center' :
+                                            header.column.id === 'requirements' ? 'w-20 text-center' :
                                             header.column.id === 'technology' ? 'w-16' :
-                                            header.column.id === 'assignees' ? 'w-16' : ''
+                                            header.column.id === 'assignees' ? 'w-16' :
+                                            header.column.id === 'actions' ? 'w-10' : ''
                                         return (
-                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10`}>
+                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10 border-r border-zinc-800 last:border-r-0`}>
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(
