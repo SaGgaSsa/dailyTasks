@@ -21,7 +21,7 @@ import { IncidenceWithDetails } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { CheckCircle2, Inbox, Clock, User, List, CheckCircle } from 'lucide-react'
+import { CheckCircle2, Inbox, Clock, User, List, CheckCircle, GripVertical } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
 import {
     Tooltip,
@@ -31,6 +31,25 @@ import {
 } from "@/components/ui/tooltip"
 import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
 import { useI18n } from '@/components/providers/i18n-provider'
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core'
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { updateTaskOrder } from '@/app/actions/incidence-actions'
+import { toast } from 'sonner'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -69,7 +88,78 @@ const defaultPriorityLabels: Record<string, string> = {
     LOW: 'Baja',
 }
 
+interface SortableRowProps {
+    row: any
+    onClick: () => void
+}
+
+function SortableRow({ row, onClick }: SortableRowProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: row.original.id, data: { task: row.original } })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    }
+
+    return (
+        <TableRow
+            ref={setNodeRef}
+            style={style}
+            className={`cursor-pointer hover:bg-zinc-900/50 transition-colors ${isDragging ? 'bg-zinc-900/80' : ''}`}
+            onClick={onClick}
+            {...attributes}
+        >
+            {row.getVisibleCells().map((cell: any) => {
+                const widthClass = cell.column.id === 'drag-handle' ? 'w-10' :
+                    cell.column.id === 'type' ? 'w-24' :
+                    cell.column.id === 'title' ? 'w-full' :
+                    cell.column.id === 'priority' ? 'w-20' :
+                    cell.column.id === 'status' ? 'w-24' :
+                    cell.column.id === 'actions' ? 'w-20' :
+                    cell.column.id === 'technology' ? 'w-16' :
+                    cell.column.id === 'assignees' ? 'w-16' : ''
+                const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
+                const isDragHandle = cell.column.id === 'drag-handle'
+                return (
+                    <TableCell 
+                        key={cell.id} 
+                        className={`py-3 ${widthClass} ${extraClass}`.trim()}
+                        {...(isDragHandle ? { 
+                            ...listeners,
+                            onClick: (e: React.MouseEvent) => {
+                                e.stopPropagation()
+                            }
+                        } : {})}
+                    >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                )
+            })}
+        </TableRow>
+    )
+}
+
 const columns: ColumnDef<IncidenceWithDetails>[] = [
+    {
+        id: 'drag-handle',
+        header: () => null,
+        cell: ({ row }) => {
+            return (
+                <div className="flex items-center justify-center">
+                    <GripVertical className="h-4 w-4 text-zinc-600 cursor-grab" />
+                </div>
+            )
+        },
+        size: 40,
+    },
     {
         accessorKey: 'type',
         header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tramite</div>,
@@ -305,11 +395,15 @@ export function Backlog({
             return matchesSearch && matchesTech && matchesStatus
         })
         
-        // Always sort by priority and createdAt to ensure correct order
+        // Sort by priority (HIGH > MEDIUM > LOW), then by position, then by createdAt
         return filtered.sort((a, b) => {
             const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
             const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
             if (priorityDiff !== 0) return priorityDiff
+            
+            const positionDiff = (a.position || 0) - (b.position || 0)
+            if (positionDiff !== 0) return positionDiff
+            
             return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         })
     }, [tasks, searchQuery, techFilter, statusFilter])
@@ -319,6 +413,60 @@ export function Backlog({
         columns,
         getCoreRowModel: getCoreRowModel(),
     })
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    )
+
+    async function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event
+        if (!over) return
+
+        const activeId = Number(active.id)
+        const overId = Number(over.id)
+
+        if (activeId === overId) return
+
+        const activeTask = tasks.find(t => t.id === activeId)
+        const overTask = tasks.find(t => t.id === overId)
+
+        if (!activeTask || !overTask) return
+
+        // Solo permitir reordenar tareas con la misma prioridad
+        if (activeTask.priority !== overTask.priority) {
+            toast.info('Solo puedes reordenar tareas con la misma prioridad')
+            return
+        }
+
+        // Actualizar el estado local optimistamente
+        const activeIndex = filteredTasks.findIndex(t => t.id === activeId)
+        const overIndex = filteredTasks.findIndex(t => t.id === overId)
+        
+        const newTasks = arrayMove(filteredTasks, activeIndex, overIndex)
+        setTasks(prev => {
+            const otherTasks = prev.filter(t => !newTasks.find(nt => nt.id === t.id))
+            return [...otherTasks, ...newTasks]
+        })
+
+        // Llamar a la server action
+        const result = await updateTaskOrder({
+            taskId: activeId,
+            overTaskId: overId
+        }, 'es')
+
+        if (!result.success && result.error) {
+            toast.error(result.error)
+            // Revertir cambios si falla
+            setTasks(prev => prev)
+        }
+    }
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
         setTasks(prev => {
@@ -344,7 +492,8 @@ export function Backlog({
                             {table.getHeaderGroups().map(headerGroup => (
                                 <TableRow key={headerGroup.id} className="border-b border-zinc-800">
                                     {headerGroup.headers.map(header => {
-                                        const widthClass = header.column.id === 'type' ? 'w-24' :
+                                        const widthClass = header.column.id === 'drag-handle' ? 'w-10' :
+                                            header.column.id === 'type' ? 'w-24' :
                                             header.column.id === 'title' ? 'w-full' :
                                             header.column.id === 'priority' ? 'w-20' :
                                             header.column.id === 'status' ? 'w-24' :
@@ -370,53 +519,48 @@ export function Backlog({
                 
                 {/* Body con scroll */}
                 <ScrollArea className="flex-1">
-                    <Table className="table-fixed w-full">
-                        <TableBody className="divide-y divide-zinc-900">
-                            {filteredTasks.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="p-12 text-center w-full">
-                                        <div className="flex flex-col items-center justify-center gap-3">
-                                            <div className="p-4 rounded-full bg-zinc-900/50">
-                                                <Inbox className="h-8 w-8 text-zinc-600" />
-                                            </div>
-                                            <div>
-                                                <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                table.getRowModel().rows.map(row => (
-                                    <TableRow
-                                        key={row.id}
-                                        className="cursor-pointer hover:bg-zinc-900/50 transition-colors"
-                                        onClick={() => {
-                                            if (taskSelect) {
-                                                taskSelect(row.original)
-                                            }
-                                            setIsSheetOpen(true)
-                                        }}
-                                    >
-                                        {row.getVisibleCells().map(cell => {
-                                            const widthClass = cell.column.id === 'type' ? 'w-24' :
-                                                cell.column.id === 'title' ? 'w-full' :
-                                                cell.column.id === 'priority' ? 'w-20' :
-                                                cell.column.id === 'status' ? 'w-24' :
-                                                cell.column.id === 'actions' ? 'w-20' :
-                                                cell.column.id === 'technology' ? 'w-16' :
-                                                cell.column.id === 'assignees' ? 'w-16' : ''
-                                            const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
-                                            return (
-                                                <TableCell key={cell.id} className={`py-3 ${widthClass} ${extraClass}`.trim()}>
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </TableCell>
-                                            )
-                                        })}
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={filteredTasks.map(t => t.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <Table className="table-fixed w-full">
+                                <TableBody className="divide-y divide-zinc-900">
+                                    {filteredTasks.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={columns.length} className="p-12 text-center w-full">
+                                                <div className="flex flex-col items-center justify-center gap-3">
+                                                    <div className="p-4 rounded-full bg-zinc-900/50">
+                                                        <Inbox className="h-8 w-8 text-zinc-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        table.getRowModel().rows.map(row => (
+                                            <SortableRow
+                                                key={row.original.id}
+                                                row={row}
+                                                onClick={() => {
+                                                    if (taskSelect) {
+                                                        taskSelect(row.original)
+                                                    }
+                                                    setIsSheetOpen(true)
+                                                }}
+                                            />
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </SortableContext>
+                    </DndContext>
                 </ScrollArea>
             </div>
         </div>

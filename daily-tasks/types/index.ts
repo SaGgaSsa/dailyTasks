@@ -15,10 +15,11 @@ export type AssignmentWithDetails = Assignment & {
   tasks: SubTask[]
 }
 
-export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technology' | 'priority'> & {
+export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technology' | 'priority' | 'position'> & {
   status: TaskStatus
   type: TaskType
   technology: TechStack
   priority: Priority
+  position: number
   assignments: AssignmentWithDetails[]
 }

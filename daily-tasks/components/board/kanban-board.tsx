@@ -4,13 +4,12 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     DndContext,
     DragOverlay,
-    closestCorners,
+    pointerWithin,
     KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
     DragStartEvent,
-    DragOverEvent,
     DragEndEvent,
     defaultDropAnimationSideEffects,
 } from '@dnd-kit/core'
@@ -24,7 +23,7 @@ import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
+import { updateIncidenceStatus, updateTaskOrder } from '@/app/actions/incidence-actions'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { toast } from 'sonner'
 import { useI18n } from '@/components/providers/i18n-provider'
@@ -84,8 +83,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             const aPri = prioOrder[a.priority] ?? 9;
             const bPri = prioOrder[b.priority] ?? 9;
             if (aPri !== bPri) return aPri - bPri;
-            if (a.createdAt.getTime() !== b.createdAt.getTime()) return a.createdAt.getTime() - b.createdAt.getTime();
-            return a.position - b.position;
+            return (a.position || 0) - (b.position || 0);
         });
     }, [filteredTasks])
 
@@ -102,58 +100,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
     function handleDragStart(event: DragStartEvent) {
         const { active } = event
-        const task = tasks.find((t) => t.id === active.id)
+        const task = tasks.find((t) => t.id === Number(active.id))
         if (task) setActiveTask(task)
-    }
-
-    function handleDragOver(event: DragOverEvent) {
-        const { active, over } = event
-        if (!over) return
-
-        const activeId = active.id
-        const overId = over.id
-
-        if (activeId === overId) return
-
-        const isActiveATask = !!active.data.current?.task
-        const isOverATask = !!over.data.current?.task
-
-        if (!isActiveATask) return
-
-        const activeIndex = tasks.findIndex((t) => t.id === activeId)
-        if (activeIndex === -1) return
-
-        if (isOverATask) {
-            const overIndex = tasks.findIndex((t) => t.id === overId)
-            if (overIndex === -1) return
-
-            if (tasks[activeIndex].status !== tasks[overIndex].status) {
-                setTasks((prev) => {
-                    const newTasks = [...prev]
-                    newTasks[activeIndex] = {
-                        ...newTasks[activeIndex],
-                        status: prev[overIndex].status
-                    }
-                    return arrayMove(newTasks, activeIndex, overIndex)
-                })
-            } else {
-                setTasks((prev) => arrayMove(prev, activeIndex, overIndex))
-            }
-        }
-
-        const isOverAColumn = COLUMNS.some((col) => col.id === overId)
-        if (isOverAColumn) {
-            if (tasks[activeIndex].status !== overId) {
-                setTasks((prev) => {
-                    const newTasks = [...prev]
-                    newTasks[activeIndex] = {
-                        ...newTasks[activeIndex],
-                        status: overId as TaskStatus
-                    }
-                    return arrayMove(newTasks, activeIndex, activeIndex)
-                })
-            }
-        }
     }
 
     async function handleDragEnd(event: DragEndEvent) {
@@ -163,34 +111,91 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             return
         }
 
-        const task = tasks.find((t) => t.id === active.id)
-        if (!task) return
-
+        const activeId = Number(active.id)
         const overId = over.id
-        // Tasks belonging to the target column
-        const targetColumnTasks = filteredTasks.filter(t => t.status === overId)
-        // New position is the index within that column
-        const newPosition = targetColumnTasks.findIndex(t => t.id === task.id)
-        // New status is the column's status (drop target)
-        const newStatus = overId as TaskStatus
 
-        // Guard: if task is not in target column, abort
-        if (newPosition === -1) {
-            setActiveTask(null)
-            return
-        }
+        // Buscar la tarea en el estado actual (puede haber sido modificada por handleDragOver)
+        const currentTask = tasks.find((t) => t.id === activeId)
+        if (!currentTask) return
 
-        // Only send update if either status or position changed
-        const statusChanged = task.status !== newStatus
-        const positionChanged = task.position !== newPosition
+        // Guardar el estado original antes de cualquier optimistic update
+        const originalTask = initialTasks.find((t) => t.id === activeId)
+        const originalStatus = originalTask?.status || currentTask.status
 
-        if ((statusChanged || positionChanged) && newPosition >= 0) {
-            const result = await updateIncidenceStatus(task.id, newStatus, newPosition, locale)
-            if (!result.success && result.error) {
-                toast.error(result.error)
-                setTasks(prev => prev.map(t => 
-                    t.id === task.id ? { ...t, status: task.status } : t
-                ))
+        // Check if dropping over a column or a task
+        const isOverColumn = COLUMNS.some(col => col.id === (overId as TaskStatus))
+
+        if (isOverColumn) {
+            // Dropping directly on a column - update status
+            const newStatus = overId as TaskStatus
+            if (originalStatus !== newStatus) {
+                // Calcular posición al final de la columna destino
+                const columnTasks = tasks.filter(t => t.status === newStatus)
+                const lastPos = columnTasks.length > 0 
+                    ? Math.max(...columnTasks.map(t => t.position || 0))
+                    : 0
+                const newPosition = lastPos + 100
+                
+                const result = await updateIncidenceStatus(currentTask.id, newStatus, newPosition, locale)
+                if (!result.success && result.error) {
+                    toast.error(result.error)
+                    setTasks(prev => prev.map(t =>
+                        t.id === currentTask.id ? { ...t, status: originalStatus } : t
+                    ))
+                }
+            }
+        } else {
+            // Dropping over another task - could be reorder or column change
+            const overTask = tasks.find(t => t.id === Number(overId))
+            if (!overTask) {
+                setActiveTask(null)
+                return
+            }
+
+            const newStatus = overTask.status
+
+            if (originalStatus !== newStatus) {
+                // Moving to different column - calcular posición basada en la tarea objetivo
+                const columnTasks = tasks.filter(t => t.status === newStatus)
+                const overIndex = columnTasks.findIndex(t => t.id === overTask.id)
+                
+                let newPosition: number
+                if (overIndex === -1 || columnTasks.length === 0) {
+                    // Si no se encuentra o la columna está vacía, al final
+                    newPosition = 100
+                } else if (overIndex === 0) {
+                    // Al principio de la columna
+                    const firstPos = columnTasks[0].position || 0
+                    newPosition = firstPos - 100
+                } else {
+                    // Entre la tarea anterior y la objetivo
+                    const prevPos = columnTasks[overIndex - 1].position || 0
+                    const overPos = columnTasks[overIndex].position || 0
+                    newPosition = (prevPos + overPos) / 2
+                }
+                
+                const result = await updateIncidenceStatus(currentTask.id, newStatus, newPosition, locale)
+                if (!result.success && result.error) {
+                    toast.error(result.error)
+                    setTasks(prev => prev.map(t =>
+                        t.id === currentTask.id ? { ...t, status: originalStatus } : t
+                    ))
+                }
+            } else {
+                // Same column - check if same priority group
+                if (currentTask.priority === overTask.priority) {
+                    // Reordering within same priority group
+                    const result = await updateTaskOrder({
+                        taskId: currentTask.id,
+                        overTaskId: overTask.id
+                    }, locale)
+                    if (!result.success && result.error) {
+                        toast.error(result.error)
+                    }
+                } else {
+                    // Different priority - this shouldn't happen visually but handle gracefully
+                    toast.info('Las tareas se mantienen agrupadas por prioridad')
+                }
             }
         }
 
@@ -237,9 +242,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
             <div className="flex h-full min-h-0 gap-6 overflow-x-auto overflow-y-hidden pb-4">

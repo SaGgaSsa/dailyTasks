@@ -88,6 +88,8 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         // View type filtering - only apply if no status filter
         if (!status && viewType === 'KANBAN') {
             where.status = { in: [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] }
+        } else if (!status && viewType === 'BACKLOG') {
+            where.status = TaskStatus.BACKLOG
         }
 
         // Search across multiple fields
@@ -172,14 +174,11 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     priority: 'desc'
                 },
                 {
-                    createdAt: 'asc'
+                    position: 'asc'
                 }
             ] : [
                 {
                     priority: 'desc'
-                },
-                {
-                    createdAt: 'asc'
                 },
                 {
                     position: 'asc'
@@ -347,6 +346,134 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         return { success: true }
     } catch (error) {
         console.error('Error updating status:', error)
+        return { success: false, error: t(locale, 'errors.updateError') }
+    }
+}
+
+interface UpdateTaskOrderParams {
+    taskId: number
+    overTaskId: number
+}
+
+export async function updateTaskOrder({ taskId, overTaskId }: UpdateTaskOrderParams, locale: Locale = 'es') {
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+
+        // Obtener todas las tareas ordenadas por prioridad DESC, luego por position ASC, luego por createdAt ASC
+        const allTasks = await db.incidence.findMany({
+            orderBy: [
+                { priority: 'desc' },
+                { position: 'asc' },
+                { createdAt: 'asc' }
+            ]
+        })
+
+        // Encontrar índices de las tareas
+        const activeIndex = allTasks.findIndex(t => t.id === taskId)
+        const overIndex = allTasks.findIndex(t => t.id === overTaskId)
+
+        if (activeIndex === -1) {
+            console.error(`Task ${taskId} not found. Available tasks:`, allTasks.map(t => ({ id: t.id, status: t.status })))
+            return { success: false, error: 'Tarea activa no encontrada' }
+        }
+
+        if (overIndex === -1) {
+            console.error(`Over task ${overTaskId} not found. Available tasks:`, allTasks.map(t => ({ id: t.id, status: t.status })))
+            return { success: false, error: 'Tarea objetivo no encontrada' }
+        }
+
+        // Detectar si hay tareas con la misma prioridad y posiciones duplicadas
+        const tasksByPriority = allTasks.reduce((acc, task) => {
+            const key = task.priority
+            if (!acc[key]) acc[key] = []
+            acc[key].push(task)
+            return acc
+        }, {} as Record<string, typeof allTasks>)
+
+        // Rebalancear posiciones dentro de cada grupo de prioridad si es necesario
+        for (const priority of Object.keys(tasksByPriority)) {
+            const group = tasksByPriority[priority]
+            const uniquePositions = new Set(group.map(t => t.position))
+            const needsRebalance = uniquePositions.size !== group.length || 
+                                   (uniquePositions.size === 1 && group.length > 1)
+
+            if (needsRebalance) {
+                for (let i = 0; i < group.length; i++) {
+                    await db.incidence.update({
+                        where: { id: group[i].id },
+                        data: { position: i * 1000 }
+                    })
+                    group[i].position = i * 1000
+                }
+            }
+        }
+
+        // Determinar dirección del movimiento usando índices originales
+        const movingDown = activeIndex < overIndex
+        
+        // Crear array sin la tarea movida para calcular posición correctamente
+        const tasksWithoutActive = allTasks.filter(t => t.id !== taskId)
+        
+        // Encontrar el índice donde se soltó en el nuevo array
+        const newOverIndex = tasksWithoutActive.findIndex(t => t.id === overTaskId)
+
+        // Calcular nueva posición según la dirección del movimiento
+        let newPosition: number
+
+        if (movingDown) {
+            // Moviendo hacia abajo: colocar DESPUÉS de la tarea objetivo
+            if (newOverIndex >= tasksWithoutActive.length - 1) {
+                // Soltar después de la última
+                const lastPos = tasksWithoutActive[tasksWithoutActive.length - 1]?.position ?? 0
+                newPosition = lastPos + 100
+            } else {
+                // Soltar entre la tarea objetivo y la siguiente
+                const overTask = tasksWithoutActive[newOverIndex]
+                const nextTask = tasksWithoutActive[newOverIndex + 1]
+                newPosition = (overTask.position + nextTask.position) / 2
+            }
+        } else {
+            // Moviendo hacia arriba: colocar ANTES de la tarea objetivo
+            if (newOverIndex <= 0) {
+                // Soltar antes de la primera
+                const firstPos = tasksWithoutActive[0]?.position ?? 0
+                newPosition = firstPos - 100
+            } else {
+                // Soltar entre la tarea anterior y la objetivo
+                const prevTask = tasksWithoutActive[newOverIndex - 1]
+                const overTask = tasksWithoutActive[newOverIndex]
+                newPosition = (prevTask.position + overTask.position) / 2
+            }
+        }
+
+        // Verificar permisos
+        const incidence = await db.incidence.findUnique({
+            where: { id: taskId },
+            include: { assignments: { where: { isAssigned: true } } }
+        })
+
+        if (!incidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (session.user.role !== 'ADMIN') {
+            const isAssigned = incidence.assignments.some(a => a.userId === Number(session.user.id))
+            if (!isAssigned) {
+                return { success: false, error: t(locale, 'business.assigneeOnly') }
+            }
+        }
+
+        // Actualizar la posición
+        await db.incidence.update({
+            where: { id: taskId },
+            data: { position: newPosition }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, newPosition }
+    } catch (error) {
+        console.error('Error updating task order:', error)
         return { success: false, error: t(locale, 'errors.updateError') }
     }
 }
