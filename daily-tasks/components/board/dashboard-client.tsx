@@ -107,14 +107,14 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
     const handleTaskUpdate = useCallback(async () => {
         const currentView = view === 'BACKLOG' ? 'BACKLOG' : 'KANBAN'
         const tech = params.tech || []
-        const status = params.status || []
+        const status = params.status?.length ? params.status : undefined
         const assignee = params.assignee || []
         
         const result = await getIncidences({
             viewType: currentView,
             search: params.search || '',
             tech,
-            status: status.join(','),
+            status: status?.join(','),
             assignee,
             mine: params.mine || false
         })
