@@ -136,6 +136,9 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     : 0
                 const newPosition = lastPos + 100
                 
+                // Optimistic update
+                setTasks(prev => prev.map(t => t.id === currentTask.id ? { ...t, status: newStatus, position: newPosition } : t))
+                
                 const result = await updateIncidenceStatus(currentTask.id, newStatus, newPosition, locale)
                 if (!result.success && result.error) {
                     toast.error(result.error)
@@ -173,6 +176,9 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     const overPos = columnTasks[overIndex].position || 0
                     newPosition = (prevPos + overPos) / 2
                 }
+                
+                // Optimistic update
+                setTasks(prev => prev.map(t => t.id === currentTask.id ? { ...t, status: newStatus, position: newPosition } : t))
                 
                 const result = await updateIncidenceStatus(currentTask.id, newStatus, newPosition, locale)
                 if (!result.success && result.error) {
