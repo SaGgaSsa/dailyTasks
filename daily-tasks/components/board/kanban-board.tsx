@@ -4,13 +4,12 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     DndContext,
     DragOverlay,
-    closestCorners,
+    pointerWithin,
     KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
     DragStartEvent,
-    DragOverEvent,
     DragEndEvent,
     defaultDropAnimationSideEffects,
 } from '@dnd-kit/core'
@@ -103,68 +102,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         const { active } = event
         const task = tasks.find((t) => t.id === Number(active.id))
         if (task) setActiveTask(task)
-    }
-
-    function handleDragOver(event: DragOverEvent) {
-        const { active, over } = event
-        if (!over) return
-
-        const activeId = Number(active.id)
-        const overId = over.id
-
-        if (activeId === Number(overId)) return
-
-        const isActiveATask = !!active.data.current?.task
-        const isOverATask = !!over.data.current?.task
-
-        if (!isActiveATask) return
-
-        const activeTask = tasks.find((t) => t.id === activeId)
-        if (!activeTask) return
-
-        const activeIndex = tasks.findIndex((t) => t.id === activeId)
-        if (activeIndex === -1) return
-
-        if (isOverATask) {
-            const overTask = tasks.find((t) => t.id === Number(overId))
-            if (!overTask) return
-
-            const overIndex = tasks.findIndex((t) => t.id === Number(overId))
-            if (overIndex === -1) return
-
-            // Solo permitir reordenamiento dentro del mismo grupo de prioridad
-            if (activeTask.priority !== overTask.priority && activeTask.status === overTask.status) {
-                // Mismo status pero diferente prioridad - no permitir reordenar
-                return
-            }
-
-            if (activeTask.status !== overTask.status) {
-                setTasks((prev) => {
-                    const newTasks = [...prev]
-                    newTasks[activeIndex] = {
-                        ...newTasks[activeIndex],
-                        status: overTask.status
-                    }
-                    return arrayMove(newTasks, activeIndex, overIndex)
-                })
-            } else {
-                setTasks((prev) => arrayMove(prev, activeIndex, overIndex))
-            }
-        }
-
-        const isOverAColumn = COLUMNS.some((col) => col.id === (overId as TaskStatus))
-        if (isOverAColumn) {
-            if (activeTask.status !== overId) {
-                setTasks((prev) => {
-                    const newTasks = [...prev]
-                    newTasks[activeIndex] = {
-                        ...newTasks[activeIndex],
-                        status: overId as TaskStatus
-                    }
-                    return arrayMove(newTasks, activeIndex, activeIndex)
-                })
-            }
-        }
     }
 
     async function handleDragEnd(event: DragEndEvent) {
@@ -305,9 +242,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
             <div className="flex h-full min-h-0 gap-6 overflow-x-auto overflow-y-hidden pb-4">

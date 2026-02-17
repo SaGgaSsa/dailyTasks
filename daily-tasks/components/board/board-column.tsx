@@ -17,13 +17,15 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps) {
-    const { setNodeRef } = useDroppable({
+    const { setNodeRef, isOver } = useDroppable({
         id,
+        data: {
+            type: 'Column',
+            columnId: id,
+        },
     })
 
-    const sortableItems = tasks.length > 0 
-        ? tasks.map((t) => t.id) 
-        : [id] // Placeholder para permitir drop en columnas vacías
+    const sortableItems = tasks.map((t) => t.id)
 
     return (
         <div className="flex flex-col flex-1 min-w-[300px] h-full bg-zinc-900/30 rounded-xl overflow-hidden">
@@ -39,20 +41,27 @@ export function BoardColumn({ id, title, tasks, onCardClick }: BoardColumnProps)
 
             <div
                 ref={setNodeRef}
-                className="flex-1 px-3 overflow-y-auto"
+                className={`flex-1 flex flex-col px-3 py-2 min-h-[500px] transition-colors ${isOver ? 'bg-zinc-800/30' : ''}`}
             >
-                <SortableContext
-                    items={sortableItems}
-                    strategy={verticalListSortingStrategy}
-                >
-                    {tasks.map((task) => (
-                        <TaskCard 
-                            key={task.id} 
-                            task={task} 
-                            onClick={() => onCardClick(task)}
-                        />
-                    ))}
-                </SortableContext>
+                <div className="flex-1">
+                    <SortableContext
+                        items={sortableItems}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {tasks.map((task) => (
+                            <TaskCard 
+                                key={task.id} 
+                                task={task} 
+                                onClick={() => onCardClick(task)}
+                            />
+                        ))}
+                    </SortableContext>
+                    {tasks.length === 0 && (
+                        <div className="h-full min-h-[100px] border-2 border-dashed border-zinc-700/50 rounded-lg flex items-center justify-center text-zinc-500 text-sm">
+                            Arrastra aquí
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )
