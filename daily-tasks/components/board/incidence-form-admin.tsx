@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
-import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask } from '@/app/actions/incidence-actions'
+import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask, updateSubTaskTitle } from '@/app/actions/incidence-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
 
@@ -113,9 +113,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [taskInputErrors, setTaskInputErrors] = useState<Record<number, boolean>>({})
     const [draftTasks, setDraftTasks] = useState<DraftTask[]>([])
     const [showCompletedTasks, setShowCompletedTasks] = useState(false)
+    const [showCompletedTasksByUser, setShowCompletedTasksByUser] = useState<Record<number, boolean>>({})
     const [expandedAssignees, setExpandedAssignees] = useState<Set<number>>(new Set())
     const [tasksToToggle, setTasksToToggle] = useState<Set<number>>(new Set())
     const [tasksToDelete, setTasksToDelete] = useState<Set<number>>(new Set())
+    const [taskEdits, setTaskEdits] = useState<Record<number, string>>({})
+    const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
     const taskInputRef = useRef<HTMLInputElement>(null)
 
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
@@ -163,7 +166,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 setExpandedAssignees(new Set())
                 setTasksToToggle(new Set())
                 setTasksToDelete(new Set())
+                setTaskEdits({})
+                setEditingTaskId(null)
                 setShowCompletedTasks(false)
+                setShowCompletedTasksByUser({})
                 
                 try {
                     const { incidence, users } = await getIncidenceWithUsers(type, externalId)
@@ -331,6 +337,42 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         })
     }
 
+    const handleStartEditTask = (taskId: number, currentTitle: string) => {
+        setEditingTaskId(taskId)
+        setTaskEdits(prev => ({ ...prev, [taskId]: currentTitle }))
+    }
+
+    const handleSaveEditTask = (taskId: number) => {
+        const newTitle = taskEdits[taskId]
+        if (!newTitle?.trim() || newTitle.trim().length < 3) {
+            setEditingTaskId(null)
+            setTaskEdits(prev => {
+                const next = { ...prev }
+                delete next[taskId]
+                return next
+            })
+            return
+        }
+        setTaskEdits(prev => ({ ...prev, [taskId]: newTitle.trim() }))
+        setEditingTaskId(null)
+    }
+
+    const handleCancelEditTask = (taskId: number) => {
+        setEditingTaskId(null)
+        setTaskEdits(prev => {
+            const next = { ...prev }
+            delete next[taskId]
+            return next
+        })
+    }
+
+    const toggleShowCompletedForUser = (userId: number) => {
+        setShowCompletedTasksByUser(prev => ({
+            ...prev,
+            [userId]: !prev[userId]
+        }))
+    }
+
     const toggleAssigneeExpanded = (userId: number) => {
         setExpandedAssignees(prev => {
             const next = new Set(prev)
@@ -465,7 +507,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             }))
 
             if (isEditMode && initialData?.id) {
-                const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData) || draftTasks.length > 0 || tasksToToggle.size > 0 || tasksToDelete.size > 0
+                const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData) || draftTasks.length > 0 || tasksToToggle.size > 0 || tasksToDelete.size > 0 || Object.keys(taskEdits).length > 0
                 if (!hasChanges) {
                     return true
                 }
@@ -514,6 +556,11 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         await deleteSubTask(taskId)
                     }
                     setTasksToDelete(new Set())
+
+                    for (const [taskId, newTitle] of Object.entries(taskEdits)) {
+                        await updateSubTaskTitle(Number(taskId), newTitle)
+                    }
+                    setTaskEdits({})
 
                     const updatedData = await getIncidence(initialData.id)
                     if (updatedData) {
@@ -585,11 +632,14 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
+        setTaskEdits({})
+        setEditingTaskId(null)
         setNewSubTask('')
         setNewTaskInputs({})
         setTaskInputErrors({})
         setRemovedAssigneesHours({})
         setShowCompletedTasks(false)
+        setShowCompletedTasksByUser({})
         setShowDiscardConfirm(false)
         onOpenChange(false)
     }
@@ -850,21 +900,80 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     
                                     {isExpanded && isSelected && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            {/* Tareas pendientes de la base de datos */}
+                                            {pendingTasks.map((task: SubTask) => (
+                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/30 rounded group">
+                                                    <Checkbox
+                                                        checked={tasksToToggle.has(task.id)}
+                                                        onCheckedChange={() => handleToggleTask(task.id)}
+                                                        className="border-zinc-600"
+                                                    />
+                                                    {editingTaskId === task.id ? (
+                                                        <Input
+                                                            value={taskEdits[task.id] || ''}
+                                                            onChange={(e) => setTaskEdits(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveEditTask(task.id)
+                                                                if (e.key === 'Escape') handleCancelEditTask(task.id)
+                                                            }}
+                                                            onBlur={() => handleSaveEditTask(task.id)}
+                                                            className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-100 h-6 text-sm"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm text-zinc-300 flex-1">{taskEdits[task.id] || task.title}</span>
+                                                    )}
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleStartEditTask(task.id, task.title)}
+                                                            className="h-5 w-5 text-zinc-500 hover:text-zinc-300"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                            </svg>
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDeleteTask(task.id)}
+                                                            className="h-5 w-5 text-zinc-500 hover:text-red-400"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {/* Tareas nuevas en la sesión */}
                                             {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
-                                                <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
-                                                    <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
+                                                <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded group">
+                                                    <Checkbox
+                                                        checked={draft.isCompleted}
+                                                        onCheckedChange={() => {
+                                                            setDraftTasks(prev => prev.map(t =>
+                                                                t.tempId === draft.tempId ? { ...t, isCompleted: !t.isCompleted } : t
+                                                            ))
+                                                        }}
+                                                        className="border-zinc-600"
+                                                    />
+                                                    <span className={`text-sm text-zinc-300 flex-1 ${draft.isCompleted ? 'line-through text-zinc-500' : ''}`}>{draft.title}</span>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                        className="h-5 w-5 text-zinc-500 hover:text-red-400"
+                                                        className="h-5 w-5 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
                                                 </div>
                                             ))}
-                                            
+
+                                            {/* Input para nueva tarea */}
                                             <Input
                                                 data-assignment-id={userAssignment?.id || user.id}
                                                 value={newTaskInputs[user.id] || ''}
@@ -891,6 +1000,40 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                 className={`bg-zinc-950 text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-zinc-800'}`}
                                                 placeholder={`Nueva tarea para ${user.name}...`}
                                             />
+
+                                            {/* Tareas completadas - Toggle para mostrar */}
+                                            {completedTasks.length > 0 && (
+                                                <div className="pt-2 border-t border-zinc-800">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleShowCompletedForUser(user.id)}
+                                                        className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                                                    >
+                                                        {showCompletedTasksByUser[user.id] ? (
+                                                            <>▼ Ocultar completadas ({completedTasks.length})</>
+                                                        ) : (
+                                                            <>▶ Mostrar completadas ({completedTasks.length})</>
+                                                        )}
+                                                    </button>
+                                                    
+                                                    {showCompletedTasksByUser[user.id] && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {completedTasks.map((task: SubTask) => (
+                                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 rounded opacity-60">
+                                                                    <Checkbox
+                                                                        checked={!tasksToToggle.has(task.id)}
+                                                                        onCheckedChange={() => handleToggleTask(task.id)}
+                                                                        className="border-zinc-600"
+                                                                    />
+                                                                    <span className="text-sm line-through text-zinc-500 flex-1">
+                                                                        {taskEdits[task.id] || task.title}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

@@ -96,6 +96,7 @@ model SubTask {
   id          Int       @id @default(autoincrement())
   title       String
   isCompleted Boolean   @default(false)
+  completedAt DateTime?
   
   assignmentId Int
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)

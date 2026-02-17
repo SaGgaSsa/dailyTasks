@@ -162,9 +162,10 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     include: {
                         user: true,
                         tasks: {
-                            orderBy: {
-                                createdAt: 'asc'
-                            }
+                            orderBy: [
+                                { isCompleted: 'asc' },
+                                { completedAt: 'desc' }
+                            ]
                         }
                     }
                 }
@@ -203,9 +204,10 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
                     include: {
                         user: true,
                         tasks: {
-                            orderBy: {
-                                createdAt: 'asc'
-                            }
+                            orderBy: [
+                                { isCompleted: 'asc' },
+                                { completedAt: 'desc' }
+                            ]
                         }
                     }
                 }
@@ -589,9 +591,10 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
                     include: {
                         user: true,
                         tasks: {
-                            orderBy: {
-                                createdAt: 'asc'
-                            }
+                            orderBy: [
+                                { isCompleted: 'asc' },
+                                { completedAt: 'desc' }
+                            ]
                         }
                     }
                 }
@@ -767,7 +770,10 @@ export async function toggleSubTask(subTaskId: number) {
         const result = await db.$transaction(async (tx) => {
             await tx.subTask.update({
                 where: { id: subTaskId },
-                data: { isCompleted: newCompletionStatus }
+                data: { 
+                    isCompleted: newCompletionStatus,
+                    completedAt: newCompletionStatus ? new Date() : null
+                }
             })
 
             // Verificar si todas las subtareas están completadas para auto-transición
