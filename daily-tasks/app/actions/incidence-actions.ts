@@ -362,10 +362,16 @@ export async function updateTaskOrder({ taskId, overTaskId }: UpdateTaskOrderPar
         const session = await auth()
         if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
 
-        // Obtener todas las tareas ordenadas por prioridad DESC, luego por position ASC, luego por createdAt ASC
+        // Obtener la tarea que se está moviendo para obtener su status y priority
+        const task = await db.incidence.findUnique({ where: { id: taskId } })
+        if (!task) {
+            return { success: false, error: 'Tarea activa no encontrada' }
+        }
+
+        // Obtener todas las tareas con el mismo status y priority, ordenadas por position ASC, luego por createdAt ASC
         const allTasks = await db.incidence.findMany({
+            where: { status: task.status, priority: task.priority },
             orderBy: [
-                { priority: 'desc' },
                 { position: 'asc' },
                 { createdAt: 'asc' }
             ]
@@ -385,29 +391,18 @@ export async function updateTaskOrder({ taskId, overTaskId }: UpdateTaskOrderPar
             return { success: false, error: 'Tarea objetivo no encontrada' }
         }
 
-        // Detectar si hay tareas con la misma prioridad y posiciones duplicadas
-        const tasksByPriority = allTasks.reduce((acc, task) => {
-            const key = task.priority
-            if (!acc[key]) acc[key] = []
-            acc[key].push(task)
-            return acc
-        }, {} as Record<string, typeof allTasks>)
+        // Detectar si hay posiciones duplicadas y rebalancear si es necesario
+        const uniquePositions = new Set(allTasks.map(t => t.position))
+        const needsRebalance = uniquePositions.size !== allTasks.length || 
+                               (uniquePositions.size === 1 && allTasks.length > 1)
 
-        // Rebalancear posiciones dentro de cada grupo de prioridad si es necesario
-        for (const priority of Object.keys(tasksByPriority)) {
-            const group = tasksByPriority[priority]
-            const uniquePositions = new Set(group.map(t => t.position))
-            const needsRebalance = uniquePositions.size !== group.length || 
-                                   (uniquePositions.size === 1 && group.length > 1)
-
-            if (needsRebalance) {
-                for (let i = 0; i < group.length; i++) {
-                    await db.incidence.update({
-                        where: { id: group[i].id },
-                        data: { position: i * 1000 }
-                    })
-                    group[i].position = i * 1000
-                }
+        if (needsRebalance) {
+            for (let i = 0; i < allTasks.length; i++) {
+                await db.incidence.update({
+                    where: { id: allTasks[i].id },
+                    data: { position: i * 1000 }
+                })
+                allTasks[i].position = i * 1000
             }
         }
 

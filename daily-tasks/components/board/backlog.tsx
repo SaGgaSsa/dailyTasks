@@ -446,6 +446,7 @@ export function Backlog({
         }
 
         // Actualizar el estado local optimistamente
+        const previousTasks = [...tasks]
         const activeIndex = filteredTasks.findIndex(t => t.id === activeId)
         const overIndex = filteredTasks.findIndex(t => t.id === overId)
         
@@ -464,7 +465,7 @@ export function Backlog({
         if (!result.success && result.error) {
             toast.error(result.error)
             // Revertir cambios si falla
-            setTasks(prev => prev)
+            setTasks(previousTasks)
         }
     }
 
