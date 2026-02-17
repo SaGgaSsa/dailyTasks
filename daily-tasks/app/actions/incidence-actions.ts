@@ -282,8 +282,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             where: { id: incidenceId },
             include: {
                 assignments: {
-                    where: { isAssigned: true },
-                    include: { tasks: true }
+                    where: { isAssigned: true }
                 }
             }
         })
@@ -313,19 +312,6 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         if (newStatus === TaskStatus.DONE) {
             if (session.user.role !== 'ADMIN') {
                 return { success: false, error: t(locale, 'business.adminOnly') }
-            }
-            
-            const allSubTasks = incidence.assignments.flatMap((a) => a.tasks)
-            const hasTasks = allSubTasks.length > 0
-            const allTasksCompleted = hasTasks && allSubTasks.every((st) => st.isCompleted)
-            
-            if (!allTasksCompleted) {
-                return { 
-                    success: false, 
-                    error: hasTasks 
-                        ? t(locale, 'business.tasksPending')
-                        : t(locale, 'business.noTasksCreated')
-                }
             }
         }
 
@@ -549,33 +535,47 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             data: updateData
         })
 
-        // Verificar si debe cambiar estado automáticamente
-        const updatedIncidence = await db.incidence.findUnique({
-            where: { id },
-            include: {
-                assignments: {
-                    where: { isAssigned: true }
+        // Verificar si debe reabrirse automáticamente (tareas nuevas en estado DONE)
+        const hasNewSubTasks = data.subTasks && data.subTasks.length > 0
+        const isCurrentlyDone = currentIncidence.status === TaskStatus.DONE
+
+        if (isCurrentlyDone && hasNewSubTasks) {
+            await db.incidence.update({
+                where: { id },
+                data: {
+                    status: TaskStatus.IN_PROGRESS,
+                    completedAt: null
                 }
-            }
-        })
-
-        if (updatedIncidence) {
-            const hasEstimatedTime = updatedIncidence.estimatedTime && updatedIncidence.estimatedTime > 0
-            const hasAssignees = updatedIncidence.assignments.length > 0
-            const allConditionsMet = hasEstimatedTime && hasAssignees
-
-            const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
-            const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
-                                       currentIncidence.status === TaskStatus.IN_PROGRESS || 
-                                       currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
-
-            if (isBacklogToTodo || isActiveToBacklog) {
-                await db.incidence.update({
-                    where: { id },
-                    data: {
-                        status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
+            })
+        } else {
+            // Verificar transiciones BACKLOG <-> TODO basadas en condiciones
+            const updatedIncidence = await db.incidence.findUnique({
+                where: { id },
+                include: {
+                    assignments: {
+                        where: { isAssigned: true }
                     }
-                })
+                }
+            })
+
+            if (updatedIncidence) {
+                const hasEstimatedTime = updatedIncidence.estimatedTime && updatedIncidence.estimatedTime > 0
+                const hasAssignees = updatedIncidence.assignments.length > 0
+                const allConditionsMet = hasEstimatedTime && hasAssignees
+
+                const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
+                const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
+                                           currentIncidence.status === TaskStatus.IN_PROGRESS || 
+                                           currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
+
+                if (isBacklogToTodo || isActiveToBacklog) {
+                    await db.incidence.update({
+                        where: { id },
+                        data: {
+                            status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
+                        }
+                    })
+                }
             }
         }
 
@@ -657,16 +657,13 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
 
         // Validaciones restrictivas para estados bloqueados
         const currentStatus = assignment.incidence.status
-        
-        if (currentStatus === TaskStatus.DONE) {
-            return { success: false, error: 'No puede agregar tareas en una incidencia finalizada' }
-        }
 
         if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
             return { success: false, error: 'Solo los administradores pueden agregar tareas en revisión' }
         }
 
-        // Usar transacción para atomicidad
+        const isReopening = currentStatus === TaskStatus.DONE
+
         const result = await db.$transaction(async (tx) => {
             const subTask = await tx.subTask.create({
                 data: {
@@ -676,52 +673,28 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                 }
             })
 
-            // Verificar si todas las subtareas están completadas para auto-transición
-            const assignments = await tx.assignment.findMany({
-                where: { incidenceId: assignment.incidenceId, isAssigned: true },
-                include: { tasks: true }
-            })
-            
-            const allSubTasks = assignments.flatMap((a) => a.tasks)
-            const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
-            const anyCompleted = allSubTasks.some((st) => st.isCompleted)
-            
-            let autoTransitionedTo = null as string | null
-            let message = 'Tarea creada'
+            let reopened = false
 
-            if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
+            if (isReopening) {
                 await tx.incidence.update({
                     where: { id: assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
+                    data: {
+                        status: TaskStatus.IN_PROGRESS,
+                        completedAt: null
+                    }
                 })
-                autoTransitionedTo = 'REVIEW'
-                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
-            } else if (allCompleted && currentStatus === TaskStatus.TODO) {
-                await tx.incidence.update({
-                    where: { id: assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
-                })
-                autoTransitionedTo = 'REVIEW'
-                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
-            } else if (anyCompleted && currentStatus === TaskStatus.TODO) {
-                await tx.incidence.update({
-                    where: { id: assignment.incidenceId },
-                    data: { status: TaskStatus.IN_PROGRESS }
-                })
-                autoTransitionedTo = 'IN_PROGRESS'
-                message = "¡Tarea iniciada! La incidencia pasó a en progreso"
+                reopened = true
             }
 
-            return { subTask, autoTransitionedTo, message }
+            return { subTask, reopened }
         })
 
         revalidatePath('/dashboard')
-        return { 
-            success: true, 
+        return {
+            success: true,
             data: result.subTask,
-            autoTransitionedToReview: result.autoTransitionedTo === 'REVIEW',
-            autoTransitionedToInProgress: result.autoTransitionedTo === 'IN_PROGRESS',
-            message: result.message
+            reopened: result.reopened,
+            message: result.reopened ? 'Incidencia reabierta automáticamente' : 'Tarea creada'
         }
     } catch (error) {
         console.error('Error creating subtask:', error)
@@ -761,65 +734,79 @@ export async function toggleSubTask(subTaskId: number) {
 
         const newCompletionStatus = !subTask.isCompleted
 
-        // Usar transacción para atomicidad
-        const result = await db.$transaction(async (tx) => {
-            await tx.subTask.update({
-                where: { id: subTaskId },
-                data: { 
-                    isCompleted: newCompletionStatus,
-                    completedAt: newCompletionStatus ? new Date() : null
-                }
-            })
-
-            // Verificar si todas las subtareas están completadas para auto-transición
-            const assignments = await tx.assignment.findMany({
-                where: { incidenceId: subTask.assignment.incidenceId, isAssigned: true },
-                include: { tasks: true }
-            })
-            
-            const allSubTasks = assignments.flatMap((a) => a.tasks)
-            const allCompleted = allSubTasks.length > 0 && allSubTasks.every((st) => st.isCompleted)
-            const anyCompleted = allSubTasks.some((st) => st.isCompleted)
-            
-            let autoTransitionedTo = null as string | null
-            let message = 'Tarea actualizada'
-
-            if (allCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
-                await tx.incidence.update({
-                    where: { id: subTask.assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
-                })
-                autoTransitionedTo = 'REVIEW'
-                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
-            } else if (allCompleted && currentStatus === TaskStatus.TODO) {
-                await tx.incidence.update({
-                    where: { id: subTask.assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
-                })
-                autoTransitionedTo = 'REVIEW'
-                message = "¡Trabajo técnico finalizado! La incidencia pasó a revisión"
-            } else if (anyCompleted && currentStatus === TaskStatus.TODO) {
-                await tx.incidence.update({
-                    where: { id: subTask.assignment.incidenceId },
-                    data: { status: TaskStatus.IN_PROGRESS }
-                })
-                autoTransitionedTo = 'IN_PROGRESS'
-                message = "¡Tarea iniciada! La incidencia pasó a en progreso"
+        await db.subTask.update({
+            where: { id: subTaskId },
+            data: {
+                isCompleted: newCompletionStatus,
+                completedAt: newCompletionStatus ? new Date() : null
             }
-
-            return { autoTransitionedTo, message }
         })
 
         revalidatePath('/dashboard')
-        return { 
-            success: true, 
-            autoTransitionedToReview: result.autoTransitionedTo === 'REVIEW',
-            autoTransitionedToInProgress: result.autoTransitionedTo === 'IN_PROGRESS',
-            message: result.message
+        return {
+            success: true,
+            message: 'Tarea actualizada'
         }
     } catch (error) {
         console.error('Error toggling subtask:', error)
         return { success: false, error: 'Error al actualizar tarea' }
+    }
+}
+
+export async function completeIncidence(incidenceId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId },
+            include: {
+                assignments: {
+                    where: { isAssigned: true },
+                    include: { tasks: true }
+                }
+            }
+        })
+
+        if (!incidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (session.user.role !== 'ADMIN') {
+            return { success: false, error: t(locale, 'business.adminOnly') }
+        }
+
+        const now = new Date()
+
+        await db.$transaction(async (tx) => {
+            const assignmentIds = incidence.assignments.map(a => a.id)
+
+            if (assignmentIds.length > 0) {
+                await tx.subTask.updateMany({
+                    where: {
+                        assignmentId: { in: assignmentIds }
+                    },
+                    data: {
+                        isCompleted: true,
+                        completedAt: now
+                    }
+                })
+            }
+
+            await tx.incidence.update({
+                where: { id: incidenceId },
+                data: {
+                    status: TaskStatus.DONE,
+                    completedAt: now
+                }
+            })
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error completing incidence:', error)
+        return { success: false, error: t(locale, 'errors.updateError') }
     }
 }
 

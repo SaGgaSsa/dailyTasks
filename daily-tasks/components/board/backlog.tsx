@@ -50,6 +50,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { updateTaskOrder } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
+import { DataTableRowActions } from '@/components/backlog/data-table-row-actions'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -123,9 +124,10 @@ function SortableRow({ row, onClick }: SortableRowProps) {
                     cell.column.id === 'title' ? 'w-full' :
                     cell.column.id === 'priority' ? 'w-20' :
                     cell.column.id === 'status' ? 'w-24' :
-                    cell.column.id === 'actions' ? 'w-20' :
+                    cell.column.id === 'requirements' ? 'w-20' :
                     cell.column.id === 'technology' ? 'w-16' :
-                    cell.column.id === 'assignees' ? 'w-16' : ''
+                    cell.column.id === 'assignees' ? 'w-16' :
+                    cell.column.id === 'actions' ? 'w-10' : ''
                 const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
                 const isDragHandle = cell.column.id === 'drag-handle'
                 return (
@@ -233,7 +235,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         ),
     },
     {
-        id: 'actions',
+        id: 'requirements',
         header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Req</div>,
         cell: ({ row }) => {
             const task = row.original
@@ -339,6 +341,12 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 </TooltipProvider>
             )
         },
+        size: 40,
+    },
+    {
+        id: 'actions',
+        header: () => null,
+        cell: ({ row }) => <DataTableRowActions row={row} />,
         size: 40,
     },
 ]
