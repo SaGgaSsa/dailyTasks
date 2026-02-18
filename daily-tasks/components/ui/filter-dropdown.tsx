@@ -60,35 +60,35 @@ export function FilterDropdown({
                 <Button
                     variant="outline"
                     className={cn(
-                        "bg-zinc-900 border-zinc-800 text-zinc-100 h-8 text-sm justify-start border-dashed",
+                        "bg-muted border-border text-foreground h-8 text-sm justify-start border-dashed",
                         className
                     )}
                 >
                     {icon}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="start">
+            <PopoverContent className="w-48 p-2 bg-popover border-border" align="start">
                 <div className="space-y-1">
                     {options.map(opt => (
                         <label
                             key={opt.value}
-                            className="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800 cursor-pointer"
+                            className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer"
                         >
                             <Checkbox
                                 checked={selectedValues.includes(opt.value)}
                                 onCheckedChange={(checked) => handleToggle(opt.value, checked === true)}
-                                className="border-zinc-600"
+                                className="border-border"
                             />
-                            <span className="text-sm text-zinc-300">{opt.label}</span>
+                            <span className="text-sm text-popover-foreground">{opt.label}</span>
                         </label>
                     ))}
                 </div>
-                <Separator className="my-2 bg-zinc-800" />
+                <Separator className="my-2 bg-border" />
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleReset}
-                    className="w-full h-7 text-xs text-zinc-400 hover:text-zinc-200"
+                    className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
                 >
                     Restablecer
                 </Button>

@@ -279,19 +279,19 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full py-32">
                     <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
-                    <span className="mt-4 text-zinc-400">Cargando tareas...</span>
+                    <span className="mt-4 text-muted-foreground">Cargando tareas...</span>
                 </div>
             ) : (
                 <div className="space-y-6">
                     {initialData && (
-                        <h2 className="text-lg font-semibold text-zinc-100">
+                        <h2 className="text-lg font-semibold text-card-foreground">
                             {initialData.title}
                         </h2>
                     )}
 
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <Label className="text-zinc-300">
+                            <Label className="text-card-foreground/80">
                                 Pendientes ({pendingTasks.length + draftPending.length}/{tasks.length + draftTasks.length})
                             </Label>
                             {completedTasks.length > 0 && (
@@ -301,7 +301,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                         onCheckedChange={setShowCompleted}
                                         className="data-[state=checked]:bg-zinc-700"
                                     />
-                                    <Label className="text-xs text-zinc-400 cursor-pointer" onClick={() => setShowCompleted(!showCompleted)}>
+                                    <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setShowCompleted(!showCompleted)}>
                                         Mostrar completadas
                                     </Label>
                                 </div>
@@ -309,11 +309,11 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                         </div>
 
                         {pendingTasks.map(task => (
-                            <div key={task.id} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group">
+                            <div key={task.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group">
                                 <Checkbox
                                     checked={task.isCompleted}
                                     onCheckedChange={() => handleToggle(task.id)}
-                                    className="border-zinc-600"
+                                    className="border-input"
                                 />
                                 {editingTaskId === task.id ? (
                                     <Input
@@ -324,11 +324,11 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                             if (e.key === 'Escape') cancelEdit()
                                         }}
                                         onBlur={() => saveEdit(task.id)}
-                                        className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-100 h-7"
+                                        className="flex-1 bg-input border-border text-card-foreground h-7"
                                         autoFocus
                                     />
                                 ) : (
-                                    <span className={`text-sm flex-1 ${task.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>
+                                    <span className={`text-sm flex-1 ${task.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>
                                         {taskEdits[task.id] || task.title}
                                     </span>
                                 )}
@@ -339,7 +339,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => startEdit(task)}
-                                            className="h-6 w-6 text-zinc-500 hover:text-zinc-300"
+                                            className="h-6 w-6 text-muted-foreground/70 hover:text-card-foreground/80"
                                         >
                                             <Edit2 className="h-3 w-3" />
                                         </Button>
@@ -348,7 +348,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleDelete(task.id)}
-                                            className="h-6 w-6 text-zinc-500 hover:text-red-400"
+                                            className="h-6 w-6 text-muted-foreground/70 hover:text-red-400"
                                         >
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
@@ -358,19 +358,19 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                         ))}
 
                         {draftPending.map(draft => (
-                            <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group">
+                            <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group">
                                 <Checkbox
                                     checked={draft.isCompleted}
                                     onCheckedChange={() => handleToggleDraft(draft.tempId)}
-                                    className="border-zinc-600"
+                                    className="border-input"
                                 />
-                                <span className={`text-sm flex-1 ${draft.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-300'}`}>{draft.title}</span>
+                                <span className={`text-sm flex-1 ${draft.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>{draft.title}</span>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeDraftTask(draft.tempId)}
-                                    className="h-6 w-6 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-6 w-6 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                     <Trash2 className="h-3 w-3" />
                                 </Button>
@@ -385,31 +385,31 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                             }}
                             placeholder="+ Nueva tarea..."
                             disabled={isSaving}
-                            className="bg-zinc-900 border-zinc-800 text-zinc-100"
+                            className="bg-input border-border text-card-foreground"
                         />
                     </div>
 
                     {showCompleted && (completedTasks.length > 0 || draftCompleted.length > 0) && (
-                        <div className="space-y-2 pt-2 border-t border-zinc-800">
-                            <Label className="text-zinc-400 text-xs">Completadas ({completedTasks.length + draftCompleted.length})</Label>
+                        <div className="space-y-2 pt-2 border-t border-border">
+                            <Label className="text-muted-foreground text-xs">Completadas ({completedTasks.length + draftCompleted.length})</Label>
                             {draftCompleted.map(draft => (
-                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded opacity-60">
+                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded opacity-60">
                                     <Checkbox
                                         checked={true}
                                         onCheckedChange={() => handleToggleDraft(draft.tempId)}
-                                        className="border-zinc-600"
+                                        className="border-input"
                                     />
-                                    <span className="text-sm text-zinc-400 line-through flex-1">{draft.title}</span>
+                                    <span className="text-sm text-muted-foreground line-through flex-1">{draft.title}</span>
                                 </div>
                             ))}
                             {completedTasks.map(task => (
-                                <div key={task.id} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded opacity-60">
+                                <div key={task.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded opacity-60">
                                     <Checkbox
                                         checked={true}
                                         onCheckedChange={() => handleToggle(task.id)}
-                                        className="border-zinc-600"
+                                        className="border-input"
                                     />
-                                    <span className="text-sm text-zinc-400 line-through flex-1">
+                                    <span className="text-sm text-muted-foreground line-through flex-1">
                                         {taskEdits[task.id] || task.title}
                                     </span>
                                 </div>
@@ -417,12 +417,12 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                         </div>
                     )}
 
-                    <div className="space-y-2 pt-4 border-t border-zinc-800">
-                        <Label className="text-zinc-300">Comentarios</Label>
+                    <div className="space-y-2 pt-4 border-t border-border">
+                        <Label className="text-card-foreground/80">Comentarios</Label>
                         <Textarea
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            className="min-h-[100px] bg-zinc-900 border-zinc-800 text-zinc-100 resize-none"
+                            className="min-h-[100px] bg-input border-border text-card-foreground resize-none"
                             placeholder="Añade comentarios o notas técnicas..."
                         />
                     </div>

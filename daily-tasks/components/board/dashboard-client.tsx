@@ -155,8 +155,8 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-                <div className="text-zinc-400">Cargando...</div>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="text-muted-foreground">Cargando...</div>
             </div>
         )
     }
@@ -166,10 +166,10 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
             <div className="flex flex-col h-full space-y-4">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-primary"></span>
                             Kanban
-                            <Badge variant="outline" className="text-xs bg-zinc-800 text-zinc-400 border-zinc-700 font-mono">
+                            <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border font-mono">
                                 {kanbanTasksState.length}
                             </Badge>
                         </h2>
@@ -239,10 +239,10 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         <div className="flex flex-col h-full space-y-4">
             <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-primary"></span>
                         {view === 'BACKLOG' ? 'Backlog' : 'Kanban'}
-                        <Badge variant="outline" className="text-xs bg-zinc-800 text-zinc-400 border-zinc-700 font-mono">
+                        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border font-mono">
                             {view === 'BACKLOG' ? backlogTasksState.length : kanbanTasksState.length}
                         </Badge>
                     </h2>
@@ -290,9 +290,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                             <Checkbox
                                 checked={params.mine || false}
                                 onCheckedChange={updateMine}
-                                className="border-zinc-600"
+                                className="border-border"
                             />
-                            <span className="text-sm text-zinc-400">Mis asignaciones</span>
+                            <span className="text-sm text-muted-foreground">Mis asignaciones</span>
                         </label>
                     )}
                     {view === 'BACKLOG' && (
@@ -301,17 +301,17 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                                 setSelectedTask(null)
                                 setIsSheetOpen(true)
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white h-8 w-8 p-0"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
                     )}
                     <Tabs value={view.toLowerCase()} onValueChange={(v) => handleViewChange(v as 'backlog' | 'kanban')}>
-                        <TabsList className="bg-zinc-900 border border-zinc-800 h-8">
-                            <TabsTrigger value="backlog" className="data-[state=active]:bg-zinc-800 px-3">
+                        <TabsList className="bg-muted border border-border h-8">
+                            <TabsTrigger value="backlog" className="data-[state=active]:bg-accent px-3">
                                 <ListTodo className="h-4 w-4" />
                             </TabsTrigger>
-                            <TabsTrigger value="kanban" className="data-[state=active]:bg-zinc-800 px-3">
+                            <TabsTrigger value="kanban" className="data-[state=active]:bg-accent px-3">
                                 <LayoutDashboard className="h-4 w-4" />
                             </TabsTrigger>
                         </TabsList>

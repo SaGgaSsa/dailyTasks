@@ -140,12 +140,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <h4 className="text-sm font-medium mb-3">Colaboradores:</h4>
             <div className="space-y-2">
               {collaborators.length === 0 ? (
-                <p className="text-sm text-zinc-500">No hay colaboradores asignados</p>
+                <p className="text-sm text-muted-foreground">No hay colaboradores asignados</p>
               ) : (
                 collaborators.map((collab, index) => (
                   <div key={index} className="flex justify-between items-center text-sm">
                     <span className="font-medium">{collab.name}</span>
-                    <span className="text-zinc-500">
+                    <span className="text-muted-foreground">
                       {collab.totalTasks === 0 
                         ? 'Sin tareas' 
                         : `${collab.pendingTasks}/${collab.totalTasks} pendientes`

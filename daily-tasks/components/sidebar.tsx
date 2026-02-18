@@ -28,14 +28,14 @@ export function Sidebar({ userId }: SidebarProps) {
   const isAdmin = session?.user?.role === 'ADMIN'
 
   return (
-    <div className={`bg-[#0A0A0A] border-r border-zinc-800 transition-all duration-300 flex flex-col h-screen ${isOpen ? 'w-64' : 'w-16'}`}>
+    <div className={`bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col h-screen ${isOpen ? 'w-64' : 'w-16'}`}>
       <div className="p-2 flex items-center gap-3 flex-shrink-0">
         <Link href="/" className="flex items-center gap-3">
-          <div className="bg-zinc-100 p-1.5 rounded-lg">
-            <Terminal className="h-5 w-5 text-zinc-900" />
+          <div className="bg-primary p-1.5 rounded-lg">
+            <Terminal className="h-5 w-5 text-primary-foreground" />
           </div>
           {isOpen && (
-            <span className="font-bold text-lg tracking-tight text-white">DailyTasks</span>
+            <span className="font-bold text-lg tracking-tight text-sidebar-foreground">DailyTasks</span>
           )}
         </Link>
       </div>
@@ -44,14 +44,14 @@ export function Sidebar({ userId }: SidebarProps) {
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-1 px-2">
           {isOpen && (
-            <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+            <div className="px-3 py-2 text-[10px] font-bold text-sidebar-foreground/50 uppercase tracking-widest">
               {t.navigation.dashboard}
             </div>
           )}
           <Link href="/dashboard">
             <Button
               variant="ghost"
-              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
             >
               <LayoutDashboard className="h-4 w-4" />
               {isOpen && <span>{t.incidences.title}</span>}
@@ -61,7 +61,7 @@ export function Sidebar({ userId }: SidebarProps) {
           <Link href="/analytics">
             <Button
               variant="ghost"
-              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/analytics' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/analytics' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
             >
               <BarChart3 className="h-4 w-4" />
               {isOpen && <span>Métricas</span>}
@@ -71,7 +71,7 @@ export function Sidebar({ userId }: SidebarProps) {
           {/* Wiki Técnica - temporalmente oculto
           <Button
             variant="ghost"
-            className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
+            className={`w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 ${!isOpen ? 'justify-center px-0' : ''}`}
           >
             <BookOpen className="h-4 w-4" />
             {isOpen && <span>Wiki Técnica</span>}
@@ -82,17 +82,17 @@ export function Sidebar({ userId }: SidebarProps) {
 
       {/* Admin Section */}
       {isAdmin && (
-        <div className="py-4 border-t border-zinc-800 px-2 flex-shrink-0">
+        <div className="py-4 border-t border-sidebar-border px-2 flex-shrink-0">
           <div className="space-y-1">
             {isOpen && (
-              <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              <div className="px-3 py-2 text-[10px] font-bold text-sidebar-foreground/50 uppercase tracking-widest">
                 Administration
               </div>
             )}
             <Link href="/dashboard/users">
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
               >
                 <Users className="h-4 w-4" />
                 {isOpen && <span>{t.users.title}</span>}
@@ -101,7 +101,7 @@ export function Sidebar({ userId }: SidebarProps) {
 
             <Button
               variant="ghost"
-              className={`w-full justify-start gap-3 text-zinc-400 hover:text-white hover:bg-zinc-900 ${!isOpen ? 'justify-center px-0' : ''}`}
+              className={`w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 ${!isOpen ? 'justify-center px-0' : ''}`}
             >
               <Settings className="h-4 w-4" />
               {isOpen && <span>Settings</span>}
@@ -111,12 +111,12 @@ export function Sidebar({ userId }: SidebarProps) {
       )}
 
       {/* Footer */}
-      <div className="p-2 border-t border-zinc-800 flex-shrink-0">
+      <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         {isOpen && (
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-zinc-600 hover:text-zinc-400 px-0 h-6"
+            className="w-full text-sidebar-foreground/40 hover:text-sidebar-foreground/60 px-0 h-6"
             onClick={() => setIsOpen(false)}
           >
             Collapse Menu
@@ -126,7 +126,7 @@ export function Sidebar({ userId }: SidebarProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-zinc-600 hover:text-zinc-400 px-0 h-6"
+            className="w-full text-sidebar-foreground/40 hover:text-sidebar-foreground/60 px-0 h-6"
             onClick={() => setIsOpen(true)}
           >
             --{'>'}

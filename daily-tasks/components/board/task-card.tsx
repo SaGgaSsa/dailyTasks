@@ -76,7 +76,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             onClick={(e) => {
                 if (onClick) onClick();
             }}
-            className={`mb-3 cursor-pointer bg-[#191919] border-zinc-800/50 hover:bg-zinc-800/80 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-zinc-700 z-50 opacity-100' : ''}`}
+            className={`mb-3 cursor-pointer bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
         >
             <CardContent className="p-2 space-y-1.5">
                 {/* Header: ID + Priority + Title */}
@@ -93,7 +93,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                     >
                         {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
                     </Badge>
-                    <h3 className="text-xs font-medium text-zinc-200 truncate flex-1 min-w-0">
+                    <h3 className="text-xs font-medium text-card-foreground truncate flex-1 min-w-0">
                         {task.title}
                     </h3>
                 </div>
@@ -103,23 +103,23 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                     <div className="line-clamp-2">
                         <MarkdownText
                             content={task.description}
-                            className="text-[11px] text-zinc-500 prose-p:leading-tight prose-a:text-blue-400"
+                            className="text-[11px] text-muted-foreground prose-p:leading-tight prose-a:text-blue-400"
                         />
                     </div>
                 )}
 
                 {/* Technology + Hours */}
                 <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-[9px] text-zinc-500 border-zinc-800 bg-transparent font-normal">
+                    <Badge variant="outline" className="text-[9px] text-muted-foreground border-border bg-transparent font-normal">
                         {task.technology}
                     </Badge>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-muted-foreground">
                         {formatHoursDisplay(completedHours, task.estimatedTime)}
                     </span>
                 </div>
                 {task.estimatedTime && userId && userHours > 0 && (
                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-zinc-400">
+                        <span className="text-[10px] text-muted-foreground">
                             Mis horas: {userHours}h
                         </span>
                         {task.estimatedTime && isComplete && (
@@ -128,7 +128,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                     </div>
                 )}
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-zinc-500">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                         <CheckSquare className="h-3 w-3" />
                         <span className="text-[10px] font-medium">
                             {completedItems}/{totalItems}
@@ -147,31 +147,31 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                                 return (
                                     <UserAvatar 
                                         username={assignment.user.username} 
-                                        className="h-5 w-5 border border-zinc-900 ring-1 ring-zinc-800 text-[8px]" 
+                                        className="h-5 w-5 border border-background ring-1 ring-border text-[8px]" 
                                     />
                                 )
                             }
 
                             const usernames = activeAssignments.map(a => a.user.username).join(', ')
                             return (
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <User className="h-4 w-4 text-zinc-500" />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p className="text-xs">{usernames}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="text-xs">{usernames}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                             )
                         })()}
                     </div>
                 </div>
                 {totalItems > 0 && (
-                    <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-blue-500/50 transition-all duration-300"
+                            className="h-full bg-primary/50 transition-all duration-300"
                             style={{ width: `${(completedItems / totalItems) * 100}%` }}
                         />
                     </div>
@@ -184,7 +184,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
                 {/* Indicadores de requisitos (solo en BACKLOG) */}
                 {isBacklog && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>

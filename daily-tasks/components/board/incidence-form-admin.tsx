@@ -676,23 +676,23 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             onDiscard={handleDiscard}
         >
             <Dialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
-                <DialogContent className="bg-[#191919] border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-zinc-100">¿Salir sin guardar?</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-card-foreground">¿Salir sin guardar?</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Tiene cambios sin guardar. ¿Está seguro de que desea salir y perder los cambios?
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={() => setShowDiscardConfirm(false)}
-                            className="bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border-zinc-700"
+                            className="bg-accent text-foreground hover:bg-accent/80 border-border"
                         >
                             Cancelar
                         </Button>
-                        <Button 
-                            onClick={confirmDiscard} 
+                        <Button
+                            onClick={confirmDiscard}
                             className="bg-red-600 text-white hover:bg-red-700"
                         >
                             Salir sin guardar
@@ -703,8 +703,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full py-32">
-                    <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
-                    <span className="mt-4 text-zinc-400">Cargando datos...</span>
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <span className="mt-4 text-muted-foreground">Cargando datos...</span>
                 </div>
             ) : (
                 <>
@@ -759,7 +759,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 />
 
                 <div className="space-y-2">
-                    <Label htmlFor="estimatedTime" className="text-zinc-300">Horas Estimadas</Label>
+                    <Label htmlFor="estimatedTime" className="text-card-foreground/80">Horas Estimadas</Label>
                     <Input
                         id="estimatedTime"
                         type="number"
@@ -773,7 +773,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                 updateFormData({ estimatedTime: value });
                             }
                         }}
-                        className="bg-zinc-900 border-zinc-800 text-zinc-100 w-24"
+                        className="bg-input border-input text-foreground w-24"
                         placeholder="0"
                     />
                 </div>
@@ -788,26 +788,26 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             <Badge variant="outline" className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight ${initialData.type === 'I_MODAPL' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : initialData.type === 'I_CASO' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
                                 {initialData.type} {initialData.externalId}
                             </Badge>
-                            <span className="text-sm text-zinc-200 font-medium">{initialData.title}</span>
+                            <span className="text-sm text-foreground font-medium">{initialData.title}</span>
                         </div>
                     </div>
                     
                     <FormRow3>
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Prioridad</Label>
-                            <div className="text-sm text-zinc-400">
+                            <Label className="text-card-foreground/80">Prioridad</Label>
+                            <div className="text-sm text-muted-foreground">
                                 {initialData.priority === 'HIGH' ? 'Alta' : initialData.priority === 'MEDIUM' ? 'Media' : 'Baja'}
                             </div>
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Tecnología</Label>
-                            <div className="text-sm text-zinc-400">{initialData.technology}</div>
+                            <Label className="text-card-foreground/80">Tecnología</Label>
+                            <div className="text-sm text-muted-foreground">{initialData.technology}</div>
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Horas Estimadas</Label>
-                            <div className="text-sm text-zinc-400">{initialData.estimatedTime || 0}h</div>
+                            <Label className="text-card-foreground/80">Horas Estimadas</Label>
+                            <div className="text-sm text-muted-foreground">{initialData.estimatedTime || 0}h</div>
                         </div>
                     </FormRow3>
                 </>
@@ -815,8 +815,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
             {!isDev ? ((isBacklog || (hasRequirements && isAdmin)) ? (
                 <div className="space-y-2">
-                    <Label className="text-zinc-300">Asignar colaborador</Label>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-md">
+                    <Label className="text-card-foreground/80">Asignar colaborador</Label>
+                    <div className="bg-input border border-border rounded-md">
                         {users.map(user => {
                             const assigneeData = formData.assignees.find(a => a.userId === user.id)
                             const isSelected = !!assigneeData
@@ -828,9 +828,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             const isExpanded = expandedAssignees.has(user.id)
 
                             return (
-                                <div key={user.id} className="border-b border-zinc-800 last:border-b-0">
+                                <div key={user.id} className="border-b border-border last:border-b-0">
                                     <div 
-                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-zinc-800/50' : 'cursor-not-allowed opacity-60'}`}
+                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-accent/50' : 'cursor-not-allowed opacity-60'}`}
                                         onClick={() => isSelected && toggleAssigneeExpanded(user.id)}
                                     >
                                         <Checkbox
@@ -838,17 +838,17 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                             onCheckedChange={() => handleToggleAssignee(user.id)}
                                             onClick={(e) => e.stopPropagation()}
                                             disabled={isSelected && (userTasks.length > 0 || userDraftTasks.length > 0)}
-                                            className="border-zinc-600"
+                                            className="border-input"
                                         />
-                                        <span className="text-zinc-300 text-sm">{user.name}</span>
+                                        <span className="text-card-foreground/80 text-sm">{user.name}</span>
                                         {(userTasks.length > 0 || userDraftTasks.length > 0) && (
-                                            <span className="text-zinc-500 text-xs">
+                                            <span className="text-muted-foreground/70 text-xs">
                                                 {pendingTasks.length + userDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
                                             </span>
                                         )}
                                         <div className="flex-1" />
                                         <div className="flex items-center gap-2">
-                                            <span className="text-zinc-500 text-xs">Horas Asignadas:</span>
+                                            <span className="text-muted-foreground/70 text-xs">Horas Asignadas:</span>
                                             <Input
                                                 type="number"
                                                 min="0"
@@ -863,7 +863,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                     }
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="bg-zinc-950 border-zinc-800 text-zinc-100 w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="bg-background border-border text-zinc-100 w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -877,7 +877,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                     e.stopPropagation()
                                                     toggleAssigneeExpanded(user.id)
                                                 }}
-                                                className="h-6 w-6 text-zinc-500 disabled:opacity-30"
+                                                className="h-6 w-6 text-muted-foreground/70 disabled:opacity-30"
                                             >
                                                 <ChevronUp className="h-3 w-3" />
                                             </Button>
@@ -891,7 +891,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                     e.stopPropagation()
                                                     toggleAssigneeExpanded(user.id)
                                                 }}
-                                                className="h-6 w-6 text-zinc-500 disabled:opacity-30"
+                                                className="h-6 w-6 text-muted-foreground/70 disabled:opacity-30"
                                             >
                                                 <ChevronDown className="h-3 w-3" />
                                             </Button>
@@ -902,11 +902,11 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             {/* Tareas pendientes de la base de datos */}
                                             {pendingTasks.map((task: SubTask) => (
-                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/30 rounded group">
+                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-accent/30 rounded group">
                                                     <Checkbox
                                                         checked={tasksToToggle.has(task.id)}
                                                         onCheckedChange={() => handleToggleTask(task.id)}
-                                                        className="border-zinc-600"
+                                                        className="border-input"
                                                     />
                                                     {editingTaskId === task.id ? (
                                                         <Input
@@ -917,11 +917,11 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                                 if (e.key === 'Escape') handleCancelEditTask(task.id)
                                                             }}
                                                             onBlur={() => handleSaveEditTask(task.id)}
-                                                            className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-100 h-6 text-sm"
+                                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
                                                             autoFocus
                                                         />
                                                     ) : (
-                                                        <span className="text-sm text-zinc-300 flex-1">{taskEdits[task.id] || task.title}</span>
+                                                        <span className="text-sm text-card-foreground/80 flex-1">{taskEdits[task.id] || task.title}</span>
                                                     )}
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Button
@@ -929,7 +929,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleStartEditTask(task.id, task.title)}
-                                                            className="h-5 w-5 text-zinc-500 hover:text-zinc-300"
+                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                 <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
@@ -940,7 +940,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleDeleteTask(task.id)}
-                                                            className="h-5 w-5 text-zinc-500 hover:text-red-400"
+                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-red-400"
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </Button>
@@ -950,7 +950,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
                                             {/* Tareas nuevas en la sesión */}
                                             {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
-                                                <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded group">
+                                                <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-accent/50 rounded group">
                                                     <Checkbox
                                                         checked={draft.isCompleted}
                                                         onCheckedChange={() => {
@@ -958,15 +958,15 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                                 t.tempId === draft.tempId ? { ...t, isCompleted: !t.isCompleted } : t
                                                             ))
                                                         }}
-                                                        className="border-zinc-600"
+                                                        className="border-input"
                                                     />
-                                                    <span className={`text-sm text-zinc-300 flex-1 ${draft.isCompleted ? 'line-through text-zinc-500' : ''}`}>{draft.title}</span>
+                                                    <span className={`text-sm text-card-foreground/80 flex-1 ${draft.isCompleted ? 'line-through text-muted-foreground/70' : ''}`}>{draft.title}</span>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                        className="h-5 w-5 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="h-5 w-5 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
@@ -997,17 +997,17 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                         }
                                                     }
                                                 }}
-                                                className={`bg-zinc-950 text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-zinc-800'}`}
+                                                className={`bg-background text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-border'}`}
                                                 placeholder={`Nueva tarea para ${user.name}...`}
                                             />
 
                                             {/* Tareas completadas - Toggle para mostrar */}
                                             {completedTasks.length > 0 && (
-                                                <div className="pt-2 border-t border-zinc-800">
+                                                <div className="pt-2 border-t border-border">
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleShowCompletedForUser(user.id)}
-                                                        className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                                                        className="text-xs text-muted-foreground/70 hover:text-card-foreground/80 flex items-center gap-1"
                                                     >
                                                         {showCompletedTasksByUser[user.id] ? (
                                                             <>▼ Ocultar completadas ({completedTasks.length})</>
@@ -1023,9 +1023,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                                     <Checkbox
                                                                         checked={!tasksToToggle.has(task.id)}
                                                                         onCheckedChange={() => handleToggleTask(task.id)}
-                                                                        className="border-zinc-600"
+                                                                        className="border-input"
                                                                     />
-                                                                    <span className="text-sm line-through text-zinc-500 flex-1">
+                                                                    <span className="text-sm line-through text-muted-foreground/70 flex-1">
                                                                         {taskEdits[task.id] || task.title}
                                                                     </span>
                                                                 </div>
@@ -1040,18 +1040,18 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             )
                         })}
                     </div>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted-foreground/70">
                         Al asignar colaboradores, especifica las horas que cada uno aportará a la tarea.
                     </p>
                 </div>
             ) : initialData && initialData.assignments.length > 0 ? (
                 <div className="space-y-2">
-                    <Label className="text-zinc-300">Colaborador asignado</Label>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-md">
+                    <Label className="text-card-foreground/80">Colaborador asignado</Label>
+                    <div className="bg-input border border-border rounded-md">
                         {initialData.assignments.filter(a => a.isAssigned).map(assignment => (
-                            <div key={assignment.userId} className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 last:border-b-0">
-                                <span className="text-zinc-300 text-sm">{assignment.user.name}</span>
-                                <span className="text-zinc-500 text-xs">
+                            <div key={assignment.userId} className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0">
+                                <span className="text-card-foreground/80 text-sm">{assignment.user.name}</span>
+                                <span className="text-muted-foreground/70 text-xs">
                                     {assignment.assignedHours !== null ? `${assignment.assignedHours}h asignadas` : 'Sin horas asignadas'}
                                 </span>
                             </div>
@@ -1091,13 +1091,13 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             <h3 className="text-zinc-100 font-medium">Tareas pendientes</h3>
                             {totalTasks > 0 && (
                                 <label className="flex items-center gap-2 cursor-pointer">
-                                    <span className="text-xs text-zinc-400">
+                                    <span className="text-xs text-muted-foreground">
                                         {totalCompleted}/{totalTasks} pendientes
                                     </span>
                                     <Checkbox
                                         checked={showCompletedTasks}
                                         onCheckedChange={(checked) => setShowCompletedTasks(checked === true)}
-                                        className="border-zinc-600"
+                                        className="border-input"
                                     />
                                 </label>
                             )}
@@ -1113,20 +1113,20 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     return (
                                         <div
                                             key={task.id}
-                                            className={`flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group ${isMarkedForDelete ? 'opacity-50' : ''}`}
+                                            className={`flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group ${isMarkedForDelete ? 'opacity-50' : ''}`}
                                         >
                                             <Checkbox
                                                 checked={displayCompleted}
                                                 onCheckedChange={() => handleToggleTask(task.id)}
-                                                className="border-zinc-600"
+                                                className="border-input"
                                             />
-                                            <span className="text-sm text-zinc-300 flex-1">{task.title}</span>
+                                            <span className="text-sm text-card-foreground/80 flex-1">{task.title}</span>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleDeleteTask(task.id)}
-                                                className="h-6 w-6 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="h-6 w-6 text-muted-foreground/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -1144,19 +1144,19 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             return (
                                 <>
                                     {pendingDrafts.map(draft => (
-                                        <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded group">
+                                        <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 bg-accent/50 rounded group">
                                             <Checkbox
                                                 checked={draft.isCompleted}
                                                 onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
-                                                className="border-zinc-600"
+                                                className="border-input"
                                             />
-                                            <span className="text-sm text-zinc-300 flex-1">{draft.title}</span>
+                                            <span className="text-sm text-card-foreground/80 flex-1">{draft.title}</span>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                className="h-6 w-6 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="h-6 w-6 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -1185,26 +1185,26 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                 }
                                             }
                                         }}
-                                        className={`bg-zinc-900 text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-zinc-800'}`}
+                                        className={`bg-input text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-border'}`}
                                         placeholder="+ Agregar tarea..."
                                     />
 
                                     {showCompletedTasks && completedDrafts.length > 0 && (
-                                        <div className="space-y-1 pt-2 border-t border-zinc-800">
+                                        <div className="space-y-1 pt-2 border-t border-border">
                                             {completedDrafts.map(draft => (
-                                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group opacity-60">
+                                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group opacity-60">
                                                     <Checkbox
                                                         checked={draft.isCompleted}
                                                         onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
-                                                        className="border-zinc-600"
+                                                        className="border-input"
                                                     />
-                                                    <span className="text-sm text-zinc-500 line-through flex-1">{draft.title}</span>
+                                                    <span className="text-sm text-muted-foreground/70 line-through flex-1">{draft.title}</span>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                        className="h-6 w-6 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="h-6 w-6 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
@@ -1219,7 +1219,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
 
                         {showCompletedTasks && completedTasks.length > 0 && (
-                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-200 pt-2 border-t border-zinc-800">
+                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-200 pt-2 border-t border-border">
                                 {completedTasks.map((task) => {
                                     const isToggled = tasksToToggle.has(task.id)
                                     const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted
@@ -1227,14 +1227,14 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     return (
                                         <div
                                             key={task.id}
-                                            className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 rounded group opacity-60"
+                                            className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group opacity-60"
                                         >
                                             <Checkbox
                                                 checked={displayCompleted}
                                                 onCheckedChange={() => handleToggleTask(task.id)}
-                                                className="border-zinc-600"
+                                                className="border-input"
                                             />
-                                            <span className="text-sm text-zinc-500 line-through flex-1">{task.title}</span>
+                                            <span className="text-sm text-muted-foreground/70 line-through flex-1">{task.title}</span>
                                         </div>
                                     )
                                 })}
@@ -1245,12 +1245,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             })()}
 
             <div className="space-y-2">
-                <Label htmlFor="description" className="text-zinc-300">Comentario</Label>
+                <Label htmlFor="description" className="text-card-foreground/80">Comentario</Label>
                 <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => updateFormData({ description: e.target.value })}
-                    className="bg-zinc-900 border-zinc-800 text-zinc-100 min-h-[120px] resize-none"
+                    className="bg-input border-border text-zinc-100 min-h-[120px] resize-none"
                     placeholder="Añade comentarios o notas técnicas..."
                 />
             </div>

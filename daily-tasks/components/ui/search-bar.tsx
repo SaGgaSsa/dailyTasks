@@ -49,14 +49,14 @@ export function SearchBar({ value, onChange, placeholder = "Buscar...", classNam
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         type="text"
         placeholder={placeholder}
         value={inputValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        className={`pl-9 bg-zinc-900 border-zinc-800 text-zinc-100 w-48 h-8 text-sm ${className}`}
+        className={`pl-9 bg-input border-input text-foreground w-48 h-8 text-sm ${className}`}
       />
     </div>
   )
