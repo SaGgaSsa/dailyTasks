@@ -689,12 +689,38 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
             return { subTask, reopened }
         })
 
+        // Check if all tasks are completed and auto-transition to REVIEW
+        let autoTransitionedToReview = false
+        let message = result.reopened ? 'Incidencia reabierta automáticamente' : 'Tarea creada'
+
+        if (isCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
+            const allSubTasks = await db.subTask.findMany({
+                where: {
+                    assignment: {
+                        incidenceId: assignment.incidenceId
+                    }
+                }
+            })
+
+            const allCompleted = allSubTasks.length > 0 && allSubTasks.every(t => t.isCompleted)
+
+            if (allCompleted) {
+                await db.incidence.update({
+                    where: { id: assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedToReview = true
+                message = '¡Todas las tareas completadas! La incidencia pasó a revisión'
+            }
+        }
+
         revalidatePath('/dashboard')
         return {
             success: true,
             data: result.subTask,
             reopened: result.reopened,
-            message: result.reopened ? 'Incidencia reabierta automáticamente' : 'Tarea creada'
+            autoTransitionedToReview,
+            message
         }
     } catch (error) {
         console.error('Error creating subtask:', error)
@@ -742,10 +768,47 @@ export async function toggleSubTask(subTaskId: number) {
             }
         })
 
+        // Check for auto-transitions based on task completion status
+        let autoTransitionedToReview = false
+        let autoTransitionedToInProgress = false
+        let message = 'Tarea actualizada'
+
+        if (newCompletionStatus && currentStatus === TaskStatus.IN_PROGRESS) {
+            // Transition to REVIEW when all tasks are completed
+            const allSubTasks = await db.subTask.findMany({
+                where: {
+                    assignment: {
+                        incidenceId: subTask.assignment.incidenceId
+                    }
+                }
+            })
+
+            const allCompleted = allSubTasks.length > 0 && allSubTasks.every(t => t.isCompleted)
+
+            if (allCompleted) {
+                await db.incidence.update({
+                    where: { id: subTask.assignment.incidenceId },
+                    data: { status: TaskStatus.REVIEW }
+                })
+                autoTransitionedToReview = true
+                message = '¡Todas las tareas completadas! La incidencia pasó a revisión'
+            }
+        } else if (!newCompletionStatus && currentStatus === TaskStatus.REVIEW) {
+            // Transition to IN_PROGRESS when unchecking a task in REVIEW status
+            await db.incidence.update({
+                where: { id: subTask.assignment.incidenceId },
+                data: { status: TaskStatus.IN_PROGRESS }
+            })
+            autoTransitionedToInProgress = true
+            message = 'Incidencia regresada a progreso'
+        }
+
         revalidatePath('/dashboard')
         return {
             success: true,
-            message: 'Tarea actualizada'
+            message,
+            autoTransitionedToReview,
+            autoTransitionedToInProgress
         }
     } catch (error) {
         console.error('Error toggling subtask:', error)
