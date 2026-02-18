@@ -121,19 +121,19 @@ function SortableRow({ row, onClick }: SortableRowProps) {
             {row.getVisibleCells().map((cell: any) => {
                 const widthClass = cell.column.id === 'drag-handle' ? 'w-10' :
                     cell.column.id === 'type' ? 'w-32 text-center' :
-                    cell.column.id === 'title' ? 'w-full' :
+                    cell.column.id === 'title' ? 'w-auto min-w-0' :
                     cell.column.id === 'priority' ? 'w-20' :
                     cell.column.id === 'status' ? 'w-24' :
                     cell.column.id === 'requirements' ? 'w-20' :
                     cell.column.id === 'technology' ? 'w-16' :
                     cell.column.id === 'assignees' ? 'w-16' :
-                    cell.column.id === 'actions' ? 'w-10' : ''
+                    cell.column.id === 'actions' ? 'w-14' : ''
                 const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
                 const isDragHandle = cell.column.id === 'drag-handle'
                 return (
                     <TableCell 
                         key={cell.id} 
-                        className={`py-3 ${widthClass} ${extraClass} border-r border-zinc-800 last:border-r-0`.trim()}
+                        className={`py-3 px-2 ${widthClass} ${extraClass}`.trim()}
                         {...(isDragHandle ? { 
                             ...listeners,
                             onClick: (e: React.MouseEvent) => {
@@ -496,8 +496,8 @@ export function Backlog({
     }
 
     return (
-        <div className="flex flex-col gap-3 h-full">
-            <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col gap-3 h-full min-w-0 pr-1">
+            <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner flex flex-col h-full overflow-hidden min-w-0">
                 {/* Header sticky */}
                 <div className="flex-shrink-0">
                     <Table className="table-fixed w-full">
@@ -507,15 +507,15 @@ export function Backlog({
                                     {headerGroup.headers.map(header => {
                                         const widthClass = header.column.id === 'drag-handle' ? 'w-10' :
                                             header.column.id === 'type' ? 'w-32 text-center' :
-                                            header.column.id === 'title' ? 'flex-1' :
+                                            header.column.id === 'title' ? 'w-auto' :
                                             header.column.id === 'priority' ? 'w-20' :
                                             header.column.id === 'status' ? 'w-24 text-center' :
                                             header.column.id === 'requirements' ? 'w-20 text-center' :
                                             header.column.id === 'technology' ? 'w-16' :
                                             header.column.id === 'assignees' ? 'w-16' :
-                                            header.column.id === 'actions' ? 'w-10' : ''
+                                            header.column.id === 'actions' ? 'w-14' : ''
                                         return (
-                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10 border-r border-zinc-800 last:border-r-0`}>
+                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10 px-2`}>
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(
@@ -532,7 +532,7 @@ export function Backlog({
                 </div>
                 
                 {/* Body con scroll */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 overflow-x-hidden">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
