@@ -898,3 +898,40 @@ export async function updateSubTaskTitle(subTaskId: number, newTitle: string) {
         return { success: false, error: 'Error al actualizar tarea' }
     }
 }
+
+export async function deleteIncidence(incidenceId: number) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    if (session.user.role !== 'ADMIN') {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId }
+        })
+
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        if (incidence.status === TaskStatus.DONE) {
+            return { success: false, error: 'No se pueden eliminar incidencias completadas' }
+        }
+
+        if (incidence.status === TaskStatus.REVIEW) {
+            return { success: false, error: 'No se pueden eliminar incidencias en revisión' }
+        }
+
+        await db.incidence.delete({
+            where: { id: incidenceId }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, message: 'Incidencia eliminada' }
+    } catch (error) {
+        console.error('Error deleting incidence:', error)
+        return { success: false, error: 'Error al eliminar incidencia' }
+    }
+}

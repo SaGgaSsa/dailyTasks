@@ -22,7 +22,7 @@ export function UserAvatar({ username, className, size = 'md' }: UserAvatarProps
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-full bg-accent text-accent-foreground font-bold uppercase',
+        'flex aspect-square items-center justify-center rounded-full bg-accent text-accent-foreground font-bold uppercase',
         sizes[size],
         className
       )}

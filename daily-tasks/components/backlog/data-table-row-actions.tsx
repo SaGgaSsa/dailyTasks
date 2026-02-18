@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails } from '@/types'
 import { TaskStatus } from '@/types/enums'
-import { completeIncidence } from '@/app/actions/incidence-actions'
+import { completeIncidence, deleteIncidence } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
 
 interface DataTableRowActionsProps {
@@ -31,7 +31,9 @@ interface DataTableRowActionsProps {
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const task = row.original
   const canComplete = task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS
+  const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleOpenDialog = (e: React.MouseEvent) => {
@@ -48,11 +50,24 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     const result = await completeIncidence(task.id)
     setIsLoading(false)
     setIsDialogOpen(false)
-    
+
     if (result.success) {
       toast.success('Incidencia completada correctamente')
     } else {
       toast.error(result.error || 'Error al completar la incidencia')
+    }
+  }
+
+  const handleConfirmDiscard = async () => {
+    setIsLoading(true)
+    const result = await deleteIncidence(task.id)
+    setIsLoading(false)
+    setIsDiscardDialogOpen(false)
+
+    if (result.success) {
+      toast.success('Incidencia descartada')
+    } else {
+      toast.error(result.error || 'Error al descartar la incidencia')
     }
   }
 
@@ -114,14 +129,18 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem 
-            disabled
-            className="text-red-600 focus:text-red-600"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Descartar Incidencia
-          </DropdownMenuItem>
+          {canDiscard && (
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsDiscardDialogOpen(true)
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Descartar Incidencia
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -135,7 +154,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               {task.title}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <h4 className="text-sm font-medium mb-3">Colaboradores:</h4>
             <div className="space-y-2">
@@ -146,8 +165,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                   <div key={index} className="flex justify-between items-center text-sm">
                     <span className="font-medium">{collab.name}</span>
                     <span className="text-muted-foreground">
-                      {collab.totalTasks === 0 
-                        ? 'Sin tareas' 
+                      {collab.totalTasks === 0
+                        ? 'Sin tareas'
                         : `${collab.pendingTasks}/${collab.totalTasks} pendientes`
                       }
                     </span>
@@ -163,6 +182,26 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             </Button>
             <Button onClick={handleConfirmComplete} disabled={isLoading}>
               {isLoading ? 'Completando...' : 'Confirmar Completado'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>¿Estás seguro de descartar esta incidencia?</DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. Se borrarán todas las tareas y asignaciones asociadas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDiscardDialogOpen(false)} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDiscard} disabled={isLoading}>
+              {isLoading ? 'Eliminando...' : 'Confirmar Eliminación'}
             </Button>
           </DialogFooter>
         </DialogContent>
