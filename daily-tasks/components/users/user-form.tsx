@@ -137,8 +137,8 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
         >
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full py-32">
-                    <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
-                    <span className="mt-4 text-zinc-400">Cargando datos...</span>
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <span className="mt-4 text-muted-foreground">Cargando datos...</span>
                 </div>
             ) : (
                 <>

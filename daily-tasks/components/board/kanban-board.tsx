@@ -234,11 +234,11 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         return (
             <div className="flex flex-col items-center pt-8">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="p-4 rounded-full bg-zinc-900/50">
-                        <Inbox className="h-8 w-8 text-zinc-600" />
+                    <div className="p-4 rounded-full bg-muted/50">
+                        <Inbox className="h-8 w-8 text-muted-foreground/60" />
                     </div>
                     <div className="flex flex-col items-center">
-                        <p className="text-zinc-400 font-medium">{t.incidences.noIncidences}</p>
+                        <p className="text-muted-foreground font-medium">{t.incidences.noIncidences}</p>
                     </div>
                 </div>
             </div>

@@ -24,7 +24,7 @@ export function ColumnAction({ status }: ColumnActionProps) {
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-zinc-500 hover:text-zinc-100 transition-colors"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setOpen(true)}
             >
                 <Plus className="h-4 w-4" />

@@ -14,15 +14,15 @@ export function UserAvatar({ username, className, size = 'md' }: UserAvatarProps
     : 'U'
 
   const sizes = {
-    sm: 'h-6 w-6 text-xs',
-    md: 'h-8 w-8 text-sm',
-    lg: 'h-10 w-10 text-base',
+    sm: 'h-7 w-7 text-[10px]',
+    md: 'h-9 w-9 text-xs',
+    lg: 'h-11 w-11 text-sm',
   }
 
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-full bg-zinc-800 text-zinc-200 font-bold uppercase',
+        'flex aspect-square items-center justify-center rounded-full bg-accent text-accent-foreground font-bold uppercase',
         sizes[size],
         className
       )}

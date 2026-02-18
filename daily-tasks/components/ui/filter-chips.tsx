@@ -12,11 +12,11 @@ interface FilterChipProps {
 
 function FilterChip({ label, value, onRemove }: FilterChipProps) {
   return (
-    <div className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded-md text-xs text-zinc-300">
+    <div className="inline-flex items-center gap-1 px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground">
       <span>{label}: {value}</span>
       <button
         onClick={onRemove}
-        className="text-zinc-400 hover:text-zinc-200 transition-colors"
+        className="text-muted-foreground/70 hover:text-foreground transition-colors"
       >
         <X className="h-3 w-3" />
       </button>
@@ -113,7 +113,7 @@ export function FilterChips({
           variant="ghost"
           size="sm"
           onClick={onResetFilters}
-          className="h-7 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+          className="h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
         >
           <X className="h-3 w-3 mr-1" />
           {resetLabel}

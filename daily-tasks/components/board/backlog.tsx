@@ -50,6 +50,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { updateTaskOrder } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
+import { DataTableRowActions } from '@/components/backlog/data-table-row-actions'
 
 interface BacklogProps {
     initialTasks: IncidenceWithDetails[]
@@ -69,7 +70,7 @@ interface BacklogProps {
 }
 
 const statusColors: Record<TaskStatus, string> = {
-    BACKLOG: 'bg-zinc-500/10 text-zinc-400 border-zinc-800',
+    BACKLOG: 'bg-muted text-muted-foreground border-border',
     TODO: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     IN_PROGRESS: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     REVIEW: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
@@ -113,25 +114,26 @@ function SortableRow({ row, onClick }: SortableRowProps) {
         <TableRow
             ref={setNodeRef}
             style={style}
-            className={`cursor-pointer hover:bg-zinc-900/50 transition-colors ${isDragging ? 'bg-zinc-900/80' : ''}`}
+            className={`cursor-pointer hover:bg-accent/50 transition-colors ${isDragging ? 'bg-accent/80' : ''}`}
             onClick={onClick}
             {...attributes}
         >
             {row.getVisibleCells().map((cell: any) => {
                 const widthClass = cell.column.id === 'drag-handle' ? 'w-10' :
-                    cell.column.id === 'type' ? 'w-24' :
-                    cell.column.id === 'title' ? 'w-full' :
+                    cell.column.id === 'type' ? 'w-32 text-center' :
+                    cell.column.id === 'title' ? 'w-auto min-w-0' :
                     cell.column.id === 'priority' ? 'w-20' :
                     cell.column.id === 'status' ? 'w-24' :
-                    cell.column.id === 'actions' ? 'w-20' :
+                    cell.column.id === 'requirements' ? 'w-20' :
                     cell.column.id === 'technology' ? 'w-16' :
-                    cell.column.id === 'assignees' ? 'w-16' : ''
+                    cell.column.id === 'assignees' ? 'w-16' :
+                    cell.column.id === 'actions' ? 'w-14' : ''
                 const extraClass = cell.column.id === 'title' ? 'min-w-0' : ''
                 const isDragHandle = cell.column.id === 'drag-handle'
                 return (
                     <TableCell 
                         key={cell.id} 
-                        className={`py-3 ${widthClass} ${extraClass}`.trim()}
+                        className={`py-3 px-2 ${widthClass} ${extraClass}`.trim()}
                         {...(isDragHandle ? { 
                             ...listeners,
                             onClick: (e: React.MouseEvent) => {
@@ -154,7 +156,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         cell: ({ row }) => {
             return (
                 <div className="flex items-center justify-center">
-                    <GripVertical className="h-4 w-4 text-zinc-600 cursor-grab" />
+                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                 </div>
             )
         },
@@ -162,16 +164,18 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'type',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tramite</div>,
+        header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Tramite</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-zinc-900/50 whitespace-nowrap ${typeColors[row.original.type]}`}>
-                {row.original.type} {row.original.externalId}
-            </Badge>
+            <div className="flex justify-center">
+                <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-muted whitespace-nowrap ${typeColors[row.original.type]}`}>
+                    {row.original.type} {row.original.externalId}
+                </Badge>
+            </div>
         ),
     },
     {
         accessorKey: 'title',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Detalle</div>,
+        header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
             const title = row.original.title
             const totalHours = row.original.estimatedTime || 0
@@ -184,16 +188,16 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             
             return (
                 <div className="flex items-center gap-4 min-w-0">
-                    <span className="text-sm text-zinc-200 font-medium flex-1 truncate" title={title}>
+                    <span className="text-sm text-foreground font-medium flex-1 truncate" title={title}>
                         {title}
                     </span>
                     <div className="flex items-center gap-3 shrink-0">
                         {hasTasks && (
-                            <span className="text-[10px] text-zinc-400 whitespace-nowrap">
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                 {pendingTasks.length}/{allTasks.length} pendientes
                             </span>
                         )}
-                        <span className={`text-xs whitespace-nowrap ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+                        <span className={`text-xs whitespace-nowrap ${isComplete ? 'text-green-400' : 'text-muted-foreground'}`}>
                             {formatHoursDisplay(completedHours, totalHours)}
                             {isComplete && <CheckCircle2 className="h-3 w-3 ml-1 inline" />}
                         </span>
@@ -213,7 +217,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 LOW: 'text-green-400 bg-green-500/10 border-green-500/20',
             }
             return (
-                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${colors[priority as keyof typeof colors] || 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20'}`}>
+                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${colors[priority as keyof typeof colors] || 'text-muted-foreground bg-muted border-border'}`}>
                     {defaultPriorityLabels[priority] || priority}
                 </Badge>
             )
@@ -221,20 +225,22 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
     },
     {
         accessorKey: 'status',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Estado</div>,
+        header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Estado</div>,
         cell: ({ row }) => (
-            <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
-                {row.original.status === 'BACKLOG' ? 'Backlog' :
-                    row.original.status === 'TODO' ? 'Por Hacer' :
-                        row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
-                            row.original.status === 'REVIEW' ? 'Revision' :
-                                row.original.status === 'DONE' ? 'Finalizado' : row.original.status}
-            </Badge>
+            <div className="flex justify-center">
+                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${statusColors[row.original.status]}`}>
+                    {row.original.status === 'BACKLOG' ? 'Backlog' :
+                        row.original.status === 'TODO' ? 'Por Hacer' :
+                            row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
+                                row.original.status === 'REVIEW' ? 'Revision' :
+                                    row.original.status === 'DONE' ? 'Finalizado' : row.original.status}
+                </Badge>
+            </div>
         ),
     },
     {
-        id: 'actions',
-        header: () => <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Req</div>,
+        id: 'requirements',
+        header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Req</div>,
         cell: ({ row }) => {
             const task = row.original
             const hasHours = (task.estimatedTime ?? 0) > 0
@@ -244,7 +250,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className={hasHours ? 'text-zinc-600' : 'text-orange-500'}>
+                                <div className={hasHours ? 'text-muted-foreground' : 'text-orange-500'}>
                                     {hasHours ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
                                 </div>
                             </TooltipTrigger>
@@ -257,7 +263,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className={task.assignments.length > 0 ? 'text-zinc-600' : 'text-orange-500'}>
+                                <div className={task.assignments.length > 0 ? 'text-muted-foreground' : 'text-orange-500'}>
                                     {task.assignments.length > 0 ? <CheckCircle className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                                 </div>
                             </TooltipTrigger>
@@ -271,7 +277,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                             <TooltipTrigger asChild>
                                 <div className={(() => {
                                     const allTasks = task.assignments.flatMap(a => a.tasks)
-                                    return allTasks.length > 0 ? 'text-zinc-600' : 'text-orange-500'
+                                    return allTasks.length > 0 ? 'text-muted-foreground' : 'text-orange-500'
                                 })()}>
                                     {(() => {
                                         const allTasks = task.assignments.flatMap(a => a.tasks)
@@ -295,7 +301,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         accessorKey: 'technology',
         header: () => null,
         cell: ({ row }) => (
-            <span className="text-[10px] font-medium text-zinc-500 bg-zinc-900/30 px-2 py-0.5 rounded whitespace-nowrap">
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded whitespace-nowrap">
                 {row.original.technology}
             </span>
         ),
@@ -316,7 +322,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                     <div className="flex items-center justify-center w-8">
                         <UserAvatar
                             username={assignment.user.username}
-                            className="h-6 w-6 border-2 border-[#0F0F0F] ring-1 ring-zinc-800 text-[9px]"
+                            className="h-6 w-6 border-2 border-background ring-1 ring-border text-[9px]"
                         />
                     </div>
                 )
@@ -328,7 +334,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <div className="flex items-center justify-center w-8 text-zinc-500">
+                            <div className="flex items-center justify-center w-8 text-muted-foreground">
                                 <User className="h-5 w-5" />
                             </div>
                         </TooltipTrigger>
@@ -339,6 +345,12 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                 </TooltipProvider>
             )
         },
+        size: 40,
+    },
+    {
+        id: 'actions',
+        header: () => null,
+        cell: ({ row }) => <DataTableRowActions row={row} />,
         size: 40,
     },
 ]
@@ -484,25 +496,26 @@ export function Backlog({
     }
 
     return (
-        <div className="flex flex-col gap-3 h-full">
-            <div className="border border-zinc-900 rounded-2xl bg-[#0F0F0F] shadow-inner flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col gap-3 h-full min-w-0 pr-1">
+            <div className="border border-border rounded-2xl bg-card shadow-inner flex flex-col h-full overflow-hidden min-w-0">
                 {/* Header sticky */}
                 <div className="flex-shrink-0">
                     <Table className="table-fixed w-full">
-                        <TableHeader className="sticky top-0 z-10">
+                        <TableHeader className="sticky top-0 z-10 border-b-2 border-border">
                             {table.getHeaderGroups().map(headerGroup => (
-                                <TableRow key={headerGroup.id} className="border-b border-zinc-800">
+                                <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map(header => {
                                         const widthClass = header.column.id === 'drag-handle' ? 'w-10' :
-                                            header.column.id === 'type' ? 'w-24' :
-                                            header.column.id === 'title' ? 'w-full' :
+                                            header.column.id === 'type' ? 'w-32 text-center' :
+                                            header.column.id === 'title' ? 'w-auto' :
                                             header.column.id === 'priority' ? 'w-20' :
-                                            header.column.id === 'status' ? 'w-24' :
-                                            header.column.id === 'actions' ? 'w-20' :
+                                            header.column.id === 'status' ? 'w-24 text-center' :
+                                            header.column.id === 'requirements' ? 'w-20 text-center' :
                                             header.column.id === 'technology' ? 'w-16' :
-                                            header.column.id === 'assignees' ? 'w-16' : ''
+                                            header.column.id === 'assignees' ? 'w-16' :
+                                            header.column.id === 'actions' ? 'w-14' : ''
                                         return (
-                                            <TableHead key={header.id} className={`bg-[#0F0F0F] ${widthClass} h-10`}>
+                                            <TableHead key={header.id} className={`bg-card ${widthClass} h-10 px-2`}>
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(
@@ -519,7 +532,7 @@ export function Backlog({
                 </div>
                 
                 {/* Body con scroll */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 overflow-x-hidden">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -530,16 +543,16 @@ export function Backlog({
                             strategy={verticalListSortingStrategy}
                         >
                             <Table className="table-fixed w-full">
-                                <TableBody className="divide-y divide-zinc-900">
+                                <TableBody className="divide-y divide-border">
                                     {filteredTasks.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={columns.length} className="p-12 text-center w-full">
                                                 <div className="flex flex-col items-center justify-center gap-3">
-                                                    <div className="p-4 rounded-full bg-zinc-900/50">
-                                                        <Inbox className="h-8 w-8 text-zinc-600" />
+                                                    <div className="p-4 rounded-full bg-muted/50">
+                                                        <Inbox className="h-8 w-8 text-muted-foreground/60" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-zinc-400 font-medium">No se encontraron incidencias</p>
+                                                        <p className="text-muted-foreground font-medium">No se encontraron incidencias</p>
                                                     </div>
                                                 </div>
                                             </TableCell>

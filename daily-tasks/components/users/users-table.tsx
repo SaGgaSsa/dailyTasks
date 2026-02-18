@@ -108,16 +108,16 @@ export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
 
             {/* Diálogo de confirmación */}
             <Dialog open={userToDelete !== null} onOpenChange={(open) => !open && handleCancelDelete()}>
-                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800">
+                <DialogContent className="sm:max-w-md bg-card border-border">
                     <DialogHeader className="space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-full bg-red-500/10">
                                 <AlertTriangle className="h-6 w-6 text-red-500" />
                             </div>
-                            <DialogTitle className="text-zinc-100">Confirmar eliminación</DialogTitle>
+                            <DialogTitle className="text-card-foreground">Confirmar eliminación</DialogTitle>
                         </div>
-                        <DialogDescription className="text-zinc-400">
-                            ¿Estás seguro de que deseas eliminar a <span className="font-medium text-zinc-200">{userToDelete?.name}</span>? 
+                        <DialogDescription className="text-muted-foreground">
+                            ¿Estás seguro de que deseas eliminar a <span className="font-medium text-foreground">{userToDelete?.name}</span>?
                             Esta acción no se puede deshacer.
                         </DialogDescription>
                     </DialogHeader>
@@ -125,7 +125,7 @@ export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
                         <Button
                             variant="outline"
                             onClick={handleCancelDelete}
-                            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                            className="border-border text-foreground hover:bg-accent hover:text-foreground"
                         >
                             Cancelar
                         </Button>

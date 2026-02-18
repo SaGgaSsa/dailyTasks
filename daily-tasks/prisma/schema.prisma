@@ -65,6 +65,7 @@ model Incidence {
   priority      Priority   @default(MEDIUM)
   technology    TechStack
   estimatedTime Int?
+  completedAt   DateTime?
   
   position      Float     @default(0)
   createdAt     DateTime  @default(now())

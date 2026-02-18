@@ -81,9 +81,9 @@ export function FormSheet({
                         onClose()
                     }
                 }}
-                className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
+                className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-card border-border overflow-y-auto"
             >
-                <SheetHeader className="space-y-2 border-b border-zinc-800">
+                <SheetHeader className="space-y-2 border-b border-border">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 pt-1">
                             <Button
@@ -91,17 +91,17 @@ export function FormSheet({
                                 size="icon"
                                 onClick={handleSaveAndClose}
                                 disabled={isSaving}
-                                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                                 title="Guardar"
                             >
                             {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                             ) : (
                                 <Check className="h-4 w-4" />
                             )}
                         </Button>
                         </div>
-                        <SheetTitle className="text-zinc-100 pt-1">
+                        <SheetTitle className="text-card-foreground pt-1">
                             {title}
                         </SheetTitle>
                         <SheetDescription className="sr-only">
@@ -111,7 +111,7 @@ export function FormSheet({
                             variant="ghost"
                             size="icon"
                             onClick={handleClose}
-                            className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                             title={hasUnsavedChanges ? "Descartar cambios" : "Cerrar"}
                         >
                             <X className="h-4 w-4" />
@@ -136,7 +136,7 @@ interface FormFieldProps {
 export function FormField({ id, label, children }: FormFieldProps) {
     return (
         <div className="space-y-2">
-            <Label htmlFor={id} className="text-zinc-300">
+            <Label htmlFor={id} className="text-card-foreground/80">
                 {label}
             </Label>
             {children}
@@ -153,7 +153,7 @@ export function FormInput({ label, id, className, ...props }: FormInputProps) {
         <FormField id={id} label={label}>
             <Input
                 id={id}
-                className={`bg-zinc-900 border-zinc-800 text-zinc-100 ${className || ''}`}
+                className={`bg-input border-input text-foreground ${className || ''}`}
                 {...props}
             />
         </FormField>
@@ -169,7 +169,7 @@ export function FormTextarea({ label, id, className, ...props }: FormTextareaPro
         <FormField id={id} label={label}>
             <Textarea
                 id={id}
-                className={`bg-zinc-900 border-zinc-800 text-zinc-100 ${className || ''}`}
+                className={`bg-input border-input text-foreground ${className || ''}`}
                 {...props}
             />
         </FormField>
@@ -205,12 +205,12 @@ export function FormSelect({
     return (
         <FormField id={id} label={label}>
             <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-                <SelectTrigger className={`bg-zinc-900 border-zinc-800 text-zinc-100 ${className || ''}`}>
+                <SelectTrigger className={`bg-input border-input text-foreground ${className || ''}`}>
                     <SelectValue placeholder={placeholder} />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent className="bg-popover border-border">
                     {options.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-100">
+                        <SelectItem key={opt.value} value={opt.value} className="text-popover-foreground">
                             {opt.label}
                         </SelectItem>
                     ))}
