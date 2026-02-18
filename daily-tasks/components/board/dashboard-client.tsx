@@ -188,15 +188,6 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                             allValues={Object.values(TechStack)}
                             onValuesChange={updateTech}
                         />
-
-                        <FilterDropdown
-                            icon={<User className="h-4 w-4" />}
-                            label="Usuario"
-                            options={userOptions}
-                            selectedValues={params.assignee || []}
-                            allValues={userOptions.map(opt => opt.value)}
-                            onValuesChange={updateAssignee}
-                        />
                     </div>
                 </div>
 
@@ -204,18 +195,17 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     searchQuery={params.search}
                     selectedTech={params.tech}
                     selectedStatus={[]}
-                    selectedAssignee={params.assignee || []}
+                    selectedAssignee={[]}
                     techOptions={techOptions}
                     statusOptions={statusOptions}
-                    assigneeOptions={userOptions}
+                    assigneeOptions={[]}
                     onSearchChange={updateSearch}
                     onTechChange={updateTech}
                     onStatusChange={() => {}}
-                    onAssigneeChange={updateAssignee}
+                    onAssigneeChange={() => {}}
                     onResetFilters={() => {
                         updateSearch('')
                         updateTech([])
-                        updateAssignee([])
                     }}
                 />
 
@@ -226,7 +216,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         searchQuery={params.search || ''}
                         techFilter={params.tech || []}
                         userId={userId}
-                        userFilter={params.assignee || []}
+                        userFilter={[]}
                         kanbanOnlyMyAssignments={false}
                         onResetFilters={handleResetKanbanFilters}
                     />

@@ -830,7 +830,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             return (
                                 <div key={user.id} className="border-b border-border last:border-b-0">
                                     <div 
-                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-accent/50' : 'cursor-not-allowed opacity-60'}`}
+                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-accent/50' : 'cursor-not-allowed'}`}
                                         onClick={() => isSelected && toggleAssigneeExpanded(user.id)}
                                     >
                                         <Checkbox
@@ -840,14 +840,14 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                             disabled={isSelected && (userTasks.length > 0 || userDraftTasks.length > 0)}
                                             className="border-input"
                                         />
-                                        <span className="text-card-foreground/80 text-sm">{user.name}</span>
+                                        <span className={`text-card-foreground/80 text-sm ${!isSelected ? 'opacity-60' : ''}`}>{user.name}</span>
                                         {(userTasks.length > 0 || userDraftTasks.length > 0) && (
-                                            <span className="text-muted-foreground/70 text-xs">
+                                            <span className={`text-muted-foreground/70 text-xs ${!isSelected ? 'opacity-60' : ''}`}>
                                                 {pendingTasks.length + userDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
                                             </span>
                                         )}
                                         <div className="flex-1" />
-                                        <div className="flex items-center gap-2">
+                                        <div className={`flex items-center gap-2 ${!isSelected ? 'opacity-60' : ''}`}>
                                             <span className="text-muted-foreground/70 text-xs">Horas Asignadas:</span>
                                             <Input
                                                 type="number"
