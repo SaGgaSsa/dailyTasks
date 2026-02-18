@@ -21,6 +21,7 @@ import { useSession } from 'next-auth/react'
 interface TaskCardProps {
     task: IncidenceWithDetails
     onClick?: () => void
+    canDrag?: boolean
 }
 
 const priorityColors = {
@@ -35,7 +36,7 @@ const typeColors: Record<string, string> = {
     I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, canDrag = true }: TaskCardProps) {
     const { data: session } = useSession()
     const userId = session?.user?.id || undefined
     const {
@@ -45,7 +46,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: task.id, data: { task } })
+    } = useSortable({ id: task.id, data: { task }, disabled: !canDrag })
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -76,7 +77,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             onClick={(e) => {
                 if (onClick) onClick();
             }}
-            className={`mb-3 cursor-pointer bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
+            className={`mb-3 ${canDrag ? 'cursor-pointer' : 'cursor-default'} bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
         >
             <CardContent className="p-2 space-y-1.5">
                 {/* Header: ID + Priority + Title */}
