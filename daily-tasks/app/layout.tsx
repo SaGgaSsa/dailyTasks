@@ -27,15 +27,29 @@ export const metadata: Metadata = {
 // Script para prevenir flash de tema incorrecto
 const themeScript = `
   (function() {
+    function getCookie(name) {
+      var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+    function setCookie(name, value) {
+      var expires = new Date();
+      expires.setFullYear(expires.getFullYear() + 1);
+      document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
+    }
     function getThemePreference() {
-      const savedTheme = localStorage.getItem('dailytasks-theme');
-      if (savedTheme && ['dark', 'light'].includes(savedTheme)) {
-        return savedTheme;
+      var cookie = getCookie('dailytasks-theme');
+      if (cookie && ['dark', 'light'].indexOf(cookie) !== -1) {
+        return cookie;
+      }
+      var stored = localStorage.getItem('dailytasks-theme');
+      if (stored && ['dark', 'light'].indexOf(stored) !== -1) {
+        setCookie('dailytasks-theme', stored);
+        return stored;
       }
       return 'dark';
     }
-    const theme = getThemePreference();
-    const root = document.documentElement;
+    var theme = getThemePreference();
+    var root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
