@@ -830,7 +830,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             return (
                                 <div key={user.id} className="border-b border-border last:border-b-0">
                                     <div 
-                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-accent/50' : 'cursor-not-allowed'}`}
+                                        className={`flex items-center gap-3 px-3 py-2 ${isSelected ? 'cursor-pointer hover:bg-transparent' : 'cursor-not-allowed'}`}
                                         onClick={() => isSelected && toggleAssigneeExpanded(user.id)}
                                     >
                                         <Checkbox

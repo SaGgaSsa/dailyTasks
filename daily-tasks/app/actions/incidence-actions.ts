@@ -201,7 +201,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     const myAssignment = incidence.assignments.find(a => a.userId === userId)
                     if (!myAssignment) return false
                     const myPendingTasks = myAssignment.tasks.filter(t => !t.isCompleted).length
-                    return myPendingTasks > 0
+                    return myAssignment.tasks.length === 0 || myPendingTasks > 0
                 }
                 return true
             }) as IncidenceWithDetails[]
