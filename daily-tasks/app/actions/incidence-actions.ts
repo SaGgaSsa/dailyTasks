@@ -186,7 +186,28 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                 }
             ]
         })
-        return { data: incidences as IncidenceWithDetails[] }
+
+        // Filtrado para DEV: ocultar incidencias en IN_PROGRESS si el usuario completó todas sus tareas
+        let filteredIncidences = incidences as IncidenceWithDetails[]
+        if (isDev && viewType === 'KANBAN') {
+            const userId = Number(session.user.id)
+            filteredIncidences = incidences.filter((incidence) => {
+                // Mostrar TODO y REVIEW sin filtro adicional
+                if (incidence.status === TaskStatus.TODO || incidence.status === TaskStatus.REVIEW) {
+                    return true
+                }
+                // Para IN_PROGRESS: mostrar solo si tiene subtareas pendientes del usuario
+                if (incidence.status === TaskStatus.IN_PROGRESS) {
+                    const myAssignment = incidence.assignments.find(a => a.userId === userId)
+                    if (!myAssignment) return false
+                    const myPendingTasks = myAssignment.tasks.filter(t => !t.isCompleted).length
+                    return myPendingTasks > 0
+                }
+                return true
+            }) as IncidenceWithDetails[]
+        }
+
+        return { data: filteredIncidences }
     } catch (error) {
         console.error('Error getting incidences:', error)
         return { data: [], error: t(locale as Locale, 'errors.fetchError') }

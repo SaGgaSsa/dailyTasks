@@ -219,6 +219,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         userFilter={[]}
                         kanbanOnlyMyAssignments={false}
                         onResetFilters={handleResetKanbanFilters}
+                        isDev={true}
                     />
                 </div>
             </div>
@@ -352,6 +353,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         userFilter={params.assignee || []}
                         kanbanOnlyMyAssignments={params.mine || false}
                         onResetFilters={handleResetKanbanFilters}
+                        isDev={false}
                     />
                 )}
             </div>

@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckSquare, CheckCircle, CheckCircle2, Clock, User, List } from 'lucide-react'
+import { CheckSquare, CheckCircle, Clock, User, List } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IncidenceWithDetails } from '@/types'
@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/tooltip"
 import { MarkdownText } from '@/components/ui/markdown-text'
 import { TaskStatus } from '@/types/enums'
-import { calculateCompletedHours, formatHoursDisplay, isFullyCompleted } from '@/lib/hours-calculation'
-import { useSession } from 'next-auth/react'
+import { calculateCompletedHours, formatHoursDisplay } from '@/lib/hours-calculation'
 
 interface TaskCardProps {
     task: IncidenceWithDetails
     onClick?: () => void
+    canDrag?: boolean
 }
 
 const priorityColors = {
@@ -35,9 +35,7 @@ const typeColors: Record<string, string> = {
     I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
-    const { data: session } = useSession()
-    const userId = session?.user?.id || undefined
+export function TaskCard({ task, onClick, canDrag = true }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -45,7 +43,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: task.id, data: { task } })
+    } = useSortable({ id: task.id, data: { task }, disabled: !canDrag })
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -63,9 +61,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const hasSubTasks = allSubTasks.length > 0
 
     const completedHours = calculateCompletedHours(task)
-    const isComplete = isFullyCompleted(completedHours, task.estimatedTime)
-    const userAssignment = task.assignments.find(a => String(a.userId) === String(userId))
-    const userHours = userAssignment?.assignedHours || 0
 
     return (
         <Card
@@ -73,10 +68,10 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             style={style}
             {...attributes}
             {...listeners}
-            onClick={(e) => {
+            onClick={() => {
                 if (onClick) onClick();
             }}
-            className={`mb-3 cursor-pointer bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
+            className={`mb-3 ${canDrag ? 'cursor-pointer' : 'cursor-default'} bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
         >
             <CardContent className="p-2 space-y-1.5">
                 {/* Header: ID + Priority + Title */}
@@ -117,16 +112,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                         {formatHoursDisplay(completedHours, task.estimatedTime)}
                     </span>
                 </div>
-                {task.estimatedTime && userId && userHours > 0 && (
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">
-                            Mis horas: {userHours}h
-                        </span>
-                        {task.estimatedTime && isComplete && (
-                            <CheckCircle2 className="h-3 w-3 text-green-400" />
-                        )}
-                    </div>
-                )}
+
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                         <CheckSquare className="h-3 w-3" />
@@ -157,7 +143,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <User className="h-4 w-4 text-muted-foreground" />
+                                        <User className="h-5 w-5 text-muted-foreground" />
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p className="text-xs">{usernames}</p>

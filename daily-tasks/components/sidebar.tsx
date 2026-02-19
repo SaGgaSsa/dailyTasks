@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -19,11 +19,30 @@ interface SidebarProps {
   userId?: string
 }
 
+const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
+
+function subscribe() {
+  return () => {}
+}
+
+function getSnapshot(): boolean {
+  if (typeof window === 'undefined') return true
+  return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'true'
+}
+
+function getServerSnapshot(): boolean {
+  return true
+}
+
 export function Sidebar({ userId }: SidebarProps) {
   const { data: session } = useSession()
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState<boolean>(useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot))
   const pathname = usePathname()
   const { t } = useI18n()
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(!isOpen))
+  }, [isOpen])
 
   const isAdmin = session?.user?.role === 'ADMIN'
 
