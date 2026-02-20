@@ -936,6 +936,54 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     
                                     {isExpanded && isSelected && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            {/* Tareas pendientes de la base de datos */}
+                                            {pendingTasks.map((task: SubTask) => (
+                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-accent/30 rounded group">
+                                                    <Checkbox
+                                                        checked={tasksToToggle.has(task.id)}
+                                                        onCheckedChange={() => handleToggleTask(task.id)}
+                                                        className="border-input"
+                                                    />
+                                                    {editingTaskId === task.id ? (
+                                                        <Input
+                                                            value={taskEdits[task.id] || ''}
+                                                            onChange={(e) => setTaskEdits(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveEditTask(task.id)
+                                                                if (e.key === 'Escape') handleCancelEditTask(task.id)
+                                                            }}
+                                                            onBlur={() => handleSaveEditTask(task.id)}
+                                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm text-card-foreground/80 flex-1">{taskEdits[task.id] || task.title}</span>
+                                                    )}
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleStartEditTask(task.id, task.title)}
+                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                            </svg>
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDeleteTask(task.id)}
+                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-red-400"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+
                                             {/* Tareas nuevas en la sesión */}
                                             {draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id).map(draft => (
                                                 <div key={draft.tempId} className="flex items-center gap-2 px-2 py-1 bg-accent/50 rounded group">
@@ -1015,6 +1063,40 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                 className={`bg-background text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-border'}`}
                                                 placeholder={`Nueva tarea para ${user.name}...`}
                                             />
+
+                                            {/* Tareas completadas - Toggle para mostrar */}
+                                            {completedTasks.length > 0 && (
+                                                <div className="pt-2 border-t border-border">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleShowCompletedForUser(user.id)}
+                                                        className="text-xs text-muted-foreground/70 hover:text-card-foreground/80 flex items-center gap-1"
+                                                    >
+                                                        {showCompletedTasksByUser[user.id] ? (
+                                                            <>▼ Ocultar completadas ({completedTasks.length})</>
+                                                        ) : (
+                                                            <>▶ Mostrar completadas ({completedTasks.length})</>
+                                                        )}
+                                                    </button>
+                                                    
+                                                    {showCompletedTasksByUser[user.id] && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {completedTasks.map((task: SubTask) => (
+                                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 rounded opacity-60">
+                                                                    <Checkbox
+                                                                        checked={!tasksToToggle.has(task.id)}
+                                                                        onCheckedChange={() => handleToggleTask(task.id)}
+                                                                        className="border-input"
+                                                                    />
+                                                                    <span className="text-sm line-through text-muted-foreground/70 flex-1">
+                                                                        {taskEdits[task.id] || task.title}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
