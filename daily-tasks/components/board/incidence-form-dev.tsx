@@ -330,7 +330,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <Label className="text-card-foreground/80">
-                                Pendientes ({pendingTasks.length + draftPending.length}/{tasks.length + draftTasks.length})
+                                Pendientes ({pendingTasks.length + draftPending.length}/{tasks.filter(t => !tasksToDelete.has(t.id)).length + draftTasks.length})
                             </Label>
                             {completedTasks.length > 0 && (
                                 <div className="flex items-center gap-2">
