@@ -859,6 +859,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
                             const userTasks = userAssignment?.tasks || []
                             const userDraftTasks = draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id)
+                            const pendingUserDraftTasks = userDraftTasks.filter(t => !t.isCompleted)
                             const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted && !tasksToDelete.has(t.id))
                             const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted && !tasksToDelete.has(t.id))
                             const isExpanded = expandedAssignees.has(user.id)
@@ -879,7 +880,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                         <span className={`text-card-foreground/80 text-sm ${!isSelected ? 'opacity-60' : ''}`}>{user.name}</span>
                                         {(userTasks.length > 0 || userDraftTasks.length > 0) && (
                                             <span className={`text-muted-foreground/70 text-xs ${!isSelected ? 'opacity-60' : ''}`}>
-                                                {pendingTasks.length + userDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
+                                                {pendingTasks.length + pendingUserDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
                                             </span>
                                         )}
                                         <div className="flex-1" />
@@ -1155,7 +1156,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             {totalTasks > 0 && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-muted-foreground">
-                                        {totalCompleted}/{totalTasks} pendientes
+                                        {totalPending}/{totalTasks} pendientes
                                     </span>
                                     <Checkbox
                                         checked={showCompletedTasks}
