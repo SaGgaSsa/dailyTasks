@@ -60,6 +60,14 @@ export function FormSheet({
         }
     }
 
+    const handleCloseAndDiscard = () => {
+        if (hasUnsavedChanges && onDiscard) {
+            onDiscard()
+        } else {
+            onOpenChange(false)
+        }
+    }
+
     return (
         <Sheet
             open={open}
@@ -110,7 +118,7 @@ export function FormSheet({
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={handleClose}
+                            onClick={handleCloseAndDiscard}
                             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                             title={hasUnsavedChanges ? "Descartar cambios" : "Cerrar"}
                         >

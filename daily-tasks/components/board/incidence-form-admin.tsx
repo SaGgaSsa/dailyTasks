@@ -170,6 +170,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 setTasksToDelete(new Set())
                 setTaskEdits({})
                 setEditingTaskId(null)
+                setEditingDraftTaskId(null)
+                setDraftTaskEdits({})
                 setShowCompletedTasks(false)
                 setShowCompletedTasksByUser({})
                 
@@ -857,8 +859,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             const userAssignment = fullIncidenceData?.assignments?.find(a => a.userId === user.id)
                             const userTasks = userAssignment?.tasks || []
                             const userDraftTasks = draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id)
-                            const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted)
-                            const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted)
+                            const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted && !tasksToDelete.has(t.id))
+                            const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted && !tasksToDelete.has(t.id))
                             const isExpanded = expandedAssignees.has(user.id)
 
                             return (
