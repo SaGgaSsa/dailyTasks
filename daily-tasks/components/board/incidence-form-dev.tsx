@@ -51,6 +51,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
     const [showCompleted, setShowCompleted] = useState(false)
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
     const [editTitle, setEditTitle] = useState('')
+    const [editingDraftTaskId, setEditingDraftTaskId] = useState<string | null>(null)
+    const [draftTaskEdits, setDraftTaskEdits] = useState<Record<string, string>>({})
     const [description, setDescription] = useState('')
     const [originalDescription, setOriginalDescription] = useState('')
 
@@ -66,6 +68,10 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
         const loadUserTasks = async () => {
             if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
+                setDraftTasks([])
+                setTasksToUpdate(new Set())
+                setTasksToDelete(new Set())
+                setTaskEdits({})
                 try {
                     const { incidence } = await getIncidenceWithUsers(type, externalId)
                     if (incidence) {
@@ -114,8 +120,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
         setDraftTasks(prev => prev.filter(t => t.tempId !== tempId))
     }
 
-    const pendingTasks = tasks.filter(t => !t.isCompleted)
-    const completedTasks = tasks.filter(t => t.isCompleted)
+    const pendingTasks = tasks.filter(t => !t.isCompleted && !tasksToDelete.has(t.id))
+    const completedTasks = tasks.filter(t => t.isCompleted && !tasksToDelete.has(t.id))
     const draftPending = draftTasks.filter(t => !t.isCompleted)
     const draftCompleted = draftTasks.filter(t => t.isCompleted)
 
@@ -178,6 +184,38 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
     const cancelEdit = () => {
         setEditingTaskId(null)
         setEditTitle('')
+    }
+
+    const handleStartEditDraftTask = (tempId: string, currentTitle: string) => {
+        setEditingDraftTaskId(tempId)
+        setDraftTaskEdits(prev => ({ ...prev, [tempId]: currentTitle }))
+    }
+
+    const handleSaveEditDraftTask = (tempId: string) => {
+        const newTitle = draftTaskEdits[tempId]
+        if (!newTitle?.trim() || newTitle.trim().length < 3) {
+            setEditingDraftTaskId(null)
+            setDraftTaskEdits(prev => {
+                const next = { ...prev }
+                delete next[tempId]
+                return next
+            })
+            return
+        }
+        setDraftTasks(prev => prev.map(t => 
+            t.tempId === tempId ? { ...t, title: newTitle.trim() } : t
+        ))
+        setDraftTaskEdits(prev => ({ ...prev, [tempId]: newTitle.trim() }))
+        setEditingDraftTaskId(null)
+    }
+
+    const handleCancelEditDraftTask = (tempId: string) => {
+        setEditingDraftTaskId(null)
+        setDraftTaskEdits(prev => {
+            const next = { ...prev }
+            delete next[tempId]
+            return next
+        })
     }
 
     const handleSave = async () => {
@@ -364,16 +402,41 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                     onCheckedChange={() => handleToggleDraft(draft.tempId)}
                                     className="border-input"
                                 />
-                                <span className={`text-sm flex-1 ${draft.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>{draft.title}</span>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeDraftTask(draft.tempId)}
-                                    className="h-6 w-6 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
+                                {editingDraftTaskId === draft.tempId ? (
+                                    <Input
+                                        value={draftTaskEdits[draft.tempId] || ''}
+                                        onChange={(e) => setDraftTaskEdits(prev => ({ ...prev, [draft.tempId]: e.target.value }))}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSaveEditDraftTask(draft.tempId)
+                                            if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
+                                        }}
+                                        onBlur={() => handleSaveEditDraftTask(draft.tempId)}
+                                        className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <span className={`text-sm flex-1 ${draft.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>{draftTaskEdits[draft.tempId] || draft.title}</span>
+                                )}
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleStartEditDraftTask(draft.tempId, draft.title)}
+                                        className="h-6 w-6 text-muted-foreground/70 hover:text-card-foreground/80"
+                                    >
+                                        <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => removeDraftTask(draft.tempId)}
+                                        className="h-6 w-6 text-muted-foreground/70 hover:text-red-400"
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
                             </div>
                         ))}
 
@@ -393,13 +456,47 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                         <div className="space-y-2 pt-2 border-t border-border">
                             <Label className="text-muted-foreground text-xs">Completadas ({completedTasks.length + draftCompleted.length})</Label>
                             {draftCompleted.map(draft => (
-                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded opacity-60">
+                                <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded opacity-60 group">
                                     <Checkbox
                                         checked={true}
                                         onCheckedChange={() => handleToggleDraft(draft.tempId)}
                                         className="border-input"
                                     />
-                                    <span className="text-sm text-muted-foreground line-through flex-1">{draft.title}</span>
+                                    {editingDraftTaskId === draft.tempId ? (
+                                        <Input
+                                            value={draftTaskEdits[draft.tempId] || ''}
+                                            onChange={(e) => setDraftTaskEdits(prev => ({ ...prev, [draft.tempId]: e.target.value }))}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveEditDraftTask(draft.tempId)
+                                                if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
+                                            }}
+                                            onBlur={() => handleSaveEditDraftTask(draft.tempId)}
+                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground line-through flex-1">{draftTaskEdits[draft.tempId] || draft.title}</span>
+                                    )}
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleStartEditDraftTask(draft.tempId, draft.title)}
+                                            className="h-6 w-6 text-muted-foreground/70 hover:text-card-foreground/80"
+                                        >
+                                            <Edit2 className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeDraftTask(draft.tempId)}
+                                            className="h-6 w-6 text-muted-foreground/70 hover:text-red-400"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                             {completedTasks.map(task => (
