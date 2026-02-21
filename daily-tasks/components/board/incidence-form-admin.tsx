@@ -186,7 +186,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             type: incidence.type,
                             externalId: incidence.externalId?.toString() || '',
                             title: incidence.title || '',
-                            description: incidence.description || '',
+                            description: incidence.comment || '',
                             priority: incidence.priority,
                             technology: incidence.technology,
                             estimatedTime: incidence.estimatedTime?.toString() || '',

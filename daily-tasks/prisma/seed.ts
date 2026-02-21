@@ -96,7 +96,7 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
           type: TaskType.I_MODAPL,
           externalId,
           title,
-          description: title,
+          comment: title,
           status,
           priority: Priority.MEDIUM,
           technology: TechStack.SISA,

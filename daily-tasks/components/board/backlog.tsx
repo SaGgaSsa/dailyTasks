@@ -398,7 +398,7 @@ export function Backlog({
         const filtered = tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)

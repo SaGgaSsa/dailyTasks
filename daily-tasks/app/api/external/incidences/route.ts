@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         status: TaskStatus.BACKLOG,
         priority: Priority.MEDIUM,
         estimatedTime: 0,
-        description: title,
+        comment: title,
       },
     })
 

@@ -42,7 +42,7 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
                 type: data.type,
                 externalId: data.externalId,
                 title: data.title,
-                description: data.description,
+                comment: data.description,
                 technology: data.tech,
                 priority: data.priority,
                 estimatedTime: data.estimatedTime,
@@ -100,7 +100,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
             
             const orConditions = [
                 { title: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } }
+                { comment: { contains: search, mode: 'insensitive' } }
             ] as unknown[]
             
             // Add externalId search only if valid number
@@ -501,7 +501,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
         const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
-            description: data.description,
+            comment: data.description,
             estimatedTime: data.estimatedTime,
             title: data.title,
             technology: data.technology,
@@ -625,7 +625,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
     }
 }
 
-export async function updateIncidenceComment(incidenceId: number, description: string) {
+export async function updateIncidenceComment(incidenceId: number, comment: string) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
@@ -646,7 +646,7 @@ export async function updateIncidenceComment(incidenceId: number, description: s
 
         await db.incidence.update({
             where: { id: incidenceId },
-            data: { description }
+            data: { comment }
         })
 
         revalidatePath('/dashboard')

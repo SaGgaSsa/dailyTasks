@@ -60,7 +60,7 @@ model Incidence {
   type          TaskType
   externalId    Int
   title         String
-  description   String?   @db.Text
+  comment      String?   @db.Text
   status        TaskStatus @default(BACKLOG)
   priority      Priority   @default(MEDIUM)
   technology    TechStack

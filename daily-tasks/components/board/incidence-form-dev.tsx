@@ -76,8 +76,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                     const { incidence } = await getIncidenceWithUsers(type, externalId)
                     if (incidence) {
                         setFullIncidenceData(incidence)
-                        setDescription(incidence.description || '')
-                        setOriginalDescription(incidence.description || '')
+                        setDescription(incidence.comment || '')
+                        setOriginalDescription(incidence.comment || '')
                         const userAssignment = incidence.assignments.find(
                             (a: { isAssigned: boolean; userId: number }) => a.isAssigned && a.userId === currentUserId
                         )

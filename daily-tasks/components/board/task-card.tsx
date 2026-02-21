@@ -74,8 +74,8 @@ export function TaskCard({ task, onClick, canDrag = true }: TaskCardProps) {
             className={`mb-3 ${canDrag ? 'cursor-pointer' : 'cursor-default'} bg-card border-border/50 hover:bg-accent/50 transition-all duration-200 shadow-sm touch-none ${isDragging ? 'shadow-xl ring-1 ring-border z-50 opacity-100' : ''}`}
         >
             <CardContent className="p-2 space-y-1.5">
-                {/* Header: ID + Priority + Title */}
-                <div className="flex items-center gap-2">
+                {/* Header: ID + Priority */}
+                <div className="flex items-center justify-between">
                     <Badge
                         variant="outline"
                         className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight flex-shrink-0 ${typeColors[task.type] || 'bg-zinc-500/10 text-zinc-400'}`}
@@ -88,20 +88,17 @@ export function TaskCard({ task, onClick, canDrag = true }: TaskCardProps) {
                     >
                         {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
                     </Badge>
-                    <h3 className="text-xs font-medium text-card-foreground truncate flex-1 min-w-0">
-                        {task.title}
-                    </h3>
                 </div>
 
-                {/* Description Snippet with Markdown */}
-                {task.description && (
-                    <div className="line-clamp-2">
-                        <MarkdownText
-                            content={task.description}
-                            className="text-[11px] text-muted-foreground prose-p:leading-tight prose-a:text-blue-400"
-                        />
-                    </div>
-                )}
+                {/* Title */}
+                <h3 className="text-xs font-medium text-card-foreground truncate">
+                    {task.title}
+                </h3>
+
+                {/* Separador */}
+                <div className="border-t border-border/50" />
+
+
 
                 {/* Technology + Hours */}
                 <div className="flex items-center justify-between">
