@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -21,28 +21,34 @@ interface SidebarProps {
 
 const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
 
-function subscribe() {
-  return () => {}
-}
-
-function getSnapshot(): boolean {
-  if (typeof window === 'undefined') return true
-  return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'true'
-}
-
-function getServerSnapshot(): boolean {
-  return true
-}
-
 export function Sidebar({ userId }: SidebarProps) {
   const { data: session } = useSession()
-  const [isOpen, setIsOpen] = useState<boolean>(useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot))
+  const [isOpen, setIsOpen] = useState<boolean>(true)
   const pathname = usePathname()
   const { t } = useI18n()
 
   useEffect(() => {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(!isOpen))
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (stored !== null) {
+      setIsOpen(stored === 'true')
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isOpen))
+    window.dispatchEvent(new Event('sidebar-toggle'))
   }, [isOpen])
+
+  useEffect(() => {
+    const handleSidebarToggle = () => {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+      if (stored !== null) {
+        setIsOpen(stored === 'true')
+      }
+    }
+    window.addEventListener('sidebar-toggle', handleSidebarToggle)
+    return () => window.removeEventListener('sidebar-toggle', handleSidebarToggle)
+  }, [])
 
   const isAdmin = session?.user?.role === 'ADMIN'
 
@@ -128,30 +134,6 @@ export function Sidebar({ userId }: SidebarProps) {
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <div className="p-2 border-t border-sidebar-border flex-shrink-0">
-        {isOpen && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-sidebar-foreground/40 hover:text-sidebar-foreground/60 px-0 h-6"
-            onClick={() => setIsOpen(false)}
-          >
-            Collapse Menu
-          </Button>
-        )}
-        {!isOpen && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-sidebar-foreground/40 hover:text-sidebar-foreground/60 px-0 h-6"
-            onClick={() => setIsOpen(true)}
-          >
-            --{'>'}
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
   Bell,
   Menu,
   X,
-  Globe
+  Globe,
+  PanelLeft
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/lib/use-theme'
@@ -16,14 +18,50 @@ import { signOut } from 'next-auth/react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 
+const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
+
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
+  const pathname = usePathname()
   const { mounted, toggleTheme, isDark } = useTheme()
   const { data: session } = useSession()
   const { locale, setLocale, t } = useI18n()
 
+  useEffect(() => {
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (stored !== null) {
+      setIsSidebarOpen(stored === 'true')
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleSidebarToggle = () => {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+      if (stored !== null) {
+        setIsSidebarOpen(stored === 'true')
+      }
+    }
+    window.addEventListener('sidebar-toggle', handleSidebarToggle)
+    return () => window.removeEventListener('sidebar-toggle', handleSidebarToggle)
+  }, [])
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const toggleSidebar = () => {
+    const newValue = !isSidebarOpen
+    setIsSidebarOpen(newValue)
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(newValue))
+    window.dispatchEvent(new Event('sidebar-toggle'))
+  }
+
+  const getPageTitle = () => {
+    if (pathname === '/dashboard') return t.incidences.title
+    if (pathname === '/analytics') return 'Métricas'
+    if (pathname === '/dashboard/users') return 'Usuarios'
+    return ''
   }
 
   const handleLanguageChange = (newLocale: Locale) => {
@@ -42,6 +80,21 @@ export function Navbar() {
         >
           {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </Button>
+        
+        {/* Sidebar toggle (desktop) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 hidden md:flex"
+          onClick={toggleSidebar}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+
+        {/* Page Title */}
+        <span className="text-sm font-medium text-foreground">
+          {getPageTitle()}
+        </span>
  
         {/* Right side items */}
         <div className="flex items-center space-x-2 ml-auto">
