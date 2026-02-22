@@ -261,6 +261,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                             tasks={sortedTasks.filter(t => t.status === col.id)}
                             onCardClick={handleCardClick}
                             canDrag={!isDev}
+                            isDev={isDev}
+                            onViewIncidence={handleCardClick}
                         />
                     ))}
             </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Row } from '@tanstack/react-table'
-import { MoreHorizontal, CheckCircle, BarChart3, FileText, Trash2 } from 'lucide-react'
+import { MoreHorizontal, EllipsisVertical, CheckCircle, BarChart3, FileText, Trash2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,9 +26,10 @@ import { toast } from 'sonner'
 
 interface DataTableRowActionsProps {
   row: Row<IncidenceWithDetails>
+  onViewIncidence?: (task: IncidenceWithDetails) => void
 }
 
-export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+export function DataTableRowActions({ row, onViewIncidence }: DataTableRowActionsProps) {
   const task = row.original
   const canComplete = task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS
   const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
@@ -105,7 +106,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
             onClick={(e) => e.stopPropagation()}
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <EllipsisVertical className="h-4 w-4" />
             <span className="sr-only">Abrir menú</span>
           </Button>
         </DropdownMenuTrigger>
@@ -116,6 +117,16 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               Completar Incidencia
             </DropdownMenuItem>
           )}
+          
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation()
+            if (onViewIncidence) {
+              onViewIncidence(task)
+            }
+          }}>
+            <Eye className="mr-2 h-4 w-4" />
+            Ver Incidencia
+          </DropdownMenuItem>
           
           <DropdownMenuItem disabled onClick={(e) => e.stopPropagation()}>
             <BarChart3 className="mr-2 h-4 w-4" />
