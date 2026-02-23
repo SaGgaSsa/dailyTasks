@@ -58,6 +58,7 @@ export const authConfig = {
   session: {
     strategy: 'jwt' as const
   },
+  refetchOnWindowFocus: false,
   pages: {
     signIn: '/auth/login',
     error: '/auth/login'

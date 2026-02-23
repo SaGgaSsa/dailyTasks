@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { IncidenceWithDetails } from '@/types'
 import { createSubTask, toggleSubTask, deleteSubTask, updateIncidence, updateSubTaskTitle, getIncidence } from '@/app/actions/incidence-actions'
 import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
@@ -24,6 +23,7 @@ interface DraftTask {
     tempId: string
     title: string
     assignmentId: number
+    userId: number
     isCompleted: boolean
 }
 
@@ -37,23 +37,27 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
     const [editingDraftTaskId, setEditingDraftTaskId] = useState<string | null>(null)
     const [draftTaskEdits, setDraftTaskEdits] = useState<Record<string, string>>({})
-    const [assigningUser, setAssigningUser] = useState<number | null>(null)
     const [expandedAssignees, setExpandedAssignees] = useState<Set<number>>(new Set(incidence.assignments.map(a => a.userId)))
     const [assigneeHours, setAssigneeHours] = useState<Record<number, string>>(
         Object.fromEntries(incidence.assignments.map(a => [a.userId, a.assignedHours?.toString() || '']))
     )
+    const [draftAssignees, setDraftAssignees] = useState<Set<number>>(new Set())
+    const [draftRemovedAssignees, setDraftRemovedAssignees] = useState<Set<number>>(new Set())
 
     const assignedUserIds = new Set(incidence.assignments.map(a => a.userId))
 
     const sortedAssignedUsers = [...incidence.assignments]
+        .filter(a => !draftRemovedAssignees.has(a.userId))
         .sort((a, b) => {
             if (a.user.role === 'DEV' && b.user.role !== 'DEV') return -1
             if (a.user.role !== 'DEV' && b.user.role === 'DEV') return 1
             return (a.user.name || a.user.username).localeCompare(b.user.name || b.user.username)
         })
 
+    const newAssignees = allUsers.filter(u => draftAssignees.has(u.id))
+
     const unassignedUsers = allUsers
-        .filter(u => !assignedUserIds.has(u.id))
+        .filter(u => !assignedUserIds.has(u.id) && !draftAssignees.has(u.id))
         .sort((a, b) => {
             if (a.role === 'DEV' && b.role !== 'DEV') return -1
             if (a.role !== 'DEV' && b.role === 'DEV') return 1
@@ -72,14 +76,14 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
         })
     }
 
-    const handleAddTask = (assignmentId: number, title: string, userId: number) => {
+    const handleAddTask = (assignmentId: number, userId: number, title: string) => {
         if (!title.trim() || title.trim().length < 3) {
             setTaskInputErrors(prev => ({ ...prev, [assignmentId]: true }))
             return
         }
 
         const tempId = `${assignmentId}-${Date.now()}`
-        setDraftTasks(prev => [...prev, { tempId, title: title.trim(), assignmentId, isCompleted: false }])
+        setDraftTasks(prev => [...prev, { tempId, title: title.trim(), assignmentId, userId, isCompleted: false }])
         setNewTaskInputs(prev => ({ ...prev, [userId]: '' }))
         setTaskInputErrors(prev => ({ ...prev, [assignmentId]: false }))
 
@@ -187,66 +191,34 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
         setAssigneeHours(prev => ({ ...prev, [userId]: hours }))
     }
 
-    const handleAssignUser = async (userId: number) => {
-        if (!isAdmin) return
-
-        setAssigningUser(userId)
-        try {
-            const currentAssignees = incidence.assignments.map(a => ({
-                userId: a.userId,
-                assignedHours: a.assignedHours
-            }))
-
-            const result = await updateIncidence(incidence.id, {
-                assignees: [...currentAssignees, { userId, assignedHours: null }]
-            })
-
-            if (result.success && result.data) {
-                setExpandedAssignees(prev => new Set(prev).add(userId))
-                onIncidenceUpdate(result.data)
-                toast.success('Colaborador asignado correctamente')
+    const handleToggleDraftAssignee = (userId: number) => {
+        setDraftAssignees(prev => {
+            const next = new Set(prev)
+            if (next.has(userId)) {
+                next.delete(userId)
+                setAssigneeHours(h => {
+                    const updated = { ...h }
+                    delete updated[userId]
+                    return updated
+                })
             } else {
-                toast.error(result.error || 'Error al asignar colaborador')
+                next.add(userId)
             }
-        } catch {
-            toast.error('Error inesperado')
-        } finally {
-            setAssigningUser(null)
-        }
+            return next
+        })
+        setExpandedAssignees(prev => new Set(prev).add(userId))
     }
 
-    const handleRemoveAssignee = async (userId: number) => {
-        if (!isAdmin) return
-
-        setAssigningUser(userId)
-        try {
-            const currentAssignees = incidence.assignments
-                .filter(a => a.userId !== userId)
-                .map(a => ({
-                    userId: a.userId,
-                    assignedHours: a.assignedHours
-                }))
-
-            const result = await updateIncidence(incidence.id, {
-                assignees: currentAssignees
-            })
-
-            if (result.success && result.data) {
-                setExpandedAssignees(prev => {
-                    const next = new Set(prev)
-                    next.delete(userId)
-                    return next
-                })
-                onIncidenceUpdate(result.data)
-                toast.success('Colaborador removido')
+    const handleToggleRemoveAssignee = (userId: number) => {
+        setDraftRemovedAssignees(prev => {
+            const next = new Set(prev)
+            if (next.has(userId)) {
+                next.delete(userId)
             } else {
-                toast.error(result.error || 'Error al remover colaborador')
+                next.add(userId)
             }
-        } catch {
-            toast.error('Error inesperado')
-        } finally {
-            setAssigningUser(null)
-        }
+            return next
+        })
     }
 
     const handleSaveChanges = useCallback(async () => {
@@ -257,14 +229,6 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 await updateSubTaskTitle(Number(taskId), taskEdits[Number(taskId)])
             }
             setTaskEdits({})
-
-            for (const draft of draftTasks) {
-                const result = await createSubTask(draft.assignmentId, draft.title, draft.isCompleted)
-                if (result.success && result.autoTransitionedToReview) {
-                    autoTransitionedToReview = true
-                }
-            }
-            setDraftTasks([])
 
             for (const taskId of tasksToToggle) {
                 const result = await toggleSubTask(taskId)
@@ -279,42 +243,107 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             }
             setTasksToDelete(new Set())
 
-            if (isAdmin) {
-                const hoursChanged = Object.entries(assigneeHours).some(([userId, hours]) => {
-                    const assignment = incidence.assignments.find(a => a.userId === Number(userId))
-                    const originalHours = assignment?.assignedHours?.toString() || ''
-                    return hours !== originalHours
-                })
-
-                if (hoursChanged) {
-                    const assigneeData = incidence.assignments.map(a => ({
+            if (draftRemovedAssignees.size > 0) {
+                const currentAssignees = incidence.assignments
+                    .filter(a => !draftRemovedAssignees.has(a.userId))
+                    .map(a => ({
                         userId: a.userId,
-                        assignedHours: assigneeHours[a.userId] === '' ? null : parseInt(assigneeHours[a.userId] || '0') || a.assignedHours
+                        assignedHours: a.assignedHours
                     }))
 
-                    const result = await updateIncidence(incidence.id, { assignees: assigneeData })
-                    if (result.success && result.data) {
-                        onIncidenceUpdate(result.data)
-                    }
+                const result = await updateIncidence(incidence.id, { assignees: currentAssignees })
+                if (result.success && result.data) {
+                    onIncidenceUpdate(result.data)
                 }
             }
 
-            const updatedData = await getIncidence(incidence.id)
-            if (updatedData) {
-                onIncidenceUpdate(updatedData)
+            if (draftAssignees.size > 0 || Object.keys(assigneeHours).some(uid => {
+                const numUid = Number(uid)
+                const assignment = incidence.assignments.find(a => a.userId === numUid)
+                const originalHours = assignment?.assignedHours?.toString() || ''
+                return assigneeHours[numUid] !== originalHours
+            })) {
+                const assigneeData = [
+                    ...incidence.assignments
+                        .filter(a => !draftRemovedAssignees.has(a.userId))
+                        .map(a => ({
+                            userId: a.userId,
+                            assignedHours: assigneeHours[a.userId] === '' ? null : (parseInt(assigneeHours[a.userId]) || a.assignedHours)
+                        })),
+                    ...[...draftAssignees].map(userId => ({
+                        userId,
+                        assignedHours: assigneeHours[userId] === '' ? null : parseInt(assigneeHours[userId]) || null
+                    }))
+                ]
+
+                const result = await updateIncidence(incidence.id, { assignees: assigneeData })
+                if (result.success && result.data) {
+                    onIncidenceUpdate(result.data)
+                }
             }
+
+            if (draftAssignees.size > 0) {
+                const updatedIncidence = await getIncidence(incidence.id)
+                if (!updatedIncidence) {
+                    throw new Error('No se pudo obtener la incidencia actualizada')
+                }
+
+                const userIdToAssignment = Object.fromEntries(
+                    updatedIncidence.assignments.map(a => [a.userId, a.id])
+                )
+
+                for (const draft of draftTasks) {
+                    const realAssignmentId = userIdToAssignment[draft.userId]
+                    if (realAssignmentId) {
+                        const result = await createSubTask(realAssignmentId, draft.title, draft.isCompleted)
+                        if (result.success && result.autoTransitionedToReview) {
+                            autoTransitionedToReview = true
+                        }
+                    }
+                }
+                setDraftTasks([])
+            } else if (draftTasks.length > 0) {
+                for (const draft of draftTasks) {
+                    const result = await createSubTask(draft.assignmentId, draft.title, draft.isCompleted)
+                    if (result.success && result.autoTransitionedToReview) {
+                        autoTransitionedToReview = true
+                    }
+                }
+                setDraftTasks([])
+            }
+
+            const finalData = await getIncidence(incidence.id)
+            if (finalData) {
+                onIncidenceUpdate(finalData)
+            }
+
+            setDraftAssignees(new Set())
+            setDraftRemovedAssignees(new Set())
 
             if (autoTransitionedToReview) {
                 toast.success('Todas las tareas completadas. Incidencia en revisión.')
             } else {
                 toast.success('Cambios guardados')
             }
-        } catch {
+        } catch (error) {
+            console.error('Error saving changes:', error)
             toast.error('Error al guardar cambios')
+            throw error
         }
-    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, assigneeHours, incidence, isAdmin, onIncidenceUpdate])
+    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, assigneeHours, draftAssignees, draftRemovedAssignees, incidence, onIncidenceUpdate])
 
-    const hasChanges = draftTasks.length > 0 || tasksToToggle.size > 0 || tasksToDelete.size > 0 || Object.keys(taskEdits).length > 0
+    const hasChanges = draftTasks.length > 0 
+        || tasksToToggle.size > 0 
+        || tasksToDelete.size > 0 
+        || Object.keys(taskEdits).length > 0
+        || draftAssignees.size > 0
+        || draftRemovedAssignees.size > 0
+        || Object.keys(assigneeHours).some(uid => {
+            const numUid = Number(uid)
+            const assignment = incidence.assignments.find(a => a.userId === numUid)
+            const originalHours = assignment?.assignedHours?.toString() || ''
+            return assigneeHours[numUid] !== originalHours
+        })
 
     useEffect(() => {
         onHasChangesChange?.(hasChanges)
@@ -326,8 +355,23 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
     return (
         <div className="space-y-0">
-            {sortedAssignedUsers.map((assignment) => {
-                const allUserTasks = assignment.tasks.filter(t => !tasksToDelete.has(t.id))
+            {[...sortedAssignedUsers, ...newAssignees.map(user => {
+                const existingAssignment = incidence.assignments.find(a => a.userId === user.id)
+                return {
+                    id: -user.id,
+                    userId: user.id,
+                    user,
+                    tasks: [],
+                    assignedHours: assigneeHours[user.id] ? parseInt(assigneeHours[user.id]) : null
+                }
+            })].map((assignment) => {
+                const isNewAssignee = assignment.userId < 0
+                const realUserId = isNewAssignee ? -assignment.userId : assignment.userId
+                const user = isNewAssignee ? (assignment as { user: typeof allUsers[0] }).user : assignment.user
+
+                const allUserTasks = isNewAssignee 
+                    ? [] 
+                    : assignment.tasks.filter(t => !tasksToDelete.has(t.id))
                 const pendingTasks = allUserTasks.filter(t => {
                     const isToggled = tasksToToggle.has(t.id)
                     return isToggled ? t.isCompleted : !t.isCompleted
@@ -336,60 +380,60 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                     const isToggled = tasksToToggle.has(t.id)
                     return isToggled ? !t.isCompleted : t.isCompleted
                 })
-                const userDraftTasks = draftTasks.filter(d => d.assignmentId === assignment.id)
+                const userDraftTasks = draftTasks.filter(d => d.userId === realUserId || d.assignmentId === assignment.id)
                 const pendingDrafts = userDraftTasks.filter(d => !d.isCompleted)
                 const completedDrafts = userDraftTasks.filter(d => d.isCompleted)
 
-                const canEditTasks = isAdmin || assignment.userId === currentUserId
+                const canEditTasks = isAdmin || assignment.userId === currentUserId || isNewAssignee
                 const totalPending = pendingTasks.length + pendingDrafts.length
                 const totalCompleted = completedTasks.length + completedDrafts.length
                 const total = totalPending + totalCompleted
-                const isExpanded = expandedAssignees.has(assignment.userId)
+                const isExpanded = expandedAssignees.has(realUserId)
                 const hasAnyTasks = allUserTasks.length > 0 || userDraftTasks.length > 0
 
                 return (
                     <div key={assignment.id} className="border-b border-border last:border-b-0">
                         <div
                             className={`flex items-center gap-3 px-3 py-2 ${isExpanded ? 'cursor-pointer hover:bg-accent/30' : 'cursor-pointer hover:bg-accent/30'}`}
-                            onClick={() => toggleAssigneeExpanded(assignment.userId)}
+                            onClick={() => toggleAssigneeExpanded(realUserId)}
                         >
                             <Checkbox
-                                checked={true}
+                                checked={!draftRemovedAssignees.has(realUserId)}
                                 onCheckedChange={() => {
-                                    if (!hasAnyTasks) {
-                                        handleRemoveAssignee(assignment.userId)
+                                    if (!hasAnyTasks && !isNewAssignee) {
+                                        handleToggleRemoveAssignee(realUserId)
                                     }
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                disabled={hasAnyTasks || assigningUser === assignment.userId}
+                                disabled={hasAnyTasks || isNewAssignee}
                                 className="border-input"
                             />
                             <span className="text-card-foreground/80 text-sm">
-                                {assignment.user.name || assignment.user.username}
+                                {user.name || user.username}
                             </span>
-                            {(hasAnyTasks) && (
+                            {(hasAnyTasks || isNewAssignee) && (
                                 <span className="text-muted-foreground/70 text-xs">
                                     {totalPending}/{total} pendientes
                                 </span>
                             )}
                             <div className="flex-1" />
                             <div className={`flex items-center gap-2 ${!isAdmin ? 'opacity-60' : ''}`}>
-                                <span className="text-muted-foreground/70 text-xs">Horas Asignadas:</span>
+                                <span className="text-muted-foreground/70 text-xs">Horas:</span>
                                 <Input
                                     type="number"
                                     min="0"
                                     max="9999"
                                     step="1"
-                                    value={assigneeHours[assignment.userId] || ''}
+                                    value={assigneeHours[realUserId] || ''}
                                     disabled={!isAdmin}
                                     onChange={(e) => {
                                         const value = e.target.value
                                         if (value === '' || (/^\d{0,4}$/.test(value) && parseInt(value) >= 0)) {
-                                            handleUpdateAssigneeHours(assignment.userId, value)
+                                            handleUpdateAssigneeHours(realUserId, value)
                                         }
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="bg-background border-border text-zinc-100 w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-background border-border text-zinc-100 w-16 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="0"
                                 />
                             </div>
@@ -400,7 +444,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                     size="icon"
                                     onClick={(e) => {
                                         e.stopPropagation()
-                                        toggleAssigneeExpanded(assignment.userId)
+                                        toggleAssigneeExpanded(realUserId)
                                     }}
                                     className="h-6 w-6 text-muted-foreground/70"
                                 >
@@ -413,7 +457,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                     size="icon"
                                     onClick={(e) => {
                                         e.stopPropagation()
-                                        toggleAssigneeExpanded(assignment.userId)
+                                        toggleAssigneeExpanded(realUserId)
                                     }}
                                     className="h-6 w-6 text-muted-foreground/70"
                                 >
@@ -534,27 +578,27 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
                                 {canEditTasks && (
                                     <Input
-                                        data-assignment-id={assignment.userId}
-                                        value={newTaskInputs[assignment.userId] || ''}
+                                        data-assignment-id={realUserId}
+                                        value={newTaskInputs[realUserId] || ''}
                                         onChange={(e) => {
                                             const value = e.target.value
-                                            setNewTaskInputs(prev => ({ ...prev, [assignment.userId]: value }))
+                                            setNewTaskInputs(prev => ({ ...prev, [realUserId]: value }))
                                             if (value.length >= 3) {
                                                 setTaskInputErrors(prev => ({ ...prev, [assignment.id]: false }))
                                             }
                                         }}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
-                                                const value = newTaskInputs[assignment.userId] || ''
+                                                const value = newTaskInputs[realUserId] || ''
                                                 if (value.length >= 3) {
-                                                    handleAddTask(assignment.id, value, assignment.userId)
+                                                    handleAddTask(assignment.id, realUserId, value)
                                                 } else {
                                                     setTaskInputErrors(prev => ({ ...prev, [assignment.id]: true }))
                                                 }
                                             }
                                         }}
                                         className={`bg-background text-zinc-100 text-sm w-full ${taskInputErrors[assignment.id] ? 'border-red-500' : 'border-border'}`}
-                                        placeholder={`Nueva tarea para ${assignment.user.name || assignment.user.username}...`}
+                                        placeholder={`Nueva tarea para ${user.name || user.username}...`}
                                     />
                                 )}
 
@@ -620,32 +664,22 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
             {isAdmin && unassignedUsers.length > 0 && (
                 <>
-                    {sortedAssignedUsers.length > 0 && (
+                    {(sortedAssignedUsers.length > 0 || newAssignees.length > 0) && (
                         <div className="h-px bg-border" />
                     )}
                     <div className="space-y-0">
-                        <div className="px-3 py-2">
-                            <Label className="text-muted-foreground/70 text-xs">Colaboradores Disponibles</Label>
-                        </div>
                         {unassignedUsers.map(user => (
                             <div
                                 key={user.id}
                                 className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 hover:bg-accent/20 cursor-pointer"
-                                onClick={() => handleAssignUser(user.id)}
+                                onClick={() => handleToggleDraftAssignee(user.id)}
                             >
                                 <Checkbox
-                                    checked={false}
-                                    onCheckedChange={() => handleAssignUser(user.id)}
-                                    disabled={assigningUser === user.id}
+                                    checked={draftAssignees.has(user.id)}
+                                    onCheckedChange={() => handleToggleDraftAssignee(user.id)}
                                     className="border-input"
                                 />
                                 <span className="text-card-foreground/60 text-sm">{user.name || user.username}</span>
-                                <div className="flex-1" />
-                                {assigningUser === user.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                ) : (
-                                    <span className="text-xs text-muted-foreground/50">Click para asignar</span>
-                                )}
                             </div>
                         ))}
                     </div>

@@ -28,9 +28,9 @@ interface IncidenceDetailClientProps {
     allUsers: { id: number; name: string | null; username: string; role: string }[]
     currentUserId: number
     isAdmin: boolean
-    hasChanges: boolean
-    isSaving: boolean
-    onSave: () => void
+    hasChanges?: boolean
+    isSaving?: boolean
+    onSave?: () => void
     onHasChangesChange?: (hasChanges: boolean) => void
     onSaveRef?: (saveFn: () => Promise<void>) => void
 }
@@ -40,8 +40,8 @@ export function IncidenceDetailClient({
     allUsers, 
     currentUserId, 
     isAdmin,
-    hasChanges,
-    isSaving,
+    hasChanges = false,
+    isSaving = false,
     onSave,
     onHasChangesChange,
     onSaveRef,

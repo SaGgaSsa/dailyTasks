@@ -1,14 +1,9 @@
-'use client'
-
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { getIncidencePageData } from '@/app/actions/incidence-actions'
-import { useSession } from 'next-auth/react'
+import { auth } from '@/auth'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import {
     Dialog,
     DialogContent,
@@ -17,10 +12,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { TaskStatus, TechStack } from '@/types/enums'
-import { IncidenceWithDetails } from '@/types'
 import { IncidenceDetailClient } from './_components/incidence-detail-client'
-import { Loader2 } from 'lucide-react'
+import { User } from 'lucide-react'
+import { IncidencePageContent } from './_components/incidence-page-content'
 
 const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
     BACKLOG: { label: 'Backlog', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
@@ -46,105 +47,27 @@ function formatDate(date: Date): string {
     })
 }
 
-interface IncidencePageProps {
-    id: string
+interface PageProps {
+    params: Promise<{ id: string }>
 }
 
-function IncidencePageContent({ id }: IncidencePageProps) {
-    const { data: session } = useSession()
-    const pathname = usePathname()
-    const [incidence, setIncidence] = useState<IncidenceWithDetails | null>(null)
-    const [users, setUsers] = useState<{ id: number; name: string | null; username: string; role: string }[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [hasChanges, setHasChanges] = useState(false)
-    const [isSaving, setIsSaving] = useState(false)
-    const [showExitDialog, setShowExitDialog] = useState(false)
-    const pendingNavigationRef = useRef<string | null>(null)
-    const saveFnRef = useRef<(() => Promise<void>) | null>(null)
-
-    useEffect(() => {
-        const fetchData = async () => {
-            const incidenceId = parseInt(id, 10)
-            if (isNaN(incidenceId)) return
-
-            const { incidence: incidenceData, users: allUsers } = await getIncidencePageData(incidenceId)
-            if (!incidenceData) return
-
-            setIncidence(incidenceData)
-            setUsers(allUsers)
-            setIsLoading(false)
-        }
-
-        if (session?.user) {
-            fetchData()
-        }
-    }, [id, session?.user])
-
-    const handleSaveRef = useCallback((saveFn: () => Promise<void>) => {
-        saveFnRef.current = saveFn
-    }, [])
-
-    const handleSave = async () => {
-        if (saveFnRef.current) {
-            setIsSaving(true)
-            await saveFnRef.current()
-            setIsSaving(false)
-            setHasChanges(false)
-        }
-    }
-
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (hasChanges) {
-                e.preventDefault()
-                e.returnValue = ''
-            }
-        }
-
-        window.addEventListener('beforeunload', handleBeforeUnload)
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-    }, [hasChanges])
-
-    useEffect(() => {
-        if (!hasChanges) return
-
-        const handleClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement
-            const anchor = target.closest('a')
-            if (anchor && anchor.href && !anchor.href.includes(pathname)) {
-                e.preventDefault()
-                pendingNavigationRef.current = anchor.href
-                setShowExitDialog(true)
-            }
-        }
-
-        document.addEventListener('click', handleClick)
-        return () => document.removeEventListener('click', handleClick)
-    }, [hasChanges, pathname])
-
-    const handleConfirmExit = () => {
-        setShowExitDialog(false)
-        setHasChanges(false)
-        if (pendingNavigationRef.current) {
-            window.location.href = pendingNavigationRef.current
-        }
-    }
-
-    const handleCancelExit = () => {
-        setShowExitDialog(false)
-        pendingNavigationRef.current = null
-    }
+export default async function IncidenceDetailPage({ params }: PageProps) {
+    const { id } = await params
+    const session = await auth()
 
     if (!session?.user) {
         notFound()
     }
 
-    if (isLoading || !incidence) {
-        return (
-            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-        )
+    const incidenceId = parseInt(id, 10)
+    if (isNaN(incidenceId)) {
+        notFound()
+    }
+
+    const { incidence, users } = await getIncidencePageData(incidenceId)
+
+    if (!incidence) {
+        notFound()
     }
 
     const currentUserId = Number(session.user.id)
@@ -169,11 +92,6 @@ function IncidencePageContent({ id }: IncidencePageProps) {
                     allUsers={users}
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
-                    hasChanges={hasChanges}
-                    isSaving={isSaving}
-                    onSave={handleSave}
-                    onHasChangesChange={setHasChanges}
-                    onSaveRef={handleSaveRef}
                 />
 
                 <div className="pt-6 pr-6">
@@ -218,15 +136,38 @@ function IncidencePageContent({ id }: IncidencePageProps) {
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Asignados</span>
                         {incidence.assignments.length > 0 ? (
-                            <AvatarGroup>
-                                {incidence.assignments.map((assignment) => (
-                                    <Avatar key={assignment.id} size="sm">
-                                        <AvatarFallback>
-                                            {assignment.user.username.slice(0, 2).toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                ))}
-                            </AvatarGroup>
+                            (() => {
+                                const activeAssignments = incidence.assignments.filter(a => a.isAssigned)
+                                const count = activeAssignments.length
+
+                                if (count === 0) {
+                                    return <span className="text-sm text-muted-foreground">Sin asignar</span>
+                                }
+
+                                if (count === 1) {
+                                    const assignment = activeAssignments[0]
+                                    return (
+                                        <UserAvatar 
+                                            username={assignment.user.username}
+                                            className="h-6 w-6 text-xs" 
+                                        />
+                                    )
+                                }
+
+                                const usernames = activeAssignments.map(a => a.user.name || a.user.username).join(', ')
+                                return (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <User className="h-5 w-5 text-muted-foreground cursor-default" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p className="text-xs">{usernames}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )
+                            })()
                         ) : (
                             <span className="text-sm text-muted-foreground">Sin asignar</span>
                         )}
@@ -241,46 +182,7 @@ function IncidencePageContent({ id }: IncidencePageProps) {
                 </div>
             </div>
 
-            <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-                <DialogContent className="bg-card border-border">
-                    <DialogHeader>
-                        <DialogTitle>Salir sin guardar</DialogTitle>
-                        <DialogDescription>
-                            Tiene cambios sin guardar. ¿Está seguro de que desea salir?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleCancelExit}>
-                            Cancelar
-                        </Button>
-                        <Button variant="destructive" onClick={handleConfirmExit}>
-                            Salir sin guardar
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <IncidencePageContent />
         </>
     )
-}
-
-interface PageProps {
-    params: Promise<{ id: string }>
-}
-
-export default function IncidenceDetailPage({ params }: PageProps) {
-    const [id, setId] = useState<string | null>(null)
-
-    useEffect(() => {
-        params.then(p => setId(p.id))
-    }, [params])
-
-    if (!id) {
-        return (
-            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-        )
-    }
-
-    return <IncidencePageContent id={id} />
 }
