@@ -16,10 +16,9 @@ interface BoardColumnProps {
     onCardClick: (task: IncidenceWithDetails) => void
     canDrag?: boolean
     isDev?: boolean
-    onViewIncidence?: (task: IncidenceWithDetails) => void
 }
 
-export function BoardColumn({ id, title, tasks, onCardClick, canDrag = true, isDev = false, onViewIncidence }: BoardColumnProps) {
+export function BoardColumn({ id, title, tasks, onCardClick, canDrag = true, isDev = false }: BoardColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id,
         data: {
@@ -58,7 +57,6 @@ export function BoardColumn({ id, title, tasks, onCardClick, canDrag = true, isD
                                 onClick={() => onCardClick(task)}
                                 canDrag={canDrag}
                                 isDev={isDev}
-                                onViewIncidence={onViewIncidence}
                             />
                         ))}
                     </SortableContext>

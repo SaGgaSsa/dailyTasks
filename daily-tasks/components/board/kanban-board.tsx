@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
     DndContext,
     DragOverlay,
@@ -42,6 +43,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters, isDev = false }: KanbanBoardProps) {
     const { t, locale } = useI18n()
+    const router = useRouter()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -209,8 +211,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     }
 
     function handleCardClick(task: IncidenceWithDetails) {
-        setSelectedTask(task)
-        setIsSheetOpen(true)
+        router.push(`/dashboard/incidences/${task.id}`)
     }
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
@@ -262,7 +263,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                             onCardClick={handleCardClick}
                             canDrag={!isDev}
                             isDev={isDev}
-                            onViewIncidence={handleCardClick}
                         />
                     ))}
             </div>

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Row } from '@tanstack/react-table'
-import { MoreHorizontal, EllipsisVertical, CheckCircle, BarChart3, FileText, Trash2, Eye } from 'lucide-react'
+import { EllipsisVertical, CheckCircle, BarChart3, FileText, Trash2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,10 +27,10 @@ import { toast } from 'sonner'
 
 interface DataTableRowActionsProps {
   row: Row<IncidenceWithDetails>
-  onViewIncidence?: (task: IncidenceWithDetails) => void
 }
 
-export function DataTableRowActions({ row, onViewIncidence }: DataTableRowActionsProps) {
+export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const router = useRouter()
   const task = row.original
   const canComplete = task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS
   const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
@@ -120,9 +121,7 @@ export function DataTableRowActions({ row, onViewIncidence }: DataTableRowAction
           
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation()
-            if (onViewIncidence) {
-              onViewIncidence(task)
-            }
+            router.push(`/dashboard/incidences/${task.id}`)
           }}>
             <Eye className="mr-2 h-4 w-4" />
             Ver Incidencia

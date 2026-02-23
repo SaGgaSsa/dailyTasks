@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckSquare, CheckCircle, Clock, User, List, EllipsisVertical, CheckCircle as CheckCircleIcon, BarChart3, FileText, Trash2, Eye } from 'lucide-react'
@@ -14,7 +15,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MarkdownText } from '@/components/ui/markdown-text'
 import { TaskStatus } from '@/types/enums'
 import { calculateCompletedHours, formatHoursDisplay } from '@/lib/hours-calculation'
 import {
@@ -41,7 +41,6 @@ interface TaskCardProps {
     onClick?: () => void
     canDrag?: boolean
     isDev?: boolean
-    onViewIncidence?: (task: IncidenceWithDetails) => void
 }
 
 const priorityColors = {
@@ -56,7 +55,8 @@ const typeColors: Record<string, string> = {
     I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
 }
 
-export function TaskCard({ task, onClick, canDrag = true, isDev = false, onViewIncidence }: TaskCardProps) {
+export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskCardProps) {
+    const router = useRouter()
     const {
         attributes,
         listeners,
@@ -148,9 +148,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false, onViewI
 
     const handleViewIncidence = (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (onViewIncidence) {
-            onViewIncidence(task)
-        }
+        router.push(`/dashboard/incidences/${task.id}`)
     }
 
     return (
