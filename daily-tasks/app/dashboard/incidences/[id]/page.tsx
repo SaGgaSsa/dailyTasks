@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { notFound } from 'next/navigation'
-import { getIncidence, getIncidenceWithUsers } from '@/app/actions/incidence-actions'
+import { getIncidencePageData } from '@/app/actions/incidence-actions'
 import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -67,10 +67,8 @@ function IncidencePageContent({ id }: IncidencePageProps) {
             const incidenceId = parseInt(id, 10)
             if (isNaN(incidenceId)) return
 
-            const incidenceData = await getIncidence(incidenceId)
+            const { incidence: incidenceData, users: allUsers } = await getIncidencePageData(incidenceId)
             if (!incidenceData) return
-
-            const { users: allUsers } = await getIncidenceWithUsers(incidenceData.type, incidenceData.externalId)
 
             setIncidence(incidenceData)
             setUsers(allUsers)

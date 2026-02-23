@@ -246,6 +246,53 @@ interface GetIncidenceWithUsersResult {
     users: { id: number; name: string | null; username: string; role: string }[]
 }
 
+export async function getIncidencePageData(id: number): Promise<{
+    incidence: IncidenceWithDetails | null
+    users: { id: number; name: string | null; username: string; role: string }[]
+}> {
+    try {
+        const [incidence, users] = await Promise.all([
+            db.incidence.findUnique({
+                where: { id },
+                include: {
+                    assignments: {
+                        where: { isAssigned: true },
+                        include: {
+                            user: true,
+                            tasks: {
+                                orderBy: [
+                                    { isCompleted: 'asc' },
+                                    { completedAt: 'desc' }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }),
+            db.user.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    role: true
+                },
+                orderBy: [
+                    { role: 'asc' },
+                    { username: 'asc' }
+                ]
+            })
+        ])
+
+        return {
+            incidence: incidence as IncidenceWithDetails,
+            users
+        }
+    } catch (error) {
+        console.error('Error getting incidence page data:', error)
+        return { incidence: null, users: [] }
+    }
+}
+
 export async function getIncidenceWithUsers(type: TaskType, externalId: number): Promise<GetIncidenceWithUsersResult> {
     try {
         const [incidence, users] = await Promise.all([
