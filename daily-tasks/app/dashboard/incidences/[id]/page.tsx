@@ -87,7 +87,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
     return (
         <>
             <div className="mt-0 grid grid-cols-1 gap-15 lg:grid-cols-[minmax(0,2fr)_minmax(0,320px)]">
-                <IncidenceDetailClient
+                <IncidencePageContent
                     incidence={incidence}
                     allUsers={users}
                     currentUserId={currentUserId}
@@ -181,8 +181,6 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                     </div>
                 </div>
             </div>
-
-            <IncidencePageContent />
         </>
     )
 }
