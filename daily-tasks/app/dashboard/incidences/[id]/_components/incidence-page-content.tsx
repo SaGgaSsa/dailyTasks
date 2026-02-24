@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { IncidenceDetailClient } from './incidence-detail-client'
 import { IncidenceWithDetails } from '@/types'
-import { toast } from 'sonner'
 
 interface IncidencePageContentProps {
     incidence: IncidenceWithDetails
@@ -36,7 +35,6 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
             try {
                 await saveFnRef.current()
                 setHasChanges(false)
-                toast.success('Cambios guardados')
             } catch (error) {
                 console.error('Error saving:', error)
             } finally {

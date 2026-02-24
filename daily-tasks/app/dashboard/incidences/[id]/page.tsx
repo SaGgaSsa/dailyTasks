@@ -18,7 +18,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { TaskStatus, TechStack } from '@/types/enums'
+import { TaskStatus, TechStack, TaskType } from '@/types/enums'
 import { IncidenceDetailClient } from './_components/incidence-detail-client'
 import { User } from 'lucide-react'
 import { IncidencePageContent } from './_components/incidence-page-content'
@@ -37,6 +37,12 @@ const techLabels: Record<TechStack, string> = {
     ANDROID: 'Android',
     ANGULAR: 'Angular',
     SPRING: 'Spring',
+}
+
+const typeColors: Record<TaskType, string> = {
+    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 }
 
 function formatDate(date: Date): string {
@@ -78,6 +84,21 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
         0
     )
 
+    const WORK_HOURS_PER_DAY = 8
+
+    const pendingHours = incidence.assignments.reduce((sum, assignment) => {
+        const hasNoTasks = assignment.tasks.length === 0
+        const hasIncompleteTask = assignment.tasks.some((task) => !task.isCompleted)
+
+        if (hasNoTasks || hasIncompleteTask) {
+            return sum + (assignment.assignedHours ?? 0)
+        }
+        return sum
+    }, 0)
+
+    const rawDays = pendingHours / WORK_HOURS_PER_DAY
+    const remainingDays = Math.ceil(rawDays * 2) / 2
+
     const allTasks = incidence.assignments.flatMap((a) => a.tasks)
     const completedTasks = allTasks.filter((t) => t.isCompleted).length
     const totalTasks = allTasks.length
@@ -95,6 +116,13 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                 />
 
                 <div className="pt-6 pr-6">
+                    <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-muted-foreground">Trámite</span>
+                        <Badge variant="outline" className={typeColors[incidence.type]}>
+                            {incidence.type} {incidence.externalId}
+                        </Badge>
+                    </div>
+
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Fecha de creación</span>
                         <span className="text-sm font-medium">{formatDate(incidence.createdAt)}</span>
@@ -114,7 +142,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
 
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Días restantes</span>
-                        <span className="text-sm font-medium">N/A</span>
+                        <span className="text-sm font-medium">{remainingDays > 0 ? `${remainingDays} días` : '0 días'}</span>
                     </div>
 
                     <Separator className="my-6" />
