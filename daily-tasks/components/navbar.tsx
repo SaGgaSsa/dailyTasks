@@ -9,14 +9,17 @@ import {
   Menu,
   X,
   Globe,
-  PanelLeft
+  PanelLeft,
+  ChevronRight
 } from 'lucide-react'
+import Link from 'next/link'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/lib/use-theme'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
+import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
 
 const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
 
@@ -27,6 +30,7 @@ export function Navbar() {
   const { mounted, toggleTheme, isDark } = useTheme()
   const { data: session } = useSession()
   const { locale, setLocale, t } = useI18n()
+  const { incidenceTitle } = useIncidenceTitle()
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
@@ -91,11 +95,23 @@ export function Navbar() {
           <PanelLeft className="h-4 w-4" />
         </Button>
 
-        {/* Page Title */}
-        <span className="text-sm font-medium text-foreground">
-          {getPageTitle()}
-        </span>
- 
+        {/* Page Title / Breadcrumb */}
+        {incidenceTitle ? (
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+              Incidencias
+            </Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="text-foreground font-medium truncate max-w-[300px]">
+              {incidenceTitle}
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm font-medium text-foreground">
+            {getPageTitle()}
+          </span>
+        )}
+  
         {/* Right side items */}
         <div className="flex items-center space-x-2 ml-auto">
           {/* Language Switcher */}

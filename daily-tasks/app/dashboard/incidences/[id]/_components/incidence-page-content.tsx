@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
+import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
 import {
     Dialog,
     DialogContent,
@@ -23,11 +24,17 @@ interface IncidencePageContentProps {
 
 export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdmin }: IncidencePageContentProps) {
     const pathname = usePathname()
+    const { setIncidenceTitle } = useIncidenceTitle()
     const [hasChanges, setHasChanges] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [showExitDialog, setShowExitDialog] = useState(false)
     const pendingNavigationRef = useRef<string | null>(null)
     const saveFnRef = useRef<(() => Promise<void>) | null>(null)
+
+    useEffect(() => {
+        setIncidenceTitle(incidence.title)
+        return () => setIncidenceTitle(null)
+    }, [incidence.title, setIncidenceTitle])
 
     const handleSave = useCallback(async () => {
         if (saveFnRef.current) {
