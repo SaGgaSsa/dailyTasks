@@ -436,7 +436,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                         }
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="bg-background border-border text-zinc-100 w-16 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-background border-border text-foreground w-16 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="0"
                                 />
                             </div>
@@ -495,7 +495,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                                         if (e.key === 'Escape') handleCancelEditTask(task.id)
                                                     }}
                                                     onBlur={() => handleSaveEditTask(task.id)}
-                                                    className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                                    className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                                     autoFocus
                                                 />
                                             ) : (
@@ -548,7 +548,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                                     if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
                                                 }}
                                                 onBlur={() => handleSaveEditDraftTask(draft.tempId)}
-                                                className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                                className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                                 autoFocus
                                             />
                                         ) : (
@@ -600,7 +600,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                                 }
                                             }
                                         }}
-                                        className={`bg-background text-zinc-100 text-sm w-full ${taskInputErrors[assignment.id] ? 'border-red-500' : 'border-border'}`}
+                                        className={`bg-background text-foreground text-sm w-full ${taskInputErrors[assignment.id] ? 'border-red-500' : 'border-border'}`}
                                         placeholder={`Nueva tarea para ${user.name || user.username}...`}
                                     />
                                 )}

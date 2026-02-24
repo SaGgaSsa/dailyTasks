@@ -900,7 +900,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                     }
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="bg-background border-border text-zinc-100 w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="bg-background border-border text-foreground w-20 h-6 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -954,7 +954,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                                 if (e.key === 'Escape') handleCancelEditTask(task.id)
                                                             }}
                                                             onBlur={() => handleSaveEditTask(task.id)}
-                                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                                            className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                                             autoFocus
                                                         />
                                                     ) : (
@@ -1006,7 +1006,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                                 if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
                                                             }}
                                                             onBlur={() => handleSaveEditDraftTask(draft.tempId)}
-                                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                                            className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                                             autoFocus
                                                         />
                                                     ) : (
@@ -1061,7 +1061,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                         }
                                                     }
                                                 }}
-                                                className={`bg-background text-zinc-100 text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-border'}`}
+                                                className={`bg-background text-foreground text-sm w-full ${taskInputErrors[userAssignment?.id || user.id] ? 'border-red-500' : 'border-border'}`}
                                                 placeholder={`Nueva tarea para ${user.name}...`}
                                             />
 
@@ -1249,7 +1249,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                 }
                                             }
                                         }}
-                                        className={`bg-input text-zinc-100 text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-border'}`}
+                                        className={`bg-input text-foreground text-sm w-full ${taskInputErrors[currentUserId] ? 'border-red-500' : 'border-border'}`}
                                         placeholder="+ Agregar tarea..."
                                     />
 
@@ -1314,7 +1314,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     id="description"
                     value={formData.description}
                     onChange={(e) => updateFormData({ description: e.target.value })}
-                    className="bg-input border-border text-zinc-100 min-h-[120px] resize-none"
+                    className="bg-input border-border text-foreground min-h-[120px] resize-none"
                     placeholder="Añade comentarios o notas técnicas..."
                 />
             </div>

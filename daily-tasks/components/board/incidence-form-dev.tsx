@@ -411,7 +411,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                             if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
                                         }}
                                         onBlur={() => handleSaveEditDraftTask(draft.tempId)}
-                                        className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                        className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                         autoFocus
                                     />
                                 ) : (
@@ -471,7 +471,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                                 if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
                                             }}
                                             onBlur={() => handleSaveEditDraftTask(draft.tempId)}
-                                            className="flex-1 bg-input border-border text-zinc-100 h-6 text-sm"
+                                            className="flex-1 bg-input border-border text-foreground h-6 text-sm"
                                             autoFocus
                                         />
                                     ) : (
