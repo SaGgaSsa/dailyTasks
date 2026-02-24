@@ -57,7 +57,10 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const newAssignees = allUsers.filter(u => draftAssignees.has(u.id))
 
     const unassignedUsers = allUsers
-        .filter(u => !assignedUserIds.has(u.id) && !draftAssignees.has(u.id))
+        .filter(u => 
+            (!assignedUserIds.has(u.id) || draftRemovedAssignees.has(u.id)) && 
+            !draftAssignees.has(u.id)
+        )
         .sort((a, b) => {
             if (a.role === 'DEV' && b.role !== 'DEV') return -1
             if (a.role !== 'DEV' && b.role === 'DEV') return 1
@@ -677,6 +680,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                 <Checkbox
                                     checked={draftAssignees.has(user.id)}
                                     onCheckedChange={() => handleToggleDraftAssignee(user.id)}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="border-input"
                                 />
                                 <span className="text-card-foreground/60 text-sm">{user.name || user.username}</span>
