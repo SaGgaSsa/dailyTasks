@@ -40,8 +40,10 @@ export function UploadAssetDialog({
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
-      setFileName(nameWithoutExt)
+      if (!fileName) {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
+        setFileName(nameWithoutExt)
+      }
       setError(null)
     }
   }
@@ -110,6 +112,17 @@ export function UploadAssetDialog({
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label htmlFor="file-name">Nombre del archivo</Label>
+              <Input
+                id="file-name"
+                type="text"
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                placeholder="Nombre para mostrar"
+              />
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="file-input">Archivo</Label>
               <Input
                 id="file-input"
@@ -128,18 +141,6 @@ export function UploadAssetDialog({
                   </span>
                 </div>
               )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="file-name">Nombre del archivo</Label>
-              <Input
-                id="file-name"
-                type="text"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="Nombre para mostrar"
-                disabled={!selectedFile}
-              />
             </div>
 
             {error && (
