@@ -231,6 +231,14 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
                             ]
                         }
                     }
+                },
+                attachments: {
+                    include: {
+                        uploadedBy: true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
                 }
             }
         })
@@ -265,6 +273,14 @@ export async function getIncidencePageData(id: number): Promise<{
                                     { completedAt: 'desc' }
                                 ]
                             }
+                        }
+                    },
+                    attachments: {
+                        include: {
+                            uploadedBy: true
+                        },
+                        orderBy: {
+                            createdAt: 'desc'
                         }
                     }
                 }
@@ -313,6 +329,14 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                                     createdAt: 'asc'
                                 }
                             }
+                        }
+                    },
+                    attachments: {
+                        include: {
+                            uploadedBy: true
+                        },
+                        orderBy: {
+                            createdAt: 'desc'
                         }
                     }
                 }

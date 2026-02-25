@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useTransition } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { IncidenceWithDetails } from '@/types'
+import { IncidenceWithDetails, AttachmentWithDetails } from '@/types'
 import { TaskType, Priority } from '@/types/enums'
 import { GeneralTab } from './general-tab'
 import { TasksTab } from './tasks-tab'
+import { AssetsTab } from './assets-tab'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
+import { getIncidence } from '@/app/actions/incidence-actions'
 
 const typeColors: Record<TaskType, string> = {
     I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -47,10 +49,20 @@ export function IncidenceDetailClient({
     onSaveRef,
 }: IncidenceDetailClientProps) {
     const [incidenceData, setIncidenceData] = useState<IncidenceWithDetails>(incidence)
+    const [isPending, startTransition] = useTransition()
 
     const handleIncidenceUpdate = useCallback((updated: IncidenceWithDetails) => {
         setIncidenceData(updated)
     }, [])
+
+    const handleRefreshAttachments = useCallback(() => {
+        startTransition(async () => {
+            const updated = await getIncidence(incidence.id)
+            if (updated) {
+                setIncidenceData(updated)
+            }
+        })
+    }, [incidence.id])
 
     return (
         <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-4rem)]">
@@ -87,6 +99,7 @@ export function IncidenceDetailClient({
                 <TabsList>
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="tareas">Tareas</TabsTrigger>
+                    <TabsTrigger value="archivos">Archivos</TabsTrigger>
                 </TabsList>
 
                 <Separator className="my-4" />
@@ -104,6 +117,15 @@ export function IncidenceDetailClient({
                         onIncidenceUpdate={handleIncidenceUpdate}
                         onHasChangesChange={onHasChangesChange}
                         onSaveRef={onSaveRef}
+                    />
+                </TabsContent>
+
+                <TabsContent value="archivos" className="mt-0">
+                    <AssetsTab
+                        incidenceId={incidenceData.id}
+                        attachments={incidenceData.attachments}
+                        currentUserId={currentUserId}
+                        onRefresh={handleRefreshAttachments}
                     />
                 </TabsContent>
             </Tabs>

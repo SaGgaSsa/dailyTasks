@@ -18,6 +18,7 @@ model User {
   updatedAt     DateTime      @updatedAt
 
   assignments        Assignment[]
+  attachments        Attachment[]
 
   @@map("users")
 }
@@ -72,6 +73,7 @@ model Incidence {
   updatedAt     DateTime  @updatedAt
 
   assignments   Assignment[]
+  attachments   Attachment[]
 
   @@unique([type, externalId])
   @@map("incidences")
@@ -105,4 +107,25 @@ model SubTask {
   createdAt   DateTime  @default(now())
 
   @@map("sub_tasks")
+}
+
+model Attachment {
+  id           Int       @id @default(autoincrement())
+  name         String
+  originalName String
+  url          String
+  size         Int
+  mimeType     String
+  description  String?
+  
+  incidenceId  Int
+  incidence    Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  
+  uploadedById Int
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("attachments")
 }

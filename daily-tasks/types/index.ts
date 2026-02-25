@@ -1,9 +1,9 @@
-import { Incidence, User, SubTask, Assignment } from '@prisma/client'
+import { Incidence, User, SubTask, Assignment, Attachment } from '@prisma/client'
 import { TaskStatus, TaskType, TechStack, Priority } from './enums'
 
 export type { TaskStatus, TaskType, TechStack, Priority }
 
-export type { SubTask }
+export type { SubTask, Attachment }
 
 export interface AssigneeWithHours {
   userId: number
@@ -15,6 +15,10 @@ export type AssignmentWithDetails = Assignment & {
   tasks: SubTask[]
 }
 
+export type AttachmentWithDetails = Attachment & {
+  uploadedBy: User
+}
+
 export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technology' | 'priority' | 'position'> & {
   status: TaskStatus
   type: TaskType
@@ -22,4 +26,5 @@ export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technolo
   priority: Priority
   position: number
   assignments: AssignmentWithDetails[]
+  attachments: AttachmentWithDetails[]
 }

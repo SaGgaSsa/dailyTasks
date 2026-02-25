@@ -1,0 +1,154 @@
+'use server'
+
+import { db } from '@/lib/db'
+import { revalidatePath } from 'next/cache'
+import { auth } from '@/auth'
+import { writeFile, unlink, mkdir } from 'fs/promises'
+import { join } from 'path'
+import { randomUUID } from 'crypto'
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+export async function uploadAttachment(formData: FormData) {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    const file = formData.get('file') as File | null
+    const incidenceId = Number(formData.get('incidenceId'))
+    const name = formData.get('name') as string
+    const uploadedById = Number(formData.get('uploadedById'))
+
+    if (!file || !incidenceId || !name || !uploadedById) {
+        return { success: false, error: 'Faltan datos requeridos' }
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+        return { success: false, error: 'El archivo excede el límite de 10MB' }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId }
+        })
+
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+
+        const originalName = file.name
+        const ext = originalName.split('.').pop() || ''
+        const uniqueName = `${randomUUID()}.${ext}`
+        
+        const uploadDir = join(process.cwd(), 'public', 'uploads', 'incidences', String(incidenceId))
+        
+        await mkdir(uploadDir, { recursive: true })
+        
+        const filePath = join(uploadDir, uniqueName)
+        await writeFile(filePath, buffer)
+
+        const url = `/uploads/incidences/${incidenceId}/${uniqueName}`
+
+        const attachment = await db.attachment.create({
+            data: {
+                name,
+                originalName,
+                url,
+                size: file.size,
+                mimeType: file.type,
+                incidenceId,
+                uploadedById
+            }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, data: attachment }
+    } catch (error) {
+        console.error('Error uploading attachment:', error)
+        return { success: false, error: 'Error al subir el archivo' }
+    }
+}
+
+export async function updateAttachmentName(
+    attachmentId: number,
+    newName: string
+) {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    if (!newName || newName.trim() === '') {
+        return { success: false, error: 'El nombre no puede estar vacío' }
+    }
+
+    try {
+        const attachment = await db.attachment.findUnique({
+            where: { id: attachmentId }
+        })
+
+        if (!attachment) {
+            return { success: false, error: 'Archivo no encontrado' }
+        }
+
+        await db.attachment.update({
+            where: { id: attachmentId },
+            data: { name: newName.trim() }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error updating attachment name:', error)
+        return { success: false, error: 'Error al actualizar el nombre' }
+    }
+}
+
+export async function deleteAttachment(
+    attachmentId: number
+) {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    try {
+        const attachment = await db.attachment.findUnique({
+            where: { id: attachmentId },
+            include: { incidence: true }
+        })
+
+        if (!attachment) {
+            return { success: false, error: 'Archivo no encontrado' }
+        }
+
+        const isOwner = attachment.uploadedById === Number(session.user.id)
+        const isAdmin = session.user.role === 'ADMIN'
+
+        if (!isOwner && !isAdmin) {
+            return { success: false, error: 'No tienes permiso para eliminar este archivo' }
+        }
+
+        const filePath = join(process.cwd(), 'public', attachment.url)
+        
+        try {
+            await unlink(filePath)
+        } catch (fsError) {
+            console.warn('Could not delete physical file:', fsError)
+        }
+
+        await db.attachment.delete({
+            where: { id: attachmentId }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error deleting attachment:', error)
+        return { success: false, error: 'Error al eliminar el archivo' }
+    }
+}
