@@ -56,6 +56,11 @@ enum Priority {
   HIGH
 }
 
+enum AttachmentType {
+  FILE
+  LINK
+}
+
 model Incidence {
   id            Int       @id @default(autoincrement())
   type          TaskType
@@ -110,12 +115,13 @@ model SubTask {
 }
 
 model Attachment {
-  id           Int       @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
+  type         AttachmentType @default(FILE)
   name         String
-  originalName String
+  originalName String?
   url          String
-  size         Int
-  mimeType     String
+  size         Int?
+  mimeType     String?
   description  String?
   
   incidenceId  Int

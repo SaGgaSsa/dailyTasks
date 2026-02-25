@@ -1,7 +1,7 @@
 import { Incidence, User, SubTask, Assignment, Attachment } from '@prisma/client'
-import { TaskStatus, TaskType, TechStack, Priority } from './enums'
+import { TaskStatus, TaskType, TechStack, Priority, AttachmentType } from './enums'
 
-export type { TaskStatus, TaskType, TechStack, Priority }
+export type { TaskStatus, TaskType, TechStack, Priority, AttachmentType }
 
 export type { SubTask, Attachment }
 

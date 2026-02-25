@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { EllipsisVertical, Download, Pencil, Trash2 } from 'lucide-react'
+import { EllipsisVertical, Download, Pencil, Trash2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +30,8 @@ interface AttachmentRowActionsProps {
   onSuccess?: () => void
 }
 
+const ATTACHMENT_TYPE_FILE = 'FILE' as const
+
 export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowActionsProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -37,13 +39,19 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
   const [editName, setEditName] = useState(attachment.name)
   const [error, setError] = useState<string | null>(null)
 
+  const isFile = attachment.type === ATTACHMENT_TYPE_FILE
+
   const uploadsPath = process.env.NEXT_PUBLIC_UPLOADS_PATH || '/uploads'
-  const downloadUrl = `${uploadsPath}${attachment.url.replace('/uploads', '')}`
+  const downloadUrl = isFile ? `${uploadsPath}${attachment.url.replace('/uploads', '')}` : attachment.url
+
+  const handleOpenLink = () => {
+    window.open(attachment.url, '_blank')
+  }
 
   const handleDownload = () => {
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.download = attachment.originalName
+    link.download = attachment.originalName || attachment.name
     link.target = '_blank'
     document.body.appendChild(link)
     link.click()
@@ -112,10 +120,17 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Descargar
-          </DropdownMenuItem>
+          {isFile ? (
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Descargar
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={handleOpenLink}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ir al Enlace
+            </DropdownMenuItem>
+          )}
           
           <DropdownMenuItem onClick={() => {
             setEditName(attachment.name)

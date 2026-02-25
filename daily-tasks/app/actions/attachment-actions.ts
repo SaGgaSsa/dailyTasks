@@ -9,6 +9,9 @@ import { randomUUID } from 'crypto'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
+const ATTACHMENT_TYPE_FILE = 'FILE' as const
+const ATTACHMENT_TYPE_LINK = 'LINK' as const
+
 export async function uploadAttachment(formData: FormData) {
     const session = await auth()
     if (!session?.user) {
@@ -19,6 +22,7 @@ export async function uploadAttachment(formData: FormData) {
     const incidenceId = Number(formData.get('incidenceId'))
     const name = formData.get('name') as string
     const uploadedById = Number(formData.get('uploadedById'))
+    const description = formData.get('description') as string | null
 
     if (!file || !incidenceId || !name || !uploadedById) {
         return { success: false, error: 'Faltan datos requeridos' }
@@ -55,11 +59,13 @@ export async function uploadAttachment(formData: FormData) {
 
         const attachment = await db.attachment.create({
             data: {
+                type: ATTACHMENT_TYPE_FILE,
                 name,
                 originalName,
                 url,
                 size: file.size,
                 mimeType: file.type,
+                description: description || null,
                 incidenceId,
                 uploadedById
             }
@@ -133,12 +139,13 @@ export async function deleteAttachment(
             return { success: false, error: 'No tienes permiso para eliminar este archivo' }
         }
 
-        const filePath = join(process.cwd(), 'public', attachment.url)
-        
-        try {
-            await unlink(filePath)
-        } catch (fsError) {
-            console.warn('Could not delete physical file:', fsError)
+        if (attachment.type === ATTACHMENT_TYPE_FILE) {
+            const filePath = join(process.cwd(), 'public', attachment.url)
+            try {
+                await unlink(filePath)
+            } catch (fsError) {
+                console.warn('Could not delete physical file:', fsError)
+            }
         }
 
         await db.attachment.delete({
@@ -150,5 +157,71 @@ export async function deleteAttachment(
     } catch (error) {
         console.error('Error deleting attachment:', error)
         return { success: false, error: 'Error al eliminar el archivo' }
+    }
+}
+
+interface AddLinkData {
+    incidenceId: number
+    name: string
+    url: string
+    description?: string
+    uploadedById: number
+}
+
+export async function addLinkAttachment(data: AddLinkData) {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    const { incidenceId, name, url, description, uploadedById } = data
+
+    if (!incidenceId || !name || !url || !uploadedById) {
+        return { success: false, error: 'Faltan datos requeridos' }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId }
+        })
+
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        let normalizedUrl = url.trim()
+        if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+            normalizedUrl = 'https://' + normalizedUrl
+        }
+
+        try {
+            new URL(normalizedUrl)
+        } catch {
+            return { success: false, error: 'La URL no es válida' }
+        }
+
+        if (!normalizedUrl.startsWith('https://')) {
+            return { success: false, error: 'La URL debe ser HTTPS' }
+        }
+
+        const attachment = await db.attachment.create({
+            data: {
+                type: ATTACHMENT_TYPE_LINK,
+                name: name.trim(),
+                url: normalizedUrl,
+                originalName: null,
+                size: null,
+                mimeType: null,
+                description: description?.trim() || null,
+                incidenceId,
+                uploadedById
+            }
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true, data: attachment }
+    } catch (error) {
+        console.error('Error adding link attachment:', error)
+        return { success: false, error: 'Error al agregar el enlace' }
     }
 }

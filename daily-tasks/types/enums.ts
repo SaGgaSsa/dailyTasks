@@ -36,3 +36,8 @@ export enum WorkspaceRole {
     ADMIN = "ADMIN",
     MEMBER = "MEMBER",
 }
+
+export enum AttachmentType {
+    FILE = "FILE",
+    LINK = "LINK",
+}
