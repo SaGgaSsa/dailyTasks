@@ -104,7 +104,6 @@ export function AssetsTab({ incidenceId, attachments, currentUserId, onRefresh }
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        variant="outline"
                         size="sm"
                         className="gap-2"
                         onClick={() => setIsAddLinkOpen(true)}

@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { updateAttachmentName, deleteAttachment } from '@/app/actions/attachment-actions'
+import { updateAttachment, deleteAttachment } from '@/app/actions/attachment-actions'
 import { toast } from 'sonner'
 import { Attachment } from '@/types'
 
@@ -37,6 +37,8 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [editName, setEditName] = useState(attachment.name)
+  const [editUrl, setEditUrl] = useState(attachment.url)
+  const [editDescription, setEditDescription] = useState(attachment.description || '')
   const [error, setError] = useState<string | null>(null)
 
   const isFile = attachment.type === ATTACHMENT_TYPE_FILE
@@ -58,7 +60,7 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
     document.body.removeChild(link)
   }
 
-  const handleUpdateName = async () => {
+  const handleUpdate = async () => {
     if (!editName.trim()) {
       setError('El nombre no puede estar vacío')
       return
@@ -68,17 +70,21 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
     setError(null)
 
     try {
-      const result = await updateAttachmentName(Number(attachment.id), editName.trim())
+      const result = await updateAttachment(Number(attachment.id), {
+        name: editName.trim(),
+        url: isFile ? undefined : editUrl.trim(),
+        description: editDescription.trim() || null
+      })
 
       if (result.success) {
-        toast.success('Nombre actualizado correctamente')
+        toast.success('Actualizado correctamente')
         setIsEditDialogOpen(false)
         onSuccess?.()
       } else {
-        setError(result.error || 'Error al actualizar el nombre')
+        setError(result.error || 'Error al actualizar')
       }
     } catch (err) {
-      setError('Error al actualizar el nombre')
+      setError('Error al actualizar')
       console.error('Update error:', err)
     } finally {
       setIsLoading(false)
@@ -134,11 +140,13 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
           
           <DropdownMenuItem onClick={() => {
             setEditName(attachment.name)
+            setEditUrl(attachment.url)
+            setEditDescription(attachment.description || '')
             setError(null)
             setIsEditDialogOpen(true)
           }}>
             <Pencil className="mr-2 h-4 w-4" />
-            Editar Nombre
+            Editar
           </DropdownMenuItem>
           
           <DropdownMenuSeparator />
@@ -159,9 +167,9 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[400px]" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>Editar Nombre</DialogTitle>
+            <DialogTitle>Editar</DialogTitle>
             <DialogDescription>
-              Cambia el nombre que se mostrará para este archivo.
+              {isFile ? 'Cambia el nombre y descripción del archivo.' : 'Cambia el nombre, enlace y descripción.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -173,7 +181,31 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Nombre del archivo"
+                placeholder={isFile ? 'Nombre del archivo' : 'Nombre del enlace'}
+              />
+            </div>
+
+            {!isFile && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-url">Enlace</Label>
+                <Input
+                  id="edit-url"
+                  type="text"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="https://ejemplo.com"
+                />
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Input
+                id="edit-description"
+                type="text"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Descripción opcional"
               />
             </div>
 
@@ -192,7 +224,7 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
             >
               Cancelar
             </Button>
-            <Button onClick={handleUpdateName} disabled={isLoading || !editName.trim()}>
+            <Button onClick={handleUpdate} disabled={isLoading || !editName.trim()}>
               {isLoading ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>

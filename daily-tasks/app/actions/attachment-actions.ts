@@ -79,16 +79,22 @@ export async function uploadAttachment(formData: FormData) {
     }
 }
 
-export async function updateAttachmentName(
+export async function updateAttachment(
     attachmentId: number,
-    newName: string
+    data: {
+        name: string
+        url?: string
+        description?: string | null
+    }
 ) {
     const session = await auth()
     if (!session?.user) {
         return { success: false, error: 'No autorizado' }
     }
 
-    if (!newName || newName.trim() === '') {
+    const { name, url, description } = data
+
+    if (!name || name.trim() === '') {
         return { success: false, error: 'El nombre no puede estar vacío' }
     }
 
@@ -101,16 +107,44 @@ export async function updateAttachmentName(
             return { success: false, error: 'Archivo no encontrado' }
         }
 
+        const updateData: { name: string; url?: string; description: string | null } = {
+            name: name.trim(),
+            description: description?.trim() || null
+        }
+
+        if (attachment.type === ATTACHMENT_TYPE_LINK) {
+            if (!url || url.trim() === '') {
+                return { success: false, error: 'El enlace no puede estar vacío' }
+            }
+
+            let normalizedUrl = url.trim()
+            if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+                normalizedUrl = 'https://' + normalizedUrl
+            }
+
+            try {
+                new URL(normalizedUrl)
+            } catch {
+                return { success: false, error: 'La URL no es válida' }
+            }
+
+            if (!normalizedUrl.startsWith('https://')) {
+                return { success: false, error: 'La URL debe ser HTTPS' }
+            }
+
+            updateData.url = normalizedUrl
+        }
+
         await db.attachment.update({
             where: { id: attachmentId },
-            data: { name: newName.trim() }
+            data: updateData
         })
 
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
-        console.error('Error updating attachment name:', error)
-        return { success: false, error: 'Error al actualizar el nombre' }
+        console.error('Error updating attachment:', error)
+        return { success: false, error: 'Error al actualizar' }
     }
 }
 
