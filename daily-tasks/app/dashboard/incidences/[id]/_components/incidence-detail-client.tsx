@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition } from 'react'
+import { useState, useCallback, useTransition, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { IncidenceWithDetails, AttachmentWithDetails } from '@/types'
@@ -51,6 +51,27 @@ export function IncidenceDetailClient({
 }: IncidenceDetailClientProps) {
     const [incidenceData, setIncidenceData] = useState<IncidenceWithDetails>(incidence)
     const [isPending, startTransition] = useTransition()
+    const [activeTab, setActiveTab] = useState("overview")
+
+    useEffect(() => {
+        const hash = window.location.hash.replace('#', '')
+        const validTabs = ['overview', 'tasks', 'pages', 'files']
+        if (validTabs.includes(hash)) {
+            setActiveTab(hash)
+        }
+    }, [])
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace('#', '')
+            const validTabs = ['overview', 'tasks', 'pages', 'files']
+            if (validTabs.includes(hash)) {
+                setActiveTab(hash)
+            }
+        }
+        window.addEventListener('hashchange', handleHashChange)
+        return () => window.removeEventListener('hashchange', handleHashChange)
+    }, [])
 
     const handleIncidenceUpdate = useCallback((updated: IncidenceWithDetails) => {
         setIncidenceData(updated)
@@ -105,21 +126,28 @@ export function IncidenceDetailClient({
                 {incidenceData.title}
             </h1>
 
-            <Tabs defaultValue="general" className="w-full">
+            <Tabs 
+                value={activeTab} 
+                onValueChange={(value) => {
+                    setActiveTab(value)
+                    window.history.replaceState(null, '', `#${value}`)
+                }} 
+                className="w-full"
+            >
                 <TabsList>
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="tareas">Tareas</TabsTrigger>
+                    <TabsTrigger value="overview">General</TabsTrigger>
+                    <TabsTrigger value="tasks">Tareas</TabsTrigger>
                     <TabsTrigger value="pages">Páginas</TabsTrigger>
-                    <TabsTrigger value="archivos">Archivos</TabsTrigger>
+                    <TabsTrigger value="files">Archivos</TabsTrigger>
                 </TabsList>
 
                 <Separator className="my-4" />
 
-                <TabsContent value="general" className="mt-0">
+                <TabsContent value="overview" className="mt-0">
                     <GeneralTab comment={incidenceData.comment} pages={incidenceData.pages} />
                 </TabsContent>
 
-                <TabsContent value="tareas" className="mt-0">
+                <TabsContent value="tasks" className="mt-0">
                     <TasksTab
                         incidence={incidenceData}
                         allUsers={allUsers}
@@ -140,7 +168,7 @@ export function IncidenceDetailClient({
                     />
                 </TabsContent>
 
-                <TabsContent value="archivos" className="mt-0">
+                <TabsContent value="files" className="mt-0">
                     <AssetsTab
                         incidenceId={incidenceData.id}
                         attachments={incidenceData.attachments}
