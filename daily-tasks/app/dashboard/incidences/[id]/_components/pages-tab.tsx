@@ -1,11 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus, FileText, Calendar, User as UserIcon } from 'lucide-react'
+import { FilePlus, FileText, Calendar, User as UserIcon, MoreVertical, Trash2, Star, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { IncidencePageWithAuthor } from '@/types'
-import { createPage } from '@/app/actions/pages'
+import { createPage, deletePage, setMainIncidencePage } from '@/app/actions/pages'
+import { toast } from 'sonner'
 
 interface PagesTabProps {
     incidenceId: number
@@ -25,11 +40,15 @@ function formatDate(date: Date): string {
 export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: PagesTabProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [pageToDelete, setPageToDelete] = useState<IncidencePageWithAuthor | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isSettingMain, setIsSettingMain] = useState(false)
 
     const handleCreatePage = async () => {
         setIsSubmitting(true)
         try {
-            const result = await createPage(incidenceId, 'Nueva Página')
+            const result = await createPage(incidenceId, '')
             if (result.success && result.data) {
                 router.push(`/dashboard/incidences/${incidenceId}/pages/${result.data.id}`)
                 onRefresh?.()
@@ -39,10 +58,59 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
         }
     }
 
+    const handleDeleteClick = (page: IncidencePageWithAuthor, e: React.MouseEvent) => {
+        e.stopPropagation()
+        setPageToDelete(page)
+        setDeleteDialogOpen(true)
+    }
+
+    const handleSetMainPage = async (page: IncidencePageWithAuthor, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (page.isMainPage) return
+
+        setIsSettingMain(true)
+        try {
+            const result = await setMainIncidencePage(incidenceId, page.id)
+            if (result.success) {
+                toast.success('Página fijada como principal')
+                onRefresh?.()
+            } else {
+                toast.error(result.error || 'Error al fijar la página')
+            }
+        } finally {
+            setIsSettingMain(false)
+        }
+    }
+
+    const handleCopyLink = async (page: IncidencePageWithAuthor, e: React.MouseEvent) => {
+        e.stopPropagation()
+        const url = `${window.location.origin}/dashboard/incidences/${incidenceId}/pages/${page.id}`
+        await navigator.clipboard.writeText(url)
+        toast.success('Enlace copiado al portapapeles')
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!pageToDelete) return
+
+        setIsDeleting(true)
+        try {
+            const result = await deletePage(pageToDelete.id)
+            if (result.success) {
+                toast.success('Página eliminada')
+                onRefresh?.()
+            } else {
+                toast.error(result.error || 'Error al eliminar la página')
+            }
+        } finally {
+            setIsDeleting(false)
+            setDeleteDialogOpen(false)
+            setPageToDelete(null)
+        }
+    }
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Documentos</h3>
+            <div className="flex items-center justify-end">
                 <Button
                     size="sm"
                     className="gap-2"
@@ -64,7 +132,7 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                         <div
                             key={page.id}
                             onClick={() => router.push(`/dashboard/incidences/${incidenceId}/pages/${page.id}`)}
-                            className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                            className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer group"
                         >
                             <div className="flex items-start gap-3">
                                 <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -73,6 +141,46 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                                         {page.title || 'Nueva Página'}
                                     </h4>
                                 </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {page.isMainPage ? (
+                                            <DropdownMenuItem disabled>
+                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" />
+                                                Ya es la principal
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            <DropdownMenuItem
+                                                onClick={(e) => handleSetMainPage(page, e)}
+                                                disabled={isSettingMain}
+                                            >
+                                                <Star className="h-4 w-4 mr-2" />
+                                                Fijar como principal
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem
+                                            onClick={(e) => handleCopyLink(page, e)}
+                                        >
+                                            <Link className="h-4 w-4 mr-2" />
+                                            Copiar enlace
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-red-500 focus:text-red-500"
+                                            onClick={(e) => handleDeleteClick(page, e)}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Eliminar Página
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                             <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
@@ -88,6 +196,33 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                     ))}
                 </div>
             )}
+
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="bg-card border-border">
+                    <DialogHeader>
+                        <DialogTitle>Eliminar Página</DialogTitle>
+                        <DialogDescription>
+                            ¿Estás seguro de que deseas eliminar la página &quot;{pageToDelete?.title || 'Nueva Página'}&quot;? Esta acción no se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteDialogOpen(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

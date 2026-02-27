@@ -13,7 +13,7 @@ export async function createPage(incidenceId: number, title: string) {
         return { success: false, error: 'No autorizado' }
     }
 
-    if (!incidenceId || !title) {
+    if (!incidenceId) {
         return { success: false, error: 'Faltan datos requeridos' }
     }
 
@@ -115,5 +115,51 @@ export async function deletePage(pageId: number) {
     } catch (error) {
         console.error('Error deleting page:', error)
         return { success: false, error: 'Error al eliminar la página' }
+    }
+}
+
+export async function setMainIncidencePage(incidenceId: number, pageId: number) {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    if (!incidenceId || !pageId) {
+        return { success: false, error: 'ID de incidencia y página requeridos' }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId }
+        })
+
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        const page = await db.incidencePage.findFirst({
+            where: { id: pageId, incidenceId }
+        })
+
+        if (!page) {
+            return { success: false, error: 'Página no encontrada' }
+        }
+
+        await db.$transaction([
+            db.incidencePage.updateMany({
+                where: { incidenceId },
+                data: { isMainPage: false }
+            }),
+            db.incidencePage.update({
+                where: { id: pageId },
+                data: { isMainPage: true }
+            })
+        ])
+
+        revalidatePath(`/dashboard`)
+        return { success: true }
+    } catch (error) {
+        console.error('Error setting main page:', error)
+        return { success: false, error: 'Error al establecer la página principal' }
     }
 }

@@ -116,7 +116,7 @@ export function IncidenceDetailClient({
                 <Separator className="my-4" />
 
                 <TabsContent value="general" className="mt-0">
-                    <GeneralTab comment={incidenceData.comment} />
+                    <GeneralTab comment={incidenceData.comment} pages={incidenceData.pages} />
                 </TabsContent>
 
                 <TabsContent value="tareas" className="mt-0">
