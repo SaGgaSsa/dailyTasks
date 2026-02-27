@@ -8,6 +8,7 @@ import { TaskType, Priority } from '@/types/enums'
 import { GeneralTab } from './general-tab'
 import { TasksTab } from './tasks-tab'
 import { AssetsTab } from './assets-tab'
+import { PagesTab } from './pages-tab'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
@@ -64,6 +65,15 @@ export function IncidenceDetailClient({
         })
     }, [incidence.id])
 
+    const handleRefreshPages = useCallback(() => {
+        startTransition(async () => {
+            const updated = await getIncidence(incidence.id)
+            if (updated) {
+                setIncidenceData(updated)
+            }
+        })
+    }, [incidence.id])
+
     return (
         <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-4rem)]">
             <div className="flex items-center justify-between">
@@ -100,6 +110,7 @@ export function IncidenceDetailClient({
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="tareas">Tareas</TabsTrigger>
                     <TabsTrigger value="archivos">Archivos</TabsTrigger>
+                    <TabsTrigger value="pages">Páginas</TabsTrigger>
                 </TabsList>
 
                 <Separator className="my-4" />
@@ -126,6 +137,15 @@ export function IncidenceDetailClient({
                         attachments={incidenceData.attachments}
                         currentUserId={currentUserId}
                         onRefresh={handleRefreshAttachments}
+                    />
+                </TabsContent>
+
+                <TabsContent value="pages" className="mt-0">
+                    <PagesTab
+                        incidenceId={incidenceData.id}
+                        pages={incidenceData.pages}
+                        currentUserId={currentUserId}
+                        onRefresh={handleRefreshPages}
                     />
                 </TabsContent>
             </Tabs>

@@ -239,6 +239,14 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
                     orderBy: {
                         createdAt: 'desc'
                     }
+                },
+                pages: {
+                    include: {
+                        author: true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
                 }
             }
         })
@@ -278,6 +286,14 @@ export async function getIncidencePageData(id: number): Promise<{
                     attachments: {
                         include: {
                             uploadedBy: true
+                        },
+                        orderBy: {
+                            createdAt: 'desc'
+                        }
+                    },
+                    pages: {
+                        include: {
+                            author: true
                         },
                         orderBy: {
                             createdAt: 'desc'

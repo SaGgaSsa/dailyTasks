@@ -19,6 +19,7 @@ model User {
 
   assignments        Assignment[]
   attachments        Attachment[]
+  pages              IncidencePage[]
 
   @@map("users")
 }
@@ -79,6 +80,7 @@ model Incidence {
 
   assignments   Assignment[]
   attachments   Attachment[]
+  pages         IncidencePage[]
 
   @@unique([type, externalId])
   @@map("incidences")
@@ -134,4 +136,21 @@ model Attachment {
   updatedAt    DateTime  @updatedAt
 
   @@map("attachments")
+}
+
+model IncidencePage {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     Json?
+  
+  incidenceId Int
+  incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  
+  authorId    Int
+  author      User      @relation(fields: [authorId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("incidence_pages")
 }
