@@ -104,10 +104,16 @@ export function Navbar() {
               Incidencias
             </Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <Link href={`/dashboard/incidences/${pathname.split('/')[3]}`} className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[300px]">
-              {incidenceTitle}
-            </Link>
-            {pageTitle !== undefined && (
+            {pageTitle ? (
+              <Link href={`/dashboard/incidences/${pathname.split('/')[3]}`} className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[300px]">
+                {incidenceTitle}
+              </Link>
+            ) : (
+              <span className="text-foreground font-medium truncate max-w-[300px]">
+                {incidenceTitle}
+              </span>
+            )}
+            {pageTitle && (
               <>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-foreground font-medium truncate max-w-[300px]">

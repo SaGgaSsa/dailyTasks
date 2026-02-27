@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus, FileText, Calendar, User as UserIcon, MoreVertical, Trash2, Star, Link } from 'lucide-react'
+import { FilePlus, FileText, Calendar, MoreVertical, Trash2, Star, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -132,7 +132,7 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                         <div
                             key={page.id}
                             onClick={() => router.push(`/dashboard/incidences/${incidenceId}/pages/${page.id}`)}
-                            className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer group"
+                            className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                         >
                             <div className="flex items-start gap-3">
                                 <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -141,55 +141,59 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                                         {page.title || 'Nueva Página'}
                                     </h4>
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {page.isMainPage ? (
-                                            <DropdownMenuItem disabled>
-                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" />
-                                                Ya es la principal
-                                            </DropdownMenuItem>
-                                        ) : (
-                                            <DropdownMenuItem
-                                                onClick={(e) => handleSetMainPage(page, e)}
-                                                disabled={isSettingMain}
+                                <div className="flex flex-col items-center gap-1">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
                                             >
-                                                <Star className="h-4 w-4 mr-2" />
-                                                Fijar como principal
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {page.isMainPage ? (
+                                                <DropdownMenuItem disabled>
+                                                    <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" />
+                                                    Ya es la principal
+                                                </DropdownMenuItem>
+                                            ) : (
+                                                <DropdownMenuItem
+                                                    onClick={(e) => handleSetMainPage(page, e)}
+                                                    disabled={isSettingMain}
+                                                >
+                                                    <Star className="h-4 w-4 mr-2" />
+                                                    Fijar como principal
+                                                </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem
+                                                onClick={(e) => handleCopyLink(page, e)}
+                                            >
+                                                <Link className="h-4 w-4 mr-2" />
+                                                Copiar enlace
                                             </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem
-                                            onClick={(e) => handleCopyLink(page, e)}
-                                        >
-                                            <Link className="h-4 w-4 mr-2" />
-                                            Copiar enlace
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-red-500 focus:text-red-500"
-                                            onClick={(e) => handleDeleteClick(page, e)}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Eliminar Página
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                            <DropdownMenuItem
+                                                className="text-red-500 focus:text-red-500"
+                                                onClick={(e) => handleDeleteClick(page, e)}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Eliminar Página
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+                            <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
                                     <span>{formatDate(page.createdAt)}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <UserIcon className="h-3 w-3" />
                                     <span>{page.author.name || page.author.username}</span>
+                                    {page.isMainPage && (
+                                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                    )}
                                 </div>
                             </div>
                         </div>

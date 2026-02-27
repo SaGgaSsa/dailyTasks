@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
-import { ReadonlyBlockNote } from '../../incidences/[id]/_components/readonly-block-note'
+import { ReadonlyBlockNoteWrapper } from './readonly-block-note-wrapper'
 
 interface PageProps {
     params: Promise<{ pageId: string }>
@@ -44,7 +44,7 @@ export default async function SharedPageView({ params }: PageProps) {
                 </div>
 
                 <div className="bg-white shadow-lg min-h-[297mm] p-[20mm]">
-                    <ReadonlyBlockNote initialContent={page.content as object | undefined} />
+                    <ReadonlyBlockNoteWrapper initialContent={page.content as object | undefined} />
                 </div>
             </div>
         </div>

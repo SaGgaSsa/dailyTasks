@@ -1,5 +1,12 @@
+'use client'
+
 import { IncidencePageWithAuthor } from '@/types'
-import { ReadonlyBlockNote } from './readonly-block-note'
+import dynamic from 'next/dynamic'
+
+const ReadonlyBlockNote = dynamic(
+    () => import('./readonly-block-note').then(mod => mod.ReadonlyBlockNote),
+    { ssr: false }
+)
 
 interface GeneralTabProps {
     comment: string | null
