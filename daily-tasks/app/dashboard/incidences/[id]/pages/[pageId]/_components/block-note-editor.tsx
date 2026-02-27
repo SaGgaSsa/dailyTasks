@@ -9,6 +9,7 @@ import "@blocknote/mantine/style.css"
 import { updatePageContent } from '@/app/actions/pages'
 import { toast } from 'sonner'
 import { Prisma } from '@prisma/client'
+import { usePageTitle } from '@/components/providers/page-title-provider'
 
 interface BlockNoteEditorProps {
     initialContent: object | undefined
@@ -38,6 +39,7 @@ export function BlockNoteEditor({
 }: BlockNoteEditorProps) {
     const [theme, setTheme] = useState<'light' | 'dark'>(propTheme || 'dark')
     const [title, setTitle] = useState(initialTitle)
+    const { setPageTitle } = usePageTitle()
     
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -89,13 +91,14 @@ export function BlockNoteEditor({
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value
         setTitle(newTitle)
+        setPageTitle(newTitle || '')
 
         if (titleTimeoutRef.current) {
             clearTimeout(titleTimeoutRef.current)
         }
 
         titleTimeoutRef.current = setTimeout(async () => {
-            const titleToSave = newTitle.trim() || 'Nueva Página'
+            const titleToSave = newTitle.trim()
             
             try {
                 const result = await updatePageContent(
@@ -156,20 +159,19 @@ export function BlockNoteEditor({
 
     if (isEditor) {
         return (
-            <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
-                <div className="pt-4 px-8 max-w-4xl mx-auto">
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={handleTitleChange}
-                        placeholder="Nueva Página"
-                        className="w-full bg-transparent border-none outline-none text-2xl font-semibold mb-4 pl-[54px] placeholder:text-muted-foreground/50"
-                    />
-                    <BlockNoteView
-                        editor={editor}
-                        theme={theme}
-                    />
-                </div>
+            <div>
+                <input
+                    type="text"
+                    value={title}
+                    onChange={handleTitleChange}
+                    placeholder="Nueva Página"
+                    maxLength={60}
+                    className="w-full bg-transparent border-none outline-none text-2xl font-semibold mb-4 pl-[54px] placeholder:text-muted-foreground/50"
+                />
+                <BlockNoteView
+                    editor={editor}
+                    theme={theme}
+                />
             </div>
         )
     }

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
-import { EditorWrapper } from './editor-wrapper'
+import { PageEditorContent } from './_components/page-editor-content'
 
 interface PageProps {
     params: Promise<{ id: string; pageId: string }>
@@ -32,12 +32,12 @@ export default async function PageEditorPage({ params }: PageProps) {
     }
 
     return (
-        <EditorWrapper
+        <PageEditorContent
             initialContent={page.content as object | undefined}
             initialTitle={page.title}
             pageId={page.id}
             incidenceId={incidenceNumberId}
-            isEditor={true}
+            incidenceTitle={page.incidence.title}
         />
     )
 }

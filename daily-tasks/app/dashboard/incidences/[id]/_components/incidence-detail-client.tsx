@@ -109,8 +109,8 @@ export function IncidenceDetailClient({
                 <TabsList>
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="tareas">Tareas</TabsTrigger>
-                    <TabsTrigger value="archivos">Archivos</TabsTrigger>
                     <TabsTrigger value="pages">Páginas</TabsTrigger>
+                    <TabsTrigger value="archivos">Archivos</TabsTrigger>
                 </TabsList>
 
                 <Separator className="my-4" />
@@ -131,21 +131,21 @@ export function IncidenceDetailClient({
                     />
                 </TabsContent>
 
-                <TabsContent value="archivos" className="mt-0">
-                    <AssetsTab
-                        incidenceId={incidenceData.id}
-                        attachments={incidenceData.attachments}
-                        currentUserId={currentUserId}
-                        onRefresh={handleRefreshAttachments}
-                    />
-                </TabsContent>
-
                 <TabsContent value="pages" className="mt-0">
                     <PagesTab
                         incidenceId={incidenceData.id}
                         pages={incidenceData.pages}
                         currentUserId={currentUserId}
                         onRefresh={handleRefreshPages}
+                    />
+                </TabsContent>
+
+                <TabsContent value="archivos" className="mt-0">
+                    <AssetsTab
+                        incidenceId={incidenceData.id}
+                        attachments={incidenceData.attachments}
+                        currentUserId={currentUserId}
+                        onRefresh={handleRefreshAttachments}
                     />
                 </TabsContent>
             </Tabs>

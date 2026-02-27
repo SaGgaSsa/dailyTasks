@@ -69,8 +69,8 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                             <div className="flex items-start gap-3">
                                 <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium truncate" title={page.title}>
-                                        {page.title}
+                                    <h4 className="font-medium truncate" title={page.title || 'Nueva Página'}>
+                                        {page.title || 'Nueva Página'}
                                     </h4>
                                 </div>
                             </div>

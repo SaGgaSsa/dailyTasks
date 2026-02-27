@@ -20,6 +20,7 @@ import { signOut } from 'next-auth/react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
+import { usePageTitle } from '@/components/providers/page-title-provider'
 
 const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
 
@@ -31,6 +32,7 @@ export function Navbar() {
   const { data: session } = useSession()
   const { locale, setLocale, t } = useI18n()
   const { incidenceTitle } = useIncidenceTitle()
+  const { pageTitle } = usePageTitle()
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
@@ -102,9 +104,17 @@ export function Navbar() {
               Incidencias
             </Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground font-medium truncate max-w-[300px]">
+            <Link href={`/dashboard/incidences/${pathname.split('/')[3]}`} className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[300px]">
               {incidenceTitle}
-            </span>
+            </Link>
+            {pageTitle !== undefined && (
+              <>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <span className="text-foreground font-medium truncate max-w-[300px]">
+                  {pageTitle || 'Nueva Página'}
+                </span>
+              </>
+            )}
           </div>
         ) : (
           <span className="text-sm font-medium text-foreground">

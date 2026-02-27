@@ -30,7 +30,7 @@ export async function createPage(incidenceId: number, title: string) {
 
         const page = await db.incidencePage.create({
             data: {
-                title: title.trim(),
+                title: title.trim().slice(0, 60),
                 content: Prisma.JsonNull,
                 incidenceId,
                 authorId
@@ -70,7 +70,7 @@ export async function updatePageContent(
 
         const updateData: Prisma.IncidencePageUpdateInput = {
             content: content as Prisma.InputJsonValue,
-            ...(title !== undefined && { title: title.trim() })
+            ...(title !== undefined && { title: title.trim().slice(0, 60) })
         }
 
         await db.incidencePage.update({
