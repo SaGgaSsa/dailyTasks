@@ -12,9 +12,11 @@ import { Prisma } from '@prisma/client'
 
 interface BlockNoteEditorProps {
     initialContent: object | undefined
+    initialTitle: string
     pageId: number
     incidenceId: number
     isEditor?: boolean
+    theme?: 'light' | 'dark'
 }
 
 function isValidBlockContent(content: unknown): content is PartialBlock[] {
@@ -28,13 +30,17 @@ function getTheme(): 'light' | 'dark' {
 
 export function BlockNoteEditor({ 
     initialContent, 
+    initialTitle,
     pageId, 
     incidenceId,
-    isEditor = false 
+    isEditor = false,
+    theme: propTheme 
 }: BlockNoteEditorProps) {
-    const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+    const [theme, setTheme] = useState<'light' | 'dark'>(propTheme || 'dark')
+    const [title, setTitle] = useState(initialTitle)
     
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const editorRef = useRef<unknown>(null)
     const pageIdRef = useRef(pageId)
     const isSavingRef = useRef(false)
@@ -42,6 +48,10 @@ export function BlockNoteEditor({
     useEffect(() => {
         pageIdRef.current = pageId
     }, [pageId])
+
+    useEffect(() => {
+        setTitle(initialTitle)
+    }, [initialTitle])
 
     const parsedContent = useMemo(() => {
         if (isValidBlockContent(initialContent)) {
@@ -51,18 +61,22 @@ export function BlockNoteEditor({
     }, [initialContent])
 
     useEffect(() => {
-        setTheme(getTheme())
-        
-        const observer = new MutationObserver(() => {
+        if (propTheme) {
+            setTheme(propTheme)
+        } else {
             setTheme(getTheme())
-        })
-        observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['class']
-        })
-        
-        return () => observer.disconnect()
-    }, [])
+            
+            const observer = new MutationObserver(() => {
+                setTheme(getTheme())
+            })
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            })
+            
+            return () => observer.disconnect()
+        }
+    }, [propTheme])
 
     const editor = useCreateBlockNote({
         initialContent: parsedContent
@@ -71,6 +85,33 @@ export function BlockNoteEditor({
     useEffect(() => {
         editorRef.current = editor
     }, [editor])
+
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newTitle = e.target.value
+        setTitle(newTitle)
+
+        if (titleTimeoutRef.current) {
+            clearTimeout(titleTimeoutRef.current)
+        }
+
+        titleTimeoutRef.current = setTimeout(async () => {
+            const titleToSave = newTitle.trim() || 'Nueva Página'
+            
+            try {
+                const result = await updatePageContent(
+                    pageIdRef.current, 
+                    (editorRef.current as { document: unknown }).document as unknown as Prisma.InputJsonValue,
+                    titleToSave
+                )
+                
+                if (!result.success) {
+                    toast.error(result.error || 'Error al guardar título')
+                }
+            } catch {
+                toast.error('Error al guardar título')
+            }
+        }, 2000)
+    }
 
     useEffect(() => {
         const handleChange = () => {
@@ -115,10 +156,21 @@ export function BlockNoteEditor({
 
     if (isEditor) {
         return (
-            <BlockNoteView
-                editor={editor}
-                theme={theme}
-            />
+            <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
+                <div className="pt-4 px-8 max-w-4xl mx-auto">
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={handleTitleChange}
+                        placeholder="Nueva Página"
+                        className="w-full bg-transparent border-none outline-none text-2xl font-semibold mb-4 pl-[54px] placeholder:text-muted-foreground/50"
+                    />
+                    <BlockNoteView
+                        editor={editor}
+                        theme={theme}
+                    />
+                </div>
+            </div>
         )
     }
 

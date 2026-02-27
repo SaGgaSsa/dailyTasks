@@ -3,15 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FilePlus, FileText, Calendar, User as UserIcon } from 'lucide-react'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidencePageWithAuthor } from '@/types'
 import { createPage } from '@/app/actions/pages'
@@ -33,19 +24,13 @@ function formatDate(date: Date): string {
 
 export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: PagesTabProps) {
     const router = useRouter()
-    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-    const [newPageTitle, setNewPageTitle] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleCreatePage = async () => {
-        if (!newPageTitle.trim()) return
-
         setIsSubmitting(true)
         try {
-            const result = await createPage(incidenceId, newPageTitle.trim())
+            const result = await createPage(incidenceId, 'Nueva Página')
             if (result.success && result.data) {
-                setIsCreateDialogOpen(false)
-                setNewPageTitle('')
                 router.push(`/dashboard/incidences/${incidenceId}/pages/${result.data.id}`)
                 onRefresh?.()
             }
@@ -61,10 +46,11 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                 <Button
                     size="sm"
                     className="gap-2"
-                    onClick={() => setIsCreateDialogOpen(true)}
+                    onClick={handleCreatePage}
+                    disabled={isSubmitting}
                 >
                     <FilePlus className="h-4 w-4" />
-                    Agregar Página
+                    {isSubmitting ? 'Creando...' : 'Agregar Página'}
                 </Button>
             </div>
 
@@ -102,44 +88,6 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                     ))}
                 </div>
             )}
-
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="bg-card border-border">
-                    <DialogHeader>
-                        <DialogTitle>Crear nueva página</DialogTitle>
-                        <DialogDescription>
-                            Ingrese el título del documento.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Input
-                            placeholder="Título de la página"
-                            value={newPageTitle}
-                            onChange={(e) => setNewPageTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleCreatePage()
-                                }
-                            }}
-                            autoFocus
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsCreateDialogOpen(false)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleCreatePage}
-                            disabled={!newPageTitle.trim() || isSubmitting}
-                        >
-                            {isSubmitting ? 'Creando...' : 'Crear'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }

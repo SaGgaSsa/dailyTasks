@@ -32,17 +32,12 @@ export default async function PageEditorPage({ params }: PageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            <main className="py-8">
-                <div className="max-w-[210mm] min-h-[297mm] mx-auto bg-white dark:bg-zinc-900 shadow-lg border border-gray-200 dark:border-zinc-700 p-12 lg:p-16">
-                    <EditorWrapper
-                        initialContent={page.content as object | undefined}
-                        pageId={page.id}
-                        incidenceId={incidenceNumberId}
-                        isEditor={true}
-                    />
-                </div>
-            </main>
-        </div>
+        <EditorWrapper
+            initialContent={page.content as object | undefined}
+            initialTitle={page.title}
+            pageId={page.id}
+            incidenceId={incidenceNumberId}
+            isEditor={true}
+        />
     )
 }

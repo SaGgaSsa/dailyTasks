@@ -12,15 +12,17 @@ const BlockNoteEditor = dynamic(
 
 interface EditorWrapperProps {
     initialContent: object | undefined
+    initialTitle: string
     pageId: number
     incidenceId: number
     isEditor?: boolean
 }
 
-export function EditorWrapper({ initialContent, pageId, incidenceId, isEditor }: EditorWrapperProps) {
+export function EditorWrapper({ initialContent, initialTitle, pageId, incidenceId, isEditor }: EditorWrapperProps) {
     return (
         <BlockNoteEditor
             initialContent={initialContent}
+            initialTitle={initialTitle}
             pageId={pageId}
             incidenceId={incidenceId}
             isEditor={isEditor}
