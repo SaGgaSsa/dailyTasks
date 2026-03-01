@@ -18,6 +18,7 @@ interface UserFormProps {
 const roleOptions = [
     { value: 'ADMIN', label: 'ADMIN' },
     { value: 'DEV', label: 'DEV' },
+    { value: 'QA', label: 'QA' },
 ]
 
 const techOptions = [

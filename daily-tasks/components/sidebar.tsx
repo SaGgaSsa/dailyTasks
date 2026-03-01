@@ -11,7 +11,8 @@ import {
   Users,
   Settings,
   Terminal,
-  BarChart3
+  BarChart3,
+  ClipboardList
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 
@@ -90,6 +91,16 @@ export function Sidebar({ userId }: SidebarProps) {
             >
               <BarChart3 className="h-4 w-4" />
               {isOpen && <span>Métricas</span>}
+            </Button>
+          </Link>
+
+          <Link href="/dashboard/tracklists">
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/tracklists' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+            >
+              <ClipboardList className="h-4 w-4" />
+              {isOpen && <span>Tracklists</span>}
             </Button>
           </Link>
 

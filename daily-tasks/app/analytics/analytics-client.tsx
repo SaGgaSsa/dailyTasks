@@ -29,8 +29,6 @@ interface AnalyticsClientProps {
 export function AnalyticsClient({ data }: AnalyticsClientProps) {
   return (
     <div className="flex flex-col h-full gap-6">
-      <h1 className="text-2xl font-bold">Métricas del Proyecto</h1>
-
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

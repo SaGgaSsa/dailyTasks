@@ -29,6 +29,7 @@ export enum Priority {
 export enum UserRole {
     ADMIN = "ADMIN",
     DEV = "DEV",
+    QA = "QA",
 }
 
 export enum WorkspaceRole {

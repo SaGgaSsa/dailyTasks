@@ -40,7 +40,7 @@ interface User {
   name: string
   email: string
   username: string
-  role: 'ADMIN' | 'DEV'
+  role: 'ADMIN' | 'DEV' | 'QA'
   createdAt: Date
 }
 
@@ -72,11 +72,24 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'role',
     header: 'Rol',
-    cell: ({ row }) => (
-      <Badge variant={row.original.role === 'ADMIN' ? 'default' : 'secondary'}>
-        {row.original.role === 'ADMIN' ? 'Administrador' : 'Desarrollador'}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const role = row.original.role
+      const labels: Record<string, string> = {
+        ADMIN: 'Administrador',
+        DEV: 'Desarrollador',
+        QA: 'QA',
+      }
+      const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
+        ADMIN: 'default',
+        DEV: 'secondary',
+        QA: 'outline',
+      }
+      return (
+        <Badge variant={variants[role]}>
+          {labels[role]}
+        </Badge>
+      )
+    },
   },
   {
     id: 'actions',
