@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
-import { getTracklists } from '@/app/actions/tracklists'
+import { db } from '@/lib/db'
 import { TracklistsEmptyState } from './_components/tracklists-empty-state'
 
 export default async function TracklistsPage() {
-  const result = await getTracklists()
+  const tracklist = await db.tracklist.findFirst({
+    orderBy: { createdAt: 'desc' },
+  })
 
-  const tracklists = result.data
-  if (!tracklists || tracklists.length === 0) {
+  if (!tracklist) {
     return <TracklistsEmptyState />
   }
 
-  redirect(`/dashboard/tracklists/${tracklists[0].id}`)
+  redirect(`/dashboard/tracklists/${tracklist.id}`)
 }

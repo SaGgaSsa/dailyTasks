@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import { authConfig } from "./auth.config"
+import { NextResponse } from "next/server"
 
 const { auth } = NextAuth(authConfig as any)
 
@@ -16,6 +17,28 @@ export default auth((req) => {
   // Para rutas protegidas (dashboard), verificar autenticación
   if (pathname.startsWith('/dashboard')) {
     if (!isLoggedIn) return Response.redirect(new URL("/auth/login", req.nextUrl))
+  }
+  
+  // Redirección de tracklists al último visitado
+  if (pathname === '/dashboard/tracklists') {
+    const lastTracklistId = req.cookies.get('last_tracklist_id')?.value
+    
+    if (lastTracklistId) {
+      return Response.redirect(new URL(`/dashboard/tracklists/${lastTracklistId}`, req.nextUrl))
+    }
+  }
+  
+  // Actualizar cookie cuando visita un tracklist específico
+  const tracklistMatch = pathname.match(/^\/dashboard\/tracklists\/(\d+)$/)
+  if (tracklistMatch) {
+    const tracklistId = tracklistMatch[1]
+    const response = NextResponse.next()
+    response.cookies.set('last_tracklist_id', tracklistId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+    return response
   }
   
   return // Deja pasar

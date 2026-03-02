@@ -1,15 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { TicketQAWithDetails } from '@/types'
+import { TicketQA } from '@prisma/client'
 
 interface Props {
   tracklistId: string
-  initialTickets?: TicketQAWithDetails[]
+  initialTickets?: TicketQA[]
 }
 
 export function TicketsGrid({ tracklistId, initialTickets = [] }: Props) {
-  const [tickets] = useState<TicketQAWithDetails[]>(initialTickets)
+  const [tickets] = useState<TicketQA[]>(initialTickets)
 
   return (
     <div className="mt-8">
@@ -17,7 +17,7 @@ export function TicketsGrid({ tracklistId, initialTickets = [] }: Props) {
         {tickets.length === 0 ? (
           <span>No hay tickets en este tracklist</span>
         ) : (
-          <span>Aquí irá la tabla tipo Excel ({tickets.length} tickets)</span>
+          <span>Grilla de tickets proximamente ({tickets.length} tickets)</span>
         )}
       </div>
     </div>

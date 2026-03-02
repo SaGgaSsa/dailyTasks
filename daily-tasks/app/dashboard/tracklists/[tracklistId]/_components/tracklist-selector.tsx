@@ -6,11 +6,10 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem 
 } from '@/components/ui/select'
 import { PlusIcon } from 'lucide-react'
-import { TracklistWithDetails } from '@/types'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 
 interface Props {
-  tracklists: TracklistWithDetails[]
+  tracklists: { id: number; title: string }[]
   currentId: number
 }
 
