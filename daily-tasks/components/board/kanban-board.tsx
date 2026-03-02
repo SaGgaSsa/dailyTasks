@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import {
     DndContext,
     DragOverlay,
@@ -20,7 +21,6 @@ import {
 } from '@dnd-kit/sortable'
 import { BoardColumn } from './board-column'
 import { TaskCard } from './task-card'
-import { IncidenceForm } from './incidence-form'
 import { IncidenceWithDetails } from '@/types'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,11 @@ import { updateIncidenceStatus, updateTaskOrder } from '@/app/actions/incidence-
 import { TaskStatus, TechStack } from '@/types/enums'
 import { toast } from 'sonner'
 import { useI18n } from '@/components/providers/i18n-provider'
+
+const IncidenceForm = dynamic(() => import('./incidence-form').then(mod => mod.IncidenceForm), {
+    ssr: false,
+    loading: () => <div className="h-0 w-0" />
+})
 
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]

@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
 import { DashboardClient } from '@/components/board/dashboard-client'
 import { TechStack, TaskStatus } from '@/types/enums'
 import { IncidenceWithDetails } from '@/types'
+import { Loader2 } from 'lucide-react'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
@@ -95,12 +97,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="flex flex-col h-screen bg-background">
       <div className="flex-1 p-2">
-        <DashboardClient
-          view={currentView}
-          backlogTasks={backlogTasks}
-          kanbanTasks={kanbanTasks}
-          isAdmin={isAdmin}
-        />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <div className="text-muted-foreground">Cargando...</div>
+          </div>
+        }>
+          <DashboardClient
+            view={currentView}
+            backlogTasks={backlogTasks}
+            kanbanTasks={kanbanTasks}
+            isAdmin={isAdmin}
+          />
+        </Suspense>
       </div>
     </div>
   )

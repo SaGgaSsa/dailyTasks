@@ -3,13 +3,13 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
 import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { IncidenceForm } from './incidence-form'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
@@ -18,6 +18,11 @@ import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus, TechStack } from '@/types/enums'
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
 import { getIncidences } from '@/app/actions/incidence-actions'
+
+const IncidenceForm = dynamic(() => import('./incidence-form').then(mod => mod.IncidenceForm), {
+    ssr: false,
+    loading: () => <div className="h-0 w-0" />
+})
 
 interface DashboardClientProps {
     view: 'BACKLOG' | 'KANBAN'

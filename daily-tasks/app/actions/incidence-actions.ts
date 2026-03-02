@@ -1,11 +1,63 @@
 'use server'
 
+import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Priority, TechStack, TaskStatus, TaskType } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
+
+const getIncidenceCached = cache(async (id: number) => {
+    return db.incidence.findUnique({
+        where: { id },
+        include: {
+            assignments: {
+                where: { isAssigned: true },
+                include: {
+                    user: true,
+                    tasks: {
+                        orderBy: [
+                            { isCompleted: 'asc' },
+                            { completedAt: 'desc' }
+                        ]
+                    }
+                }
+            },
+            attachments: {
+                include: {
+                    uploadedBy: true
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            },
+            pages: {
+                include: {
+                    author: true
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            }
+        }
+    })
+})
+
+const getUsersCached = cache(async () => {
+    return db.user.findMany({
+        select: {
+            id: true,
+            name: true,
+            username: true,
+            role: true
+        },
+        orderBy: [
+            { role: 'asc' },
+            { username: 'asc' }
+        ]
+    })
+})
 
 interface CreateIncidenceData {
     type: TaskType
@@ -217,39 +269,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
 export async function getIncidence(id: number): Promise<IncidenceWithDetails | null> {
     try {
         await new Promise(resolve => setTimeout(resolve, 50))
-        const incidence = await db.incidence.findUnique({
-            where: { id },
-            include: {
-                assignments: {
-                    where: { isAssigned: true },
-                    include: {
-                        user: true,
-                        tasks: {
-                            orderBy: [
-                                { isCompleted: 'asc' },
-                                { completedAt: 'desc' }
-                            ]
-                        }
-                    }
-                },
-                attachments: {
-                    include: {
-                        uploadedBy: true
-                    },
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                },
-                pages: {
-                    include: {
-                        author: true
-                    },
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                }
-            }
-        })
+        const incidence = await getIncidenceCached(id)
         return incidence as IncidenceWithDetails
     } catch (error) {
         console.error('Error getting incidence:', error)
@@ -268,51 +288,8 @@ export async function getIncidencePageData(id: number): Promise<{
 }> {
     try {
         const [incidence, users] = await Promise.all([
-            db.incidence.findUnique({
-                where: { id },
-                include: {
-                    assignments: {
-                        where: { isAssigned: true },
-                        include: {
-                            user: true,
-                            tasks: {
-                                orderBy: [
-                                    { isCompleted: 'asc' },
-                                    { completedAt: 'desc' }
-                                ]
-                            }
-                        }
-                    },
-                    attachments: {
-                        include: {
-                            uploadedBy: true
-                        },
-                        orderBy: {
-                            createdAt: 'desc'
-                        }
-                    },
-                    pages: {
-                        include: {
-                            author: true
-                        },
-                        orderBy: {
-                            createdAt: 'desc'
-                        }
-                    }
-                }
-            }),
-            db.user.findMany({
-                select: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    role: true
-                },
-                orderBy: [
-                    { role: 'asc' },
-                    { username: 'asc' }
-                ]
-            })
+            getIncidenceCached(id),
+            getUsersCached()
         ])
 
         return {
@@ -357,18 +334,7 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                     }
                 }
             }),
-            db.user.findMany({
-                select: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    role: true
-                },
-                orderBy: [
-                    { role: 'asc' },
-                    { username: 'asc' }
-                ]
-            })
+            getUsersCached()
         ])
 
         return {
