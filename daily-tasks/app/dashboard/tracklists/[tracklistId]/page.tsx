@@ -14,7 +14,14 @@ export default async function TracklistDetailPage({ params }: Props) {
   const [currentTracklist, allTracklists] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      include: { tickets: true }
+      include: { 
+        tickets: {
+          include: {
+            reportedBy: { select: { id: true, name: true, username: true } },
+            assignedTo: { select: { id: true, name: true, username: true } }
+          }
+        }
+      }
     }),
     db.tracklist.findMany({
       select: { id: true, title: true, createdAt: true },
