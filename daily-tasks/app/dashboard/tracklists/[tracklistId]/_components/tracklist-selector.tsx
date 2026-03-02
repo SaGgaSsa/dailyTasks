@@ -36,7 +36,7 @@ export function TracklistSelector({ tracklists, currentId }: Props) {
           <SelectTrigger className="w-[300px]">
             <SelectValue placeholder="Seleccionar Tracklist" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent side="bottom">
             {tracklists.map(tracklist => (
               <SelectItem key={tracklist.id} value={tracklist.id.toString()}>
                 {tracklist.title}

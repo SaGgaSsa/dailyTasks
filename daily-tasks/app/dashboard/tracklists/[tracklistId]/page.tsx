@@ -17,8 +17,12 @@ export default async function TracklistDetailPage({ params }: Props) {
       include: { tickets: true }
     }),
     db.tracklist.findMany({
-      select: { id: true, title: true },
+      select: { id: true, title: true, createdAt: true },
       orderBy: { createdAt: 'desc' }
+    }).then((tracklists) => {
+      const current = tracklists.find(t => t.id === numericId)
+      const others = tracklists.filter(t => t.id !== numericId)
+      return current ? [current, ...others] : tracklists
     })
   ])
 
