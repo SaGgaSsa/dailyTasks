@@ -1,4 +1,4 @@
-import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage } from '@prisma/client'
+import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA } from '@prisma/client'
 import { TaskStatus, TaskType, TechStack, Priority, AttachmentType } from './enums'
 
 export type { TaskStatus, TaskType, TechStack, Priority, AttachmentType }
@@ -32,4 +32,14 @@ export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technolo
   assignments: AssignmentWithDetails[]
   attachments: AttachmentWithDetails[]
   pages: IncidencePageWithAuthor[]
+}
+
+export type TracklistWithDetails = Tracklist & {
+  _count: { tickets: number }
+  createdBy: Pick<User, 'id' | 'name' | 'username'>
+}
+
+export type TicketQAWithDetails = TicketQA & {
+  reportedBy: Pick<User, 'id' | 'name' | 'username'>
+  assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
 }

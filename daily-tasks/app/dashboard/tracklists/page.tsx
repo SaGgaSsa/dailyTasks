@@ -1,10 +1,14 @@
-export default function TracklistsPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Tracklists / QA</h1>
-      <p className="text-muted-foreground">
-        Próximamente: Panel de gestión de errores y ciclos de prueba
-      </p>
-    </div>
-  )
+import { redirect } from 'next/navigation'
+import { getTracklists } from '@/app/actions/tracklists'
+import { TracklistsEmptyState } from './_components/tracklists-empty-state'
+
+export default async function TracklistsPage() {
+  const result = await getTracklists()
+
+  const tracklists = result.data
+  if (!tracklists || tracklists.length === 0) {
+    return <TracklistsEmptyState />
+  }
+
+  redirect(`/dashboard/tracklists/${tracklists[0].id}`)
 }
