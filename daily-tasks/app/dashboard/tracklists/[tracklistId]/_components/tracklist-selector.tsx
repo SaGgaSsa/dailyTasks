@@ -45,7 +45,7 @@ export function TracklistSelector({ tracklists, currentId }: Props) {
             ))}
             <SelectItem value="new" className="font-medium">
               <PlusIcon className="w-4 h-4 mr-2 inline" />
-              + Nuevo Tracklist
+              Nuevo Tracklist
             </SelectItem>
           </SelectContent>
         </Select>

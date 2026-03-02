@@ -1,4 +1,4 @@
-import { getTracklists } from '@/app/actions/tracklists'
+import { getTracklists, getTicketsByTracklist } from '@/app/actions/tracklists'
 import { TracklistSelector } from './_components/tracklist-selector'
 import { TicketsGrid } from './_components/tickets-grid'
 
@@ -24,13 +24,16 @@ export default async function TracklistDetailPage({ params }: Props) {
     )
   }
 
+  const ticketsResult = await getTicketsByTracklist(tracklistId)
+  const tickets = ticketsResult.data || []
+
   return (
     <div className="space-y-6">
       <TracklistSelector 
         tracklists={tracklists} 
         currentId={Number(tracklistId)} 
       />
-      <TicketsGrid tracklistId={tracklistId} />
+      <TicketsGrid tracklistId={tracklistId} initialTickets={tickets} />
     </div>
   )
 }
