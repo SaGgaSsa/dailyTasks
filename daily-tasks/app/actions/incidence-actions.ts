@@ -11,8 +11,9 @@ import { t, Locale } from '@/lib/i18n'
 const getIncidenceCached = cache(async (id: number) => {
     return db.incidence.findUnique({
         where: { id },
-        include: {
-            assignments: {
+            include: {
+                technology: true,
+                assignments: {
                 where: { isAssigned: true },
                 include: {
                     user: true,
@@ -213,6 +214,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         const incidences = await db.incidence.findMany({
             where,
             include: {
+                technology: true,
                 assignments: {
                     where: { isAssigned: true },
                     include: {
