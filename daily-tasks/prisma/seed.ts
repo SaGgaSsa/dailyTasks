@@ -12,7 +12,32 @@ const prisma = new PrismaClient({ adapter })
 
 const PASSWORD = 'sisa0314'
 
-const TECHNOLOGIES = ['SISA', 'WEB', 'ANDROID', 'ANGULAR', 'SPRING']
+const TECHNOLOGIES = [
+  { name: 'SISA', slug: 'sisa' },
+  { name: 'WEB', slug: 'web' },
+  { name: 'ANDROID', slug: 'android' },
+  { name: 'ANGULAR', slug: 'angular' },
+  { name: 'SPRING', slug: 'spring' },
+]
+
+const MODULES = [
+  // SISA
+  { name: 'Serv', slug: 'serv', techName: 'SISA' },
+  { name: 'Comun', slug: 'comun', techName: 'SISA' },
+  // WEB
+  { name: 'WkFlow', slug: 'wkflow', techName: 'WEB' },
+  { name: 'OBase', slug: 'obase', techName: 'WEB' },
+  // ANDROID
+  { name: 'MyTasksApp', slug: 'mytasksapp', techName: 'ANDROID' },
+  { name: 'MobileLibrary', slug: 'mobilelibrary', techName: 'ANDROID' },
+  { name: 'FormLibrary', slug: 'formlibrary', techName: 'ANDROID' },
+  // ANGULAR
+  { name: 'MyTasks', slug: 'mytasks', techName: 'ANGULAR' },
+  { name: 'Mobile', slug: 'mobile', techName: 'ANGULAR' },
+  // SPRING
+  { name: 'MyTasksServer', slug: 'mytasksserver', techName: 'SPRING' },
+  { name: 'MobileServer', slug: 'mobileserver', techName: 'SPRING' },
+]
 
 const TASK_TITLES = [
   'Analizar requisitos del caso',
@@ -48,14 +73,36 @@ const INCIDENCE_TITLES = [
 const STATUSES: TaskStatus[] = [TaskStatus.BACKLOG, TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW, TaskStatus.DONE]
 
 async function ensureTechnologies() {
-  for (const name of TECHNOLOGIES) {
+  for (const tech of TECHNOLOGIES) {
     await prisma.technology.upsert({
-      where: { name },
+      where: { name: tech.name },
       update: {},
-      create: { name },
+      create: { name: tech.name },
     })
   }
   console.log(`Ensured ${TECHNOLOGIES.length} technologies`)
+}
+
+async function ensureModules() {
+  for (const mod of MODULES) {
+    const tech = await prisma.technology.findUnique({
+      where: { name: mod.techName },
+    })
+    if (!tech) {
+      console.warn(`Technology ${mod.techName} not found, skipping module ${mod.name}`)
+      continue
+    }
+    await prisma.module.upsert({
+      where: { slug: mod.slug },
+      update: {},
+      create: {
+        name: mod.name,
+        slug: mod.slug,
+        technologyId: tech.id,
+      },
+    })
+  }
+  console.log(`Ensured ${MODULES.length} modules`)
 }
 
 async function getTechnologyByName(name: string) {
@@ -160,6 +207,9 @@ async function main() {
     
     console.log('\n--- Ensuring Technologies ---')
     await ensureTechnologies()
+
+    console.log('\n--- Ensuring Modules ---')
+    await ensureModules()
     
     console.log('\n--- Creating Admin ---')
     const admin = await createAdmin(passwordHash)

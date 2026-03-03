@@ -51,11 +51,22 @@ enum TaskType {
 model Technology {
   id            Int           @id @default(autoincrement())
   name          String        @unique
-  
+
   users         User[]
   incidences    Incidence[]
+  modules       Module[]
 
   @@map("technologies")
+}
+
+model Module {
+  id            Int           @id @default(autoincrement())
+  name          String
+  slug          String        @unique
+  technologyId  Int
+  technology    Technology    @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@map("modules")
 }
 
 enum Priority {
