@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TechStack } from '@prisma/client'
+import { PrismaClient, UserRole, TaskType, TaskStatus, Priority } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
@@ -11,6 +11,8 @@ const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 const PASSWORD = 'sisa0314'
+
+const TECHNOLOGIES = ['SISA', 'WEB', 'ANDROID', 'ANGULAR', 'SPRING']
 
 const TASK_TITLES = [
   'Analizar requisitos del caso',
@@ -45,7 +47,23 @@ const INCIDENCE_TITLES = [
 
 const STATUSES: TaskStatus[] = [TaskStatus.BACKLOG, TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW, TaskStatus.DONE]
 
+async function ensureTechnologies() {
+  for (const name of TECHNOLOGIES) {
+    await prisma.technology.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    })
+  }
+  console.log(`Ensured ${TECHNOLOGIES.length} technologies`)
+}
+
+async function getTechnologyByName(name: string) {
+  return prisma.technology.findUnique({ where: { name } })
+}
+
 async function createAdmin(passwordHash: string) {
+  const sisaTech = await getTechnologyByName('SISA')
   const admin = await prisma.user.upsert({
     where: { username: 'ADM' },
     update: {},
@@ -55,7 +73,7 @@ async function createAdmin(passwordHash: string) {
       email: 'admin1@gmail.com',
       password: passwordHash,
       role: UserRole.ADMIN,
-      technologies: [TechStack.SISA],
+      technologies: { connect: { id: sisaTech!.id } },
     },
   })
   console.log(`Created admin: ${admin.username}`)
@@ -63,6 +81,7 @@ async function createAdmin(passwordHash: string) {
 }
 
 async function createDev(passwordHash: string) {
+  const sisaTech = await getTechnologyByName('SISA')
   const dev = await prisma.user.upsert({
     where: { username: 'DEV' },
     update: {},
@@ -72,7 +91,7 @@ async function createDev(passwordHash: string) {
       email: 'dev1@gmail.com',
       password: passwordHash,
       role: UserRole.DEV,
-      technologies: [TechStack.SISA],
+      technologies: { connect: { id: sisaTech!.id } },
     },
   })
   console.log(`Created dev: ${dev.username}`)
@@ -83,6 +102,8 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
   const incidences: { id: number; type: string; externalId: number }[] = []
   let externalId = userType === 'admin' ? 1000 : 2000
   const INCIDENCES_PER_STATUS = 5
+
+  const sisaTech = await getTechnologyByName('SISA')
 
   for (const status of STATUSES) {
     for (let i = 0; i < INCIDENCES_PER_STATUS; i++) {
@@ -99,7 +120,7 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
           comment: title,
           status,
           priority: Priority.MEDIUM,
-          technology: TechStack.SISA,
+          technology: { connect: { id: sisaTech!.id } },
           estimatedTime: 8,
         },
       })
@@ -136,6 +157,9 @@ async function main() {
     console.log('Starting seed data generation...')
     
     const passwordHash = await hash(PASSWORD, 12)
+    
+    console.log('\n--- Ensuring Technologies ---')
+    await ensureTechnologies()
     
     console.log('\n--- Creating Admin ---')
     const admin = await createAdmin(passwordHash)

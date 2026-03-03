@@ -302,7 +302,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => null,
         cell: ({ row }) => (
             <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded whitespace-nowrap">
-                {row.original.technology}
+                {row.original.technology?.name}
             </span>
         ),
         size: 70,
@@ -401,7 +401,7 @@ export function Backlog({
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
-            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
+            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology?.name)
             const matchesStatus = statusFilter.length === 0 || statusFilter.includes(task.status)
 
             return matchesSearch && matchesTech && matchesStatus

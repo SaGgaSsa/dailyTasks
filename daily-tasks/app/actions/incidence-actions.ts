@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority, TechStack, TaskStatus, TaskType } from '@/types/enums'
+import { Priority, TaskStatus, TaskType } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -64,7 +64,7 @@ interface CreateIncidenceData {
     externalId: number
     title: string
     description?: string
-    tech: TechStack
+    tech: string
     priority: Priority
     estimatedTime?: number | null
     assignees?: AssigneeWithHours[]
@@ -77,7 +77,7 @@ interface UpdateIncidenceData {
     comment?: string
     estimatedTime?: number | null
     title?: string
-    technology?: TechStack
+    technology?: string
     assignees?: AssigneeWithHours[]
     subTasks?: { title: string; isCompleted: boolean }[]
 }
@@ -89,13 +89,18 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
     }
 
     try {
+        const tech = await db.technology.findUnique({ where: { name: data.tech } })
+        if (!tech) {
+            return { success: false, error: 'Tecnología no válida' }
+        }
+        
         await db.incidence.create({
             data: {
                 type: data.type,
                 externalId: data.externalId,
                 title: data.title,
                 comment: data.description,
-                technology: data.tech,
+                technology: { connect: { id: tech.id } },
                 priority: data.priority,
                 estimatedTime: data.estimatedTime,
                 status: TaskStatus.BACKLOG,
@@ -165,10 +170,9 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
 
         // Technology filter
         if (tech && tech.length > 0) {
-            // Filter valid TechStack values and convert to proper type
-            const validTech = tech.filter(t => Object.values(TechStack).includes(t as TechStack)) as TechStack[]
-            if (validTech.length > 0) {
-                where.technology = { in: validTech }
+            const techIds = tech.map(Number).filter(id => !isNaN(id))
+            if (techIds.length > 0) {
+                where.technology = { id: { in: techIds } }
             }
         }
 
@@ -551,13 +555,21 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             return { success: false, error: t(locale, 'errors.notFound') }
         }
 
+        let techConnect = undefined
+        if (data.technology) {
+            const tech = await db.technology.findUnique({ where: { name: data.technology } })
+            if (tech) {
+                techConnect = { connect: { id: tech.id } }
+            }
+        }
+        
         const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
             comment: data.description,
             estimatedTime: data.estimatedTime,
             title: data.title,
-            technology: data.technology,
+            technology: techConnect,
         }
 
         // Si se proporcionan asignados, manejar la creación/actualización de assignments

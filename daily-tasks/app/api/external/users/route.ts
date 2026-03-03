@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { UserRole, TechStack } from '@/types/enums'
+import { UserRole } from '@/types/enums'
 import bcrypt from 'bcryptjs'
-
-const ALL_TECHNOLOGIES = Object.values(TechStack)
 
 interface CreateUserRequest {
   email: string
@@ -71,6 +69,9 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash('sisa0314', 10)
 
+    const allTechs = await db.technology.findMany()
+    const technologies = allTechs.map(t => ({ connect: { id: t.id } }))
+
     const user = await db.user.create({
       data: {
         email,
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
         name,
         password: hashedPassword,
         role: UserRole.DEV,
-        technologies: ALL_TECHNOLOGIES,
+        technologies: technologies as never,
       },
     })
 

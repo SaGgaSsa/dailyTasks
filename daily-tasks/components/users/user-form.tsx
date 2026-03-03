@@ -4,15 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { FormSheet, FormInput, FormSelect, FormRow } from '@/components/ui/form-sheet'
-import { upsertUser } from '@/app/actions/user-actions'
+import { upsertUser, getUserWithTechnologies } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 import { User, UserRole } from '@prisma/client'
-import { TechStack } from '@/types/enums'
 
 interface UserFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     initialData: User | null
+    initialTechNames?: string[]
 }
 
 const roleOptions = [
@@ -21,15 +21,15 @@ const roleOptions = [
     { value: 'QA', label: 'QA' },
 ]
 
-const techOptions = [
-    { value: TechStack.SISA, label: 'SISA' },
-    { value: TechStack.WEB, label: 'WEB' },
-    { value: TechStack.ANDROID, label: 'ANDROID' },
-    { value: TechStack.ANGULAR, label: 'ANGULAR' },
-    { value: TechStack.SPRING, label: 'SPRING' },
+const TECH_OPTIONS = [
+    { value: 'SISA', label: 'SISA' },
+    { value: 'WEB', label: 'WEB' },
+    { value: 'ANDROID', label: 'ANDROID' },
+    { value: 'ANGULAR', label: 'ANGULAR' },
+    { value: 'SPRING', label: 'SPRING' },
 ]
 
-export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
+export function UserForm({ open, onOpenChange, initialData, initialTechNames = [] }: UserFormProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -63,7 +63,7 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                     username: initialData.username || '',
                     password: '',
                     role: initialData.role || 'DEV',
-                    technologies: initialData.technologies || [],
+                    technologies: initialTechNames,
                 })
                 setIsLoading(false)
             }, 0)
@@ -94,6 +94,10 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
 
         setIsSaving(true)
         try {
+            const techNames = formData.technologies as string[]
+            const technologies = techNames.map(name => ({ connect: { name } }))
+            console.log('technologies to save:', technologies)
+            
             const res = await upsertUser({
                 id: initialData?.id,
                 name: formData.name,
@@ -101,7 +105,7 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                 username: formData.username,
                 password: formData.password || 'sisa0314',
                 role: formData.role as UserRole,
-                technologies: formData.technologies as TechStack[],
+                technologies,
             })
 
             if (res.success) {
@@ -196,7 +200,7 @@ export function UserForm({ open, onOpenChange, initialData }: UserFormProps) {
                 label="Tecnologías"
                 value={formData.technologies[0] || ''}
                 onValueChange={(val) => setFormData({ ...formData, technologies: val ? [val] : [] })}
-                options={techOptions}
+                options={TECH_OPTIONS}
                 placeholder="Seleccionar tecnología"
             />
             </>)

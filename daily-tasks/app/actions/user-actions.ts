@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { TaskStatus, TaskType, TechStack, Priority } from '@/types/enums'
+import { TaskStatus, TaskType, Priority } from '@/types/enums'
 import { User, UserRole } from '@prisma/client'
 
 interface GetUsersResult {
@@ -29,7 +29,7 @@ interface UpsertUserData {
     email: string
     password: string
     role: UserRole
-    technologies: TechStack[]
+    technologies: { connect: { name: string } }[]
 }
 
 export async function upsertUser(data: UpsertUserData) {
@@ -42,7 +42,7 @@ export async function upsertUser(data: UpsertUserData) {
                     name: data.name,
                     email: data.email,
                     role: data.role,
-                    technologies: data.technologies,
+                    technologies: data.technologies as never,
                 }
             })
             revalidatePath('/dashboard')
@@ -55,7 +55,7 @@ export async function upsertUser(data: UpsertUserData) {
                     email: data.email,
                     password: data.password,
                     role: data.role,
-                    technologies: data.technologies,
+                    technologies: data.technologies as never,
                 }
             })
             revalidatePath('/dashboard')
@@ -76,7 +76,12 @@ export async function createUser(formData: FormData) {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
     const role = formData.get('role') as UserRole
-    const technologies = formData.getAll('technologies') as TechStack[]
+    const techNames = formData.getAll('technologies') as string[]
+    
+    const techIds = await Promise.all(
+        techNames.map(name => db.technology.findUnique({ where: { name } }))
+    )
+    const technologies = techIds.filter((t): t is NonNullable<typeof t> => t !== null).map(t => ({ connect: { id: t.id } }))
 
     try {
         await db.user.create({
@@ -86,7 +91,7 @@ export async function createUser(formData: FormData) {
                 email,
                 password,
                 role,
-                technologies,
+                technologies: technologies as never,
             }
         })
         revalidatePath('/dashboard')
@@ -120,6 +125,21 @@ export async function getUserById(id: number) {
         return user
     } catch (error) {
         console.error('Error getting user by id:', error)
+        return null
+    }
+}
+
+export async function getUserWithTechnologies(id: number) {
+    try {
+        const user = await db.user.findUnique({
+            where: { id },
+            include: {
+                technologies: true
+            }
+        })
+        return user
+    } catch (error) {
+        console.error('Error getting user with technologies:', error)
         return null
     }
 }

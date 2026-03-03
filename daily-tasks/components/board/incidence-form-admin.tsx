@@ -20,7 +20,15 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
-import { TaskType, Priority, TechStack, TaskStatus } from '@/types/enums'
+import { TaskType, Priority, TaskStatus } from '@/types/enums'
+
+const TECH_OPTIONS = [
+    { value: 'SISA', label: 'SISA' },
+    { value: 'WEB', label: 'WEB' },
+    { value: 'ANDROID', label: 'ANDROID' },
+    { value: 'ANGULAR', label: 'ANGULAR' },
+    { value: 'SPRING', label: 'SPRING' },
+]
 import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask, updateSubTaskTitle } from '@/app/actions/incidence-actions'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
@@ -49,14 +57,6 @@ const priorityOptions = [
     { value: Priority.HIGH, label: 'Alta' },
 ]
 
-const techOptions = [
-    { value: TechStack.SISA, label: 'SISA' },
-    { value: TechStack.WEB, label: 'WEB' },
-    { value: TechStack.ANDROID, label: 'ANDROID' },
-    { value: TechStack.ANGULAR, label: 'ANGULAR' },
-    { value: TechStack.SPRING, label: 'SPRING' },
-]
-
 interface AssigneeFormData {
     userId: number
     assignedHours: string
@@ -75,7 +75,7 @@ interface FormData {
     title: string
     description: string
     priority: Priority
-    technology: TechStack
+    technology: string
     estimatedTime: string
     assignees: AssigneeFormData[]
     subTasks: { title: string; isCompleted: boolean }[]
@@ -95,7 +95,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         title: '',
         description: '',
         priority: Priority.MEDIUM,
-        technology: TechStack.SISA,
+        technology: 'SISA',
         estimatedTime: '',
         assignees: [],
         subTasks: [],
@@ -153,7 +153,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     title: '',
                     description: '',
                     priority: Priority.MEDIUM,
-                    technology: TechStack.SISA,
+                    technology: 'SISA',
                     estimatedTime: '',
                     assignees: [],
                     subTasks: [],
@@ -188,7 +188,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             title: incidence.title || '',
                             description: incidence.comment || '',
                             priority: incidence.priority,
-                            technology: incidence.technology,
+                            technology: incidence.technology?.name || '',
                             estimatedTime: incidence.estimatedTime?.toString() || '',
                             assignees: activeAssignments.map(a => ({
                                 userId: a.userId,
@@ -220,7 +220,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     title: '',
                     description: '',
                     priority: Priority.MEDIUM,
-                    technology: TechStack.SISA,
+                    technology: 'SISA',
                     estimatedTime: '',
                     assignees: [],
                     subTasks: [],
@@ -789,8 +789,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     id="technology"
                     label="Tecnología"
                     value={formData.technology}
-                    onValueChange={(value) => updateFormData({ technology: value as TechStack })}
-                    options={techOptions}
+                    onValueChange={(value) => updateFormData({ technology: value })}
+                    options={TECH_OPTIONS}
                     disabled={hasRequirements}
                 />
 
@@ -838,7 +838,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         
                         <div className="space-y-2">
                             <Label className="text-card-foreground/80">Tecnología</Label>
-                            <div className="text-sm text-muted-foreground">{initialData.technology}</div>
+                            <div className="text-sm text-muted-foreground">{initialData.technology?.name}</div>
                         </div>
                         
                         <div className="space-y-2">

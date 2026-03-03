@@ -1,7 +1,8 @@
-import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA } from '@prisma/client'
-import { TaskStatus, TaskType, TechStack, Priority, AttachmentType } from './enums'
+import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology } from '@prisma/client'
+import { TaskStatus, TaskType, Priority, AttachmentType } from './enums'
 
-export type { TaskStatus, TaskType, TechStack, Priority, AttachmentType }
+export type { TaskStatus, TaskType, Priority, AttachmentType }
+export type { Technology }
 
 export type { SubTask, Attachment, IncidencePage }
 
@@ -26,7 +27,7 @@ export type IncidencePageWithAuthor = IncidencePage & {
 export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technology' | 'priority' | 'position'> & {
   status: TaskStatus
   type: TaskType
-  technology: TechStack
+  technology: Technology
   priority: Priority
   position: number
   assignments: AssignmentWithDetails[]

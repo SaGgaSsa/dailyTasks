@@ -242,7 +242,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
                 {/* Technology + Hours */}
                 <div className="flex items-center justify-between">
                     <Badge variant="outline" className="text-[9px] text-muted-foreground border-border bg-transparent font-normal">
-                        {task.technology}
+                        {task.technology?.name}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">
                         {formatHoursDisplay(completedHours, task.estimatedTime)}

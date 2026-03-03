@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { TaskType, TechStack, Priority, TaskStatus } from '@/types/enums'
+import { TaskType, Priority, TaskStatus } from '@/types/enums'
 
 export async function POST(request: NextRequest) {
   try {
-    // Validar header de seguridad
     const apiSecret = request.headers.get('x-api-secret')
 
     if (!apiSecret) {
@@ -33,7 +32,6 @@ export async function POST(request: NextRequest) {
     }
 
     const taskType = type as TaskType
-    const tech = technology as TechStack
 
     if (!Object.values(TaskType).includes(taskType)) {
       return NextResponse.json(
@@ -42,7 +40,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!Object.values(TechStack).includes(tech)) {
+    const tech = await db.technology.findUnique({ where: { name: technology } })
+    if (!tech) {
       return NextResponse.json(
         { success: false, error: `Tecnología inválida: ${technology}` },
         { status: 400 }
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
         type: taskType,
         externalId: Number(externalId),
         title,
-        technology: tech,
+        technology: { connect: { id: tech.id } },
         status: TaskStatus.BACKLOG,
         priority: Priority.MEDIUM,
         estimatedTime: 0,

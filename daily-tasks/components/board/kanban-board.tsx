@@ -25,7 +25,7 @@ import { IncidenceWithDetails } from '@/types'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { updateIncidenceStatus, updateTaskOrder } from '@/app/actions/incidence-actions'
-import { TaskStatus, TechStack } from '@/types/enums'
+import { TaskStatus } from '@/types/enums'
 import { toast } from 'sonner'
 import { useI18n } from '@/components/providers/i18n-provider'
 
@@ -76,7 +76,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
 
-            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology)
+            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology?.name)
 
             const matchesUserFilter = userFilter.length === 0 || task.assignments.some(a => a.userId === Number(userId) || userFilter.includes(String(a.userId)))
 

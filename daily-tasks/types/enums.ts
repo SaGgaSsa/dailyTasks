@@ -12,14 +12,6 @@ export enum TaskType {
     I_CONS = "I_CONS",
 }
 
-export enum TechStack {
-    SISA = "SISA",
-    WEB = "WEB",
-    ANDROID = "ANDROID",
-    ANGULAR = "ANGULAR",
-    SPRING = "SPRING",
-}
-
 export enum Priority {
     LOW = "LOW",
     MEDIUM = "MEDIUM",

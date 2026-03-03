@@ -3,9 +3,11 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
 import { DashboardClient } from '@/components/board/dashboard-client'
-import { TechStack, TaskStatus } from '@/types/enums'
+import { TaskStatus } from '@/types/enums'
 import { IncidenceWithDetails } from '@/types'
 import { Loader2 } from 'lucide-react'
+
+const TECH_VALUES = ['SISA', 'WEB', 'ANDROID', 'ANGULAR', 'SPRING']
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
@@ -42,8 +44,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? (Array.isArray(params.tech) ? params.tech : [params.tech])
         .flatMap(t => t.split(','))
         .filter(Boolean)
-        .filter(t => Object.values(TechStack).includes(t as TechStack))
-    : Object.values(TechStack)
+        .filter(t => TECH_VALUES.includes(t))
+    : TECH_VALUES
   
   const statusParam = currentView === 'KANBAN' 
     ? [] 

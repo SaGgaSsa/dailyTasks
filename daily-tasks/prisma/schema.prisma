@@ -13,7 +13,7 @@ model User {
   name          String?
   username      String        @unique
   role          UserRole      @default(DEV)
-  technologies  TechStack[]
+  technologies  Technology[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -48,12 +48,14 @@ enum TaskType {
   I_CONS
 }
 
-enum TechStack {
-  SISA
-  WEB
-  ANDROID
-  ANGULAR
-  SPRING
+model Technology {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  
+  users         User[]
+  incidences    Incidence[]
+
+  @@map("technologies")
 }
 
 enum Priority {
@@ -75,7 +77,8 @@ model Incidence {
   comment      String?   @db.Text
   status        TaskStatus @default(BACKLOG)
   priority      Priority   @default(MEDIUM)
-  technology    TechStack
+  technology    Technology @relation(fields: [technologyId], references: [id])
+  technologyId  Int
   estimatedTime Int?
   completedAt   DateTime?
   

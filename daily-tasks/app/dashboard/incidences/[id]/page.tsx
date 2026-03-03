@@ -18,7 +18,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { TaskStatus, TechStack, TaskType } from '@/types/enums'
+import { TaskStatus, TaskType } from '@/types/enums'
 import { IncidenceDetailClient } from './_components/incidence-detail-client'
 import { User } from 'lucide-react'
 import { IncidencePageContent } from './_components/incidence-page-content'
@@ -31,7 +31,7 @@ const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
     DONE: { label: 'Completado', className: 'bg-green-500/10 text-green-400 border-green-500/20' },
 }
 
-const techLabels: Record<TechStack, string> = {
+const techLabels: Record<string, string> = {
     SISA: 'SISA',
     WEB: 'WEB',
     ANDROID: 'Android',
@@ -156,7 +156,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
 
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Tecnología</span>
-                        <span className="text-sm font-medium">{techLabels[incidence.technology]}</span>
+                        <span className="text-sm font-medium">{techLabels[incidence.technology?.name || '']}</span>
                     </div>
 
                     <Separator className="my-6" />

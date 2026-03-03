@@ -6,8 +6,13 @@ import { UserForm } from './user-form'
 import { UsersTable } from './users-table'
 import { UserDetailSheet } from './user-detail-sheet'
 import { Button } from '@/components/ui/button'
+import { getUserWithTechnologies } from '@/app/actions/user-actions'
 
 import { User } from '@prisma/client'
+
+interface UserWithTechs extends User {
+    technologies: { id: number; name: string }[]
+}
 
 interface UsersClientProps {
     initialUsers: User[]
@@ -16,9 +21,14 @@ interface UsersClientProps {
 export function UsersClient({ initialUsers }: UsersClientProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [selectedTechNames, setSelectedTechNames] = useState<string[]>([])
     const [detailUserId, setDetailUserId] = useState<number | null>(null)
 
-    const handleEdit = (user: User) => {
+    const handleEdit = async (user: User) => {
+        const userWithTechs = await getUserWithTechnologies(user.id) as UserWithTechs | null
+        if (userWithTechs) {
+            setSelectedTechNames(userWithTechs.technologies.map(t => t.name))
+        }
         setSelectedUser(user)
         setIsOpen(true)
     }
