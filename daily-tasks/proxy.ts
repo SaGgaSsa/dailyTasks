@@ -16,15 +16,22 @@ export default auth((req) => {
 
   // Para rutas protegidas (dashboard), verificar autenticación
   if (pathname.startsWith('/dashboard')) {
-    if (!isLoggedIn) return Response.redirect(new URL("/auth/login", req.nextUrl))
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/auth/login", req.nextUrl))
   }
   
   // Redirección de tracklists al último visitado
   if (pathname === '/dashboard/tracklists') {
+    // Si viene con ?invalid=1, borrar cookie y redirigir limpio
+    if (req.nextUrl.searchParams.get('invalid') === '1') {
+      const response = NextResponse.redirect(new URL('/dashboard/tracklists', req.nextUrl))
+      response.cookies.delete('last_tracklist_id')
+      return response
+    }
+
     const lastTracklistId = req.cookies.get('last_tracklist_id')?.value
-    
+
     if (lastTracklistId) {
-      return Response.redirect(new URL(`/dashboard/tracklists/${lastTracklistId}`, req.nextUrl))
+      return NextResponse.redirect(new URL(`/dashboard/tracklists/${lastTracklistId}`, req.nextUrl))
     }
   }
   

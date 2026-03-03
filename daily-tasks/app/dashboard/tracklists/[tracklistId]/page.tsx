@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { TracklistSelector } from './_components/tracklist-selector'
 import { TicketsGrid } from './_components/tickets-grid'
@@ -34,7 +34,7 @@ export default async function TracklistDetailPage({ params }: Props) {
   ])
 
   if (!currentTracklist) {
-    notFound()
+    redirect('/dashboard/tracklists?invalid=1')
   }
 
   return (
