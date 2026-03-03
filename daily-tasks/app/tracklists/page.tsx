@@ -11,5 +11,5 @@ export default async function TracklistsPage() {
     return <TracklistsEmptyState />
   }
 
-  redirect(`/dashboard/tracklists/${tracklist.id}`)
+  redirect(`/tracklists/${tracklist.id}`)
 }

@@ -41,7 +41,7 @@ export function CreateTracklistDialog({ open, onOpenChange }: Props) {
       setTitle('')
       setDescription('')
       setDueDate('')
-      router.push(`/dashboard/tracklists/${result.data.id}`)
+      router.push(`/tracklists/${result.data.id}`)
     } else {
       toast.error(result.error || 'Error al crear tracklist')
     }

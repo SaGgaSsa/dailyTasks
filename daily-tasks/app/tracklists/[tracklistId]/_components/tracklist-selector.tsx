@@ -22,7 +22,7 @@ export function TracklistSelector({ tracklists, currentId }: Props) {
     if (value === 'new') {
       setIsDialogOpen(true)
     } else {
-      router.push(`/dashboard/tracklists/${value}`)
+      router.push(`/tracklists/${value}`)
     }
   }
 

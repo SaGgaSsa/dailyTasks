@@ -14,16 +14,16 @@ export default auth((req) => {
     return // Deja pasar
   }
 
-  // Para rutas protegidas (dashboard), verificar autenticación
-  if (pathname.startsWith('/dashboard')) {
+  // Para rutas protegidas (dashboard, tracklists, analytics), verificar autenticación
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/tracklists') || pathname.startsWith('/analytics')) {
     if (!isLoggedIn) return NextResponse.redirect(new URL("/auth/login", req.nextUrl))
   }
   
   // Redirección de tracklists al último visitado
-  if (pathname === '/dashboard/tracklists') {
+  if (pathname === '/tracklists') {
     // Si viene con ?invalid=1, borrar cookie y redirigir limpio
     if (req.nextUrl.searchParams.get('invalid') === '1') {
-      const response = NextResponse.redirect(new URL('/dashboard/tracklists', req.nextUrl))
+      const response = NextResponse.redirect(new URL('/tracklists', req.nextUrl))
       response.cookies.delete('last_tracklist_id')
       return response
     }
@@ -31,12 +31,12 @@ export default auth((req) => {
     const lastTracklistId = req.cookies.get('last_tracklist_id')?.value
 
     if (lastTracklistId) {
-      return NextResponse.redirect(new URL(`/dashboard/tracklists/${lastTracklistId}`, req.nextUrl))
+      return NextResponse.redirect(new URL(`/tracklists/${lastTracklistId}`, req.nextUrl))
     }
   }
-  
+
   // Actualizar cookie cuando visita un tracklist específico
-  const tracklistMatch = pathname.match(/^\/dashboard\/tracklists\/(\d+)$/)
+  const tracklistMatch = pathname.match(/^\/tracklists\/(\d+)$/)
   if (tracklistMatch) {
     const tracklistId = tracklistMatch[1]
     const response = NextResponse.next()

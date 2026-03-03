@@ -52,7 +52,7 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
                 createdById: Number(session.user.id)
             }
         })
-        revalidatePath('/dashboard/tracklists')
+        revalidatePath('/tracklists')
         return { success: true, data: tracklist }
     } catch (error) {
         console.error('Error creating tracklist:', error)
@@ -104,7 +104,7 @@ export async function createTicket(tracklistId: string, data: CreateTicketData, 
                 assignedToId: data.assignedToId
             }
         })
-        revalidatePath('/dashboard/tracklists')
+        revalidatePath('/tracklists')
         return { success: true, data: ticket }
     } catch (error) {
         console.error('Error creating ticket:', error)
