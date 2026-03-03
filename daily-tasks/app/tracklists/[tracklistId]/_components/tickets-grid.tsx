@@ -4,14 +4,12 @@ import { TicketsGrid as TicketsGridComponent } from '@/components/tracklists/Tic
 import { TicketQAWithDetails } from '@/types'
 
 interface Props {
-  tracklistId: string
   initialTickets: TicketQAWithDetails[]
 }
 
-export function TicketsGrid({ tracklistId, initialTickets }: Props) {
+export function TicketsGrid({ initialTickets }: Props) {
   return (
     <TicketsGridComponent 
-      tracklistId={tracklistId} 
       initialTickets={initialTickets} 
     />
   )

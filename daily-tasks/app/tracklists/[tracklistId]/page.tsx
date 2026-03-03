@@ -43,7 +43,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         tracklists={allTracklists} 
         currentId={numericId} 
       />
-      <TicketsGrid tracklistId={tracklistId} initialTickets={currentTracklist.tickets} />
+      <TicketsGrid initialTickets={currentTracklist.tickets} />
     </div>
   )
 }
