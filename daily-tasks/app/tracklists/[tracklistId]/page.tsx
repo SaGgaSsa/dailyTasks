@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { TracklistSelector } from './_components/tracklist-selector'
+import { TracklistHeader } from './_components/tracklist-header'
 import { TicketsGrid } from './_components/tickets-grid'
 
 interface Props {
@@ -39,7 +39,7 @@ export default async function TracklistDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <TracklistSelector 
+      <TracklistHeader 
         tracklists={allTracklists} 
         currentId={numericId} 
       />
