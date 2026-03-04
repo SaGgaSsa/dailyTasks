@@ -1,10 +1,11 @@
 'use client'
 
-import { Inbox } from 'lucide-react'
+import { Inbox, User } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -22,6 +23,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
           <TableHead className="w-20 px-2">Módulo</TableHead>
           <TableHead className="px-2">Descripción</TableHead>
           <TableHead className="w-24 px-2">Prioridad</TableHead>
+          <TableHead className="w-20 px-2"><User className="h-4 w-4" /></TableHead>
           <TableHead className="w-28 px-2">Trámite</TableHead>
           <TableHead className="w-24 px-2">Estado Dev</TableHead>
           <TableHead className="w-24 px-2">Estado QA</TableHead>
@@ -30,7 +32,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
       <TableBody>
         {initialTickets.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="p-12 text-center">
+            <TableCell colSpan={9} className="p-12 text-center">
               <div className="flex flex-col items-center justify-center gap-3">
                 <div className="p-4 rounded-full bg-muted/50">
                   <Inbox className="h-8 w-8 text-muted-foreground/60" />
@@ -60,6 +62,13 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                 >
                   {ticket.priority}
                 </span>
+              </TableCell>
+              <TableCell className="px-2 py-2">
+                {ticket.assignedTo ? (
+                  <UserAvatar username={ticket.assignedTo.username} size="sm" className="mx-auto" />
+                ) : (
+                  '-'
+                )}
               </TableCell>
               <TableCell className="font-mono text-xs px-2 py-2">{ticket.tramite || '-'}</TableCell>
               <TableCell className="px-2 py-2">{ticket.status}</TableCell>
