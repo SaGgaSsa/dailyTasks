@@ -13,7 +13,7 @@ const prisma = new PrismaClient({ adapter })
 const PASSWORD = 'sisa0314'
 
 const TECHNOLOGIES = [
-  { name: 'SISA', slug: 'sisa' },
+  { name: 'SISA', slug: 'sisa', isDefault:true },
   { name: 'WEB', slug: 'web' },
   { name: 'ANDROID', slug: 'android' },
   { name: 'ANGULAR', slug: 'angular' },
@@ -22,7 +22,7 @@ const TECHNOLOGIES = [
 
 const MODULES = [
   // SISA
-  { name: 'Serv', slug: 'serv', techName: 'SISA' },
+  { name: 'Serv', slug: 'serv', techName: 'SISA', isDefault: true },
   { name: 'Comun', slug: 'comun', techName: 'SISA' },
   // WEB
   { name: 'WkFlow', slug: 'wkflow', techName: 'WEB' },

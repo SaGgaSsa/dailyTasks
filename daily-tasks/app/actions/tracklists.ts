@@ -16,7 +16,7 @@ interface CreateTicketData {
     module: string
     description: string
     priority: string
-    impact: string
+    impact: boolean
     tramite?: string
     observations?: string
     assignedToId?: number

@@ -51,6 +51,7 @@ enum TaskType {
 model Technology {
   id            Int           @id @default(autoincrement())
   name          String        @unique
+  isDefault     Boolean       @default(false)
 
   users         User[]
   incidences    Incidence[]
@@ -65,6 +66,7 @@ model Module {
   slug          String        @unique
   technologyId  Int
   technology    Technology    @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+  isDefault     Boolean       @default(false)
 
   @@map("modules")
 }
@@ -199,7 +201,7 @@ model TicketQA {
   module            String
   description       String
   priority          String
-  impact            String
+  impact            Boolean      @default(false)
   tramite           String?
   reportedById      Int
   reportedBy        User      @relation("ReportedBy", fields: [reportedById], references: [id])
