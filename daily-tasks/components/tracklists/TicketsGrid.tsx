@@ -2,6 +2,7 @@
 
 import { Inbox, User } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
@@ -15,68 +16,84 @@ interface TicketsGridProps {
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12 px-2">#</TableHead>
-          <TableHead className="w-24 px-2">Tipo</TableHead>
-          <TableHead className="w-20 px-2">Módulo</TableHead>
-          <TableHead className="px-2">Descripción</TableHead>
-          <TableHead className="w-24 px-2">Prioridad</TableHead>
-          <TableHead className="w-20 px-2"><User className="h-4 w-4" /></TableHead>
-          <TableHead className="w-28 px-2">Trámite</TableHead>
-          <TableHead className="w-24 px-2">Estado Dev</TableHead>
-          <TableHead className="w-24 px-2">Estado QA</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {initialTickets.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={9} className="p-12 text-center">
-              <div className="flex flex-col items-center justify-center gap-3">
-                <div className="p-4 rounded-full bg-muted/50">
-                  <Inbox className="h-8 w-8 text-muted-foreground/60" />
-                </div>
-                <p className="text-muted-foreground font-medium">No hay tickets</p>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : (
-          initialTickets.map((ticket) => (
-            <TableRow key={ticket.id}>
-              <TableCell className="font-mono text-xs px-2 py-2">{ticket.ticketNumber}</TableCell>
-              <TableCell className="px-2 py-2">{ticket.type}</TableCell>
-              <TableCell className="px-2 py-2">{ticket.module}</TableCell>
-              <TableCell className="max-w-xs truncate px-2 py-2" title={ticket.description}>
-                {ticket.description}
-              </TableCell>
-              <TableCell className="px-2 py-2">
-                <span
-                  className={cn(
-                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                    ticket.priority === 'Bloqueante' && 'bg-red-500/20 text-red-400',
-                    ticket.priority === 'Alta' && 'bg-orange-500/20 text-orange-400',
-                    ticket.priority === 'Media' && 'bg-yellow-500/20 text-yellow-400',
-                    ticket.priority === 'Baja' && 'bg-green-500/20 text-green-400'
-                  )}
-                >
-                  {ticket.priority}
-                </span>
-              </TableCell>
-              <TableCell className="px-2 py-2">
-                {ticket.assignedTo ? (
-                  <UserAvatar username={ticket.assignedTo.username} size="sm" className="mx-auto" />
-                ) : (
-                  '-'
-                )}
-              </TableCell>
-              <TableCell className="font-mono text-xs px-2 py-2">{ticket.tramite || '-'}</TableCell>
-              <TableCell className="px-2 py-2">{ticket.status}</TableCell>
-              <TableCell className="px-2 py-2">{ticket.verificationStatus}</TableCell>
+    <div className="border border-border rounded-2xl bg-card shadow-inner flex flex-col h-full overflow-hidden min-w-0">
+      {/* Header sticky */}
+      <div className="flex-shrink-0">
+        <Table className="table-fixed w-full">
+          <TableHeader className="sticky top-0 z-10 border-b-2 border-border bg-card">
+            <TableRow>
+              <TableHead className="w-12 px-2 bg-card">#</TableHead>
+              <TableHead className="w-24 px-2 bg-card">Tipo</TableHead>
+              <TableHead className="w-20 px-2 bg-card">Módulo</TableHead>
+              <TableHead className="w-auto px-2 bg-card">Descripción</TableHead>
+              <TableHead className="w-24 px-2 bg-card">Prioridad</TableHead>
+              <TableHead className="w-20 px-2 bg-card"><User className="h-4 w-4" /></TableHead>
+              <TableHead className="w-28 px-2 bg-card">Trámite</TableHead>
+              <TableHead className="w-24 px-2 bg-card">Estado Dev</TableHead>
+              <TableHead className="w-24 px-2 bg-card">Estado QA</TableHead>
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+          </TableHeader>
+        </Table>
+      </div>
+      
+      {/* Body con scroll */}
+      <ScrollArea className="flex-1">
+        <Table className="table-fixed w-full">
+          <TableBody className="divide-y divide-border">
+            {initialTickets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="p-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="p-4 rounded-full bg-muted/50">
+                      <Inbox className="h-8 w-8 text-muted-foreground/60" />
+                    </div>
+                    <p className="text-muted-foreground font-medium">No hay tickets</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              initialTickets.map((ticket) => (
+                <TableRow 
+                  key={ticket.id} 
+                  className="hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <TableCell className="w-12 font-mono text-xs px-2 py-3">{ticket.ticketNumber}</TableCell>
+                  <TableCell className="w-24 px-2 py-3">{ticket.type}</TableCell>
+                  <TableCell className="w-20 px-2 py-3">{ticket.module}</TableCell>
+                  <TableCell className="w-auto min-w-0 px-2 py-3">
+                    <div className="flex-1 min-w-0 truncate" title={ticket.description}>
+                      {ticket.description}
+                    </div>
+                  </TableCell>
+                  <TableCell className="w-24 px-2 py-3">
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                        ticket.priority === 'Bloqueante' && 'bg-red-500/20 text-red-400',
+                        ticket.priority === 'Alta' && 'bg-orange-500/20 text-orange-400',
+                        ticket.priority === 'Media' && 'bg-yellow-500/20 text-yellow-400',
+                        ticket.priority === 'Baja' && 'bg-green-500/20 text-green-400'
+                      )}
+                    >
+                      {ticket.priority}
+                    </span>
+                  </TableCell>
+                  <TableCell className="w-20 px-2 py-3">
+                    {ticket.assignedTo ? (
+                      <UserAvatar username={ticket.assignedTo.username} size="sm" className="mx-auto" />
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell className="w-28 font-mono text-xs px-2 py-3">{ticket.tramite || '-'}</TableCell>
+                  <TableCell className="w-24 px-2 py-3">{ticket.status}</TableCell>
+                  <TableCell className="w-24 px-2 py-3">{ticket.verificationStatus}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
   )
 }
