@@ -1086,3 +1086,35 @@ export async function deleteIncidence(incidenceId: number) {
         return { success: false, error: 'Error al eliminar incidencia' }
     }
 }
+
+export async function searchActiveIncidences(query: string) {
+    if (query.length < 2) {
+        return []
+    }
+
+    const queryNumber = parseInt(query, 10)
+    const isValidNumber = !isNaN(queryNumber)
+
+    const where: Record<string, unknown> = {
+        status: { not: TaskStatus.DONE }
+    }
+
+    where.OR = [
+        { title: { contains: query, mode: 'insensitive' } },
+        { externalId: isValidNumber ? queryNumber : undefined }
+    ].filter(condition => Object.values(condition).some(v => v !== undefined))
+
+    const incidences = await db.incidence.findMany({
+        where,
+        select: {
+            id: true,
+            type: true,
+            externalId: true,
+            title: true
+        },
+        take: 10,
+        orderBy: { title: 'asc' }
+    })
+
+    return incidences
+}
