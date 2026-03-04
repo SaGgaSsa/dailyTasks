@@ -76,6 +76,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   
   const [techOpen, setTechOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
+  const [typeOpen, setTypeOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
 
@@ -83,7 +84,13 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     async function loadData() {
       const data = await getCachedTechsWithModules()
       setTechs(data.techs)
-      if (data.defaultTech) {
+      setDefaultModules(data.defaultModules.map(dm => ({
+        techId: dm.techId,
+        module: { id: dm.module.id, name: dm.module.name }
+      })))
+      
+      // Solo setear valores por defecto si no hay selección previa
+      if (!selectedTech && data.defaultTech) {
         const defaultTechWithModules = data.techs.find(t => t.id === data.defaultTech!.id) || null
         setDefaultTech({ id: data.defaultTech.id, name: data.defaultTech.name })
         setSelectedTech(defaultTechWithModules)
@@ -92,10 +99,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
           setSelectedModule({ id: defaultForTech.module.id, name: defaultForTech.module.name })
         }
       }
-      setDefaultModules(data.defaultModules.map(dm => ({
-        techId: dm.techId,
-        module: { id: dm.module.id, name: dm.module.name }
-      })))
     }
     if (open) {
       loadData()
@@ -147,8 +150,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setType('Bug')
     setDescription('')
     setObservations('')
-    setSelectedTech(null)
-    setSelectedModule(null)
     setSelectedPriority('MEDIUM')
     setSelectedAssignee(null)
     onOpenChange(false)
@@ -159,8 +160,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setType('Bug')
       setDescription('')
       setObservations('')
-      setSelectedTech(null)
-      setSelectedModule(null)
       setSelectedPriority('MEDIUM')
       setSelectedAssignee(null)
     }
@@ -193,18 +192,42 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIPO_TICKET.map(t => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 rounded-full border-dashed w-[100px]"
+                >
+                  <span className="text-xs">{type}</span>
+                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[140px] p-0" align="start">
+                <Command>
+                  <CommandGroup>
+                    {TIPO_TICKET.map((t) => (
+                      <CommandItem
+                        key={t.value}
+                        value={t.label}
+                        onSelect={() => {
+                          setType(t.value)
+                          setTypeOpen(false)
+                        }}
+                      >
+                        <Check 
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            type === t.value ? "opacity-100" : "opacity-0"
+                          )} 
+                        />
+                        {t.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             <Popover open={techOpen} onOpenChange={setTechOpen}>
               <PopoverTrigger asChild>
@@ -308,8 +331,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Buscar prioridad..." />
-                  <CommandEmpty>No encontrada.</CommandEmpty>
                   <CommandGroup>
                     {PRIORITIES.map((priority) => (
                       <CommandItem
