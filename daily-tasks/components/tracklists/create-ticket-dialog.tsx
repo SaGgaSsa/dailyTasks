@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createTicket } from '@/app/actions/tracklists'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
+import { AssignableUser } from '@/app/actions/user-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,9 +26,8 @@ import {
   CommandItem,
 } from '@/components/ui/command'
 import { toast } from 'sonner'
-import { Check, Plus, ChevronDown } from 'lucide-react'
+import { Check, Plus, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Checkbox } from '@/components/ui/checkbox'
 
 const TIPO_TICKET = [
   { value: 'Bug', label: 'Bug' },
@@ -36,6 +36,7 @@ const TIPO_TICKET = [
 ]
 
 const PRIORITIES = [
+  { value: 'BLOQUEANTE', label: 'Bloqueante' },
   { value: 'HIGH', label: 'Alto' },
   { value: 'MEDIUM', label: 'Medio' },
   { value: 'LOW', label: 'Bajo' }
@@ -54,11 +55,12 @@ interface DefaultModule {
 
 interface Props {
   tracklistId: number
+  assignableUsers: AssignableUser[]
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
+export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange }: Props) {
   const [isPending, setIsPending] = useState(false)
   const [type, setType] = useState('Bug')
   const [description, setDescription] = useState('')
@@ -70,11 +72,12 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
   const [selectedTech, setSelectedTech] = useState<TechWithModules | null>(null)
   const [selectedModule, setSelectedModule] = useState<{ id: number; name: string } | null>(null)
   const [selectedPriority, setSelectedPriority] = useState('MEDIUM')
-  const [isBloqueante, setIsBloqueante] = useState(false)
+  const [selectedAssignee, setSelectedAssignee] = useState<AssignableUser | null>(null)
   
   const [techOpen, setTechOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
+  const [assigneeOpen, setAssigneeOpen] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -117,14 +120,18 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
   const handleSubmit = async () => {
     if (!description.trim()) return
     
+    const priority = selectedPriority === 'BLOQUEANTE' ? 'HIGH' : selectedPriority
+    const impact = selectedPriority === 'BLOQUEANTE'
+    
     setIsPending(true)
     const result = await createTicket(tracklistId.toString(), {
       type,
       module: selectedModule?.name || '',
       description: description.trim(),
-      priority: selectedPriority,
-      impact: isBloqueante,
-      observations: observations.trim() || undefined
+      priority,
+      impact,
+      observations: observations.trim() || undefined,
+      assignedToId: selectedAssignee?.id
     })
     setIsPending(false)
     
@@ -143,7 +150,7 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
     setSelectedTech(null)
     setSelectedModule(null)
     setSelectedPriority('MEDIUM')
-    setIsBloqueante(false)
+    setSelectedAssignee(null)
     onOpenChange(false)
   }
 
@@ -155,7 +162,7 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
       setSelectedTech(null)
       setSelectedModule(null)
       setSelectedPriority('MEDIUM')
-      setIsBloqueante(false)
+      setSelectedAssignee(null)
     }
     onOpenChange(newOpen)
   }
@@ -294,7 +301,7 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
                   className="h-8 rounded-full border-dashed"
                 >
                   <span className="text-xs">
-                    {isBloqueante ? 'Bloqueante' : (PRIORITIES.find(p => p.value === selectedPriority)?.label || 'Medio')}
+                    {PRIORITIES.find(p => p.value === selectedPriority)?.label || 'Medio'}
                   </span>
                   <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
@@ -310,14 +317,13 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
                         value={priority.label}
                         onSelect={() => {
                           setSelectedPriority(priority.value)
-                          setIsBloqueante(false)
                           setPriorityOpen(false)
                         }}
                       >
                         <Check 
                           className={cn(
                             "mr-2 h-4 w-4",
-                            selectedPriority === priority.value && !isBloqueante ? "opacity-100" : "opacity-0"
+                            selectedPriority === priority.value ? "opacity-100" : "opacity-0"
                           )} 
                         />
                         {priority.label}
@@ -328,24 +334,60 @@ export function CreateTicketDialog({ tracklistId, open, onOpenChange }: Props) {
               </PopoverContent>
             </Popover>
 
-            <div className="flex items-center gap-2">
-              <Checkbox 
-                id="bloqueante"
-                checked={isBloqueante}
-                onCheckedChange={(checked) => {
-                  setIsBloqueante(checked === true)
-                  if (checked) {
-                    setSelectedPriority('HIGH')
-                  }
-                }}
-              />
-              <label 
-                htmlFor="bloqueante" 
-                className="text-xs text-muted-foreground cursor-pointer select-none"
-              >
-                Bloqueante
-              </label>
-            </div>
+            <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 rounded-full border-dashed"
+                >
+                  {selectedAssignee ? (
+                    <>
+                      <User className="mr-1 h-3 w-3" />
+                      <span className="text-xs">{selectedAssignee.username}</span>
+                    </>
+                  ) : (
+                    <User className="mr-1 h-3 w-3 text-muted-foreground" />
+                  )}
+                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar usuario..." />
+                  <CommandEmpty>No encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => {
+                        setSelectedAssignee(null)
+                        setAssigneeOpen(false)
+                      }}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Sin asignar
+                    </CommandItem>
+                    {assignableUsers.map((user) => (
+                      <CommandItem
+                        key={user.id}
+                        value={user.username}
+                        onSelect={() => {
+                          setSelectedAssignee(user)
+                          setAssigneeOpen(false)
+                        }}
+                      >
+                        <Check 
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedAssignee?.id === user.id ? "opacity-100" : "opacity-0"
+                          )} 
+                        />
+                        {user.username}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         <DialogFooter>

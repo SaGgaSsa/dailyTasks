@@ -4,12 +4,14 @@ import { Inbox } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { TicketQAWithDetails } from '@/types'
+import { AssignableUser } from '@/app/actions/user-actions'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
+  assignableUsers: AssignableUser[]
 }
 
-export function TicketsGrid({ initialTickets }: TicketsGridProps) {
+export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
 
   return (
     <Table>

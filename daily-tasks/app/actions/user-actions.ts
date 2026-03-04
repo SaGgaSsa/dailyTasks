@@ -1,5 +1,6 @@
 'use server'
 
+import { unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { TaskStatus, TaskType, Priority } from '@/types/enums'
@@ -220,3 +221,25 @@ export async function getUserDetails(userId: number) {
     return null
   }
 }
+
+export interface AssignableUser {
+  id: number
+  username: string
+  role: UserRole
+  name: string | null
+}
+
+export const getCachedAssignableUsers = unstable_cache(
+  async (): Promise<AssignableUser[]> => {
+    return db.user.findMany({
+      where: { role: { in: ['DEV', 'ADMIN'] } },
+      orderBy: [
+        { role: 'asc' },
+        { name: 'asc' }
+      ],
+      select: { id: true, username: true, role: true, name: true }
+    })
+  },
+  ['assignable-users-cache'],
+  { tags: ['assignable-users'] }
+)

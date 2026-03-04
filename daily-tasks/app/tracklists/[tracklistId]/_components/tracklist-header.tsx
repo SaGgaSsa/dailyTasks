@@ -10,13 +10,15 @@ import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { AssignableUser } from '@/app/actions/user-actions'
 
 interface Props {
   tracklists: { id: number; title: string }[]
   currentId: number
+  assignableUsers: AssignableUser[]
 }
 
-export function TracklistHeader({ tracklists, currentId }: Props) {
+export function TracklistHeader({ tracklists, currentId, assignableUsers }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false)
@@ -64,6 +66,7 @@ export function TracklistHeader({ tracklists, currentId }: Props) {
       />
       <CreateTicketDialog 
         tracklistId={currentId}
+        assignableUsers={assignableUsers}
         open={isTicketDialogOpen} 
         onOpenChange={setIsTicketDialogOpen} 
       />
