@@ -157,38 +157,52 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
       const titleIndex = (incidences.length) % INCIDENCE_TITLES.length
       const title = `${INCIDENCE_TITLES[titleIndex]} #${i + 1}`
 
-      const incidence = await prisma.incidence.upsert({
+      let incidence = await prisma.incidence.findUnique({
         where: { type_externalId: { type: TaskType.I_MODAPL, externalId } },
-        update: {},
-        create: {
-          type: TaskType.I_MODAPL,
-          externalId,
-          title,
-          comment: title,
-          status,
-          priority: Priority.MEDIUM,
-          technology: { connect: { id: sisaTech!.id } },
-          estimatedTime: 8,
-        },
       })
+
+      if (!incidence) {
+        incidence = await prisma.incidence.create({
+          data: {
+            type: TaskType.I_MODAPL,
+            externalId,
+            title,
+            comment: title,
+            status,
+            priority: Priority.MEDIUM,
+            technology: { connect: { id: sisaTech!.id } },
+            estimatedTime: 8,
+          },
+        })
+      }
       incidences.push(incidence)
 
-      await prisma.assignment.create({
-        data: {
-          incidenceId: incidence.id,
-          userId: user.id,
-          assignedHours: 8,
-          isAssigned: true,
-        },
+      const existingAssignment = await prisma.assignment.findUnique({
+        where: { incidenceId_userId: { incidenceId: incidence.id, userId: user.id } },
       })
+      if (!existingAssignment) {
+        await prisma.assignment.create({
+          data: {
+            incidenceId: incidence.id,
+            userId: user.id,
+            assignedHours: 8,
+            isAssigned: true,
+          },
+        })
+      }
 
-      await prisma.subTask.create({
-        data: {
-          title: TASK_TITLES[incidences.length % TASK_TITLES.length],
-          isCompleted: false,
-          assignmentId: incidence.id,
-        },
+      const existingSubtask = await prisma.subTask.findFirst({
+        where: { assignmentId: incidence.id },
       })
+      if (!existingSubtask) {
+        await prisma.subTask.create({
+          data: {
+            title: TASK_TITLES[incidences.length % TASK_TITLES.length],
+            isCompleted: false,
+            assignmentId: incidence.id,
+          },
+        })
+      }
 
       externalId++
     }
@@ -197,6 +211,65 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
 
   console.log(`Total incidences for ${userType}: ${incidences.length}`)
   return incidences
+}
+
+async function createTracklistWithIncidences() {
+  const admin = await prisma.user.findUnique({ where: { username: 'ADM' } })
+  const sisaTech = await getTechnologyByName('SISA')
+  
+  if (!admin || !sisaTech) {
+    console.warn('Admin or SISA technology not found, skipping tracklist creation')
+    return
+  }
+
+  const dueDate = new Date('2026-04-30')
+
+  let tracklist = await prisma.tracklist.findFirst({
+    where: { title: 'Liberacion Abril' },
+  })
+
+  if (!tracklist) {
+    tracklist = await prisma.tracklist.create({
+      data: {
+        title: 'Liberacion Abril',
+        description: 'Liberacion Abril',
+        dueDate,
+        createdById: admin.id,
+      },
+    })
+    console.log(`Created tracklist: ${tracklist.title}`)
+  } else {
+    console.log(`Tracklist already exists: ${tracklist.title}`)
+  }
+
+  const incidenceTitles = [
+    'Actualizacion de modulo de usuarios',
+    'Mejora en rendimiento de busqueda',
+    'Nuevo reporte de gestion',
+    'Correccion de errores en produccion',
+    'Implementacion de notificaciones push',
+  ]
+
+  for (let i = 0; i < incidenceTitles.length; i++) {
+    await prisma.incidence.upsert({
+      where: { type_externalId: { type: TaskType.I_MODAPL, externalId: 3000 + i } },
+      update: {},
+      create: {
+        type: TaskType.I_MODAPL,
+        externalId: 3000 + i,
+        title: incidenceTitles[i],
+        comment: `Incidencia para liberacion de abril #${i + 1}`,
+        status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
+        priority: Priority.HIGH,
+        technologyId: sisaTech.id,
+        tracklistId: tracklist.id,
+        estimatedTime: 16,
+      },
+    })
+    console.log(`Created/updated incidence: ${incidenceTitles[i]} linked to tracklist`)
+  }
+
+  console.log(`Tracklist "${tracklist.title}" created with ${incidenceTitles.length} incidences`)
 }
 
 async function main() {
@@ -222,6 +295,9 @@ async function main() {
     
     console.log('\n--- Creating Incidences for Dev ---')
     await createIncidencesForUser(dev, 'dev')
+
+    console.log('\n--- Creating Tracklist with Incidences ---')
+    await createTracklistWithIncidences()
     
     console.log('\n--- Seed completed successfully! ---')
     

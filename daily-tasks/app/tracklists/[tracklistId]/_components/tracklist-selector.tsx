@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { 
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem 
 } from '@/components/ui/select'
-import { PlusIcon } from 'lucide-react'
+import { PlusIcon, PencilIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 
 interface Props {
@@ -16,14 +17,21 @@ interface Props {
 export function TracklistSelector({ tracklists, currentId }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const current = tracklists.find(t => t.id === currentId)
 
   const handleValueChange = (value: string) => {
     if (value === 'new') {
+      setIsEditMode(false)
       setIsDialogOpen(true)
     } else {
       router.push(`/tracklists/${value}`)
     }
+  }
+
+  const handleEdit = () => {
+    setIsEditMode(true)
+    setIsDialogOpen(true)
   }
 
   return (
@@ -48,10 +56,16 @@ export function TracklistSelector({ tracklists, currentId }: Props) {
             </SelectItem>
           </SelectContent>
         </Select>
+        {current && (
+          <Button variant="ghost" size="icon" onClick={handleEdit}>
+            <PencilIcon className="w-4 h-4" />
+          </Button>
+        )}
       </div>
       <CreateTracklistDialog 
         open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
+        onOpenChange={setIsDialogOpen}
+        tracklist={isEditMode && current ? { id: current.id, title: current.title, description: null, dueDate: null } : undefined}
       />
     </>
   )

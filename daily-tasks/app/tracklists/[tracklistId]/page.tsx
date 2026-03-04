@@ -12,16 +12,17 @@ export default async function TracklistDetailPage({ params }: Props) {
   const { tracklistId } = await params
   const numericId = Number(tracklistId)
 
-  const [currentTracklist, allTracklists, assignableUsers] = await Promise.all([
+  const [currentTracklist, tickets, allTracklists, assignableUsers] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      include: { 
-        tickets: {
-          include: {
-            reportedBy: { select: { id: true, name: true, username: true } },
-            assignedTo: { select: { id: true, name: true, username: true } }
-          }
-        }
+      select: { id: true, title: true, description: true, dueDate: true }
+    }),
+    db.ticketQA.findMany({
+      where: { tracklistId: numericId },
+      orderBy: { ticketNumber: 'desc' },
+      include: {
+        reportedBy: { select: { id: true, name: true, username: true } },
+        assignedTo: { select: { id: true, name: true, username: true } }
       }
     }),
     db.tracklist.findMany({
@@ -45,8 +46,9 @@ export default async function TracklistDetailPage({ params }: Props) {
         tracklists={allTracklists} 
         currentId={numericId}
         assignableUsers={assignableUsers}
+        currentTracklist={currentTracklist || undefined}
       />
-      <TicketsGrid initialTickets={currentTracklist.tickets} assignableUsers={assignableUsers} />
+      <TicketsGrid initialTickets={tickets} assignableUsers={assignableUsers} />
     </div>
   )
 }

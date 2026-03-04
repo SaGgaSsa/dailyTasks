@@ -11,6 +11,13 @@ interface CreateTracklistData {
     dueDate?: Date
 }
 
+interface UpdateTracklistData {
+    id: number
+    title: string
+    description?: string
+    dueDate?: Date
+}
+
 interface CreateTicketData {
     type: string
     module: string
@@ -57,6 +64,30 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
         return { success: true, data: tracklist }
     } catch (error) {
         console.error('Error creating tracklist:', error)
+        return { success: false, error: t(locale, 'errors.saveError') }
+    }
+}
+
+export async function updateTracklist(data: UpdateTracklistData, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
+    try {
+        const tracklist = await db.tracklist.update({
+            where: { id: data.id },
+            data: {
+                title: data.title,
+                description: data.description,
+                dueDate: data.dueDate
+            }
+        })
+        revalidatePath('/tracklists')
+        revalidatePath(`/tracklists/${data.id}`)
+        return { success: true, data: tracklist }
+    } catch (error) {
+        console.error('Error updating tracklist:', error)
         return { success: false, error: t(locale, 'errors.saveError') }
     }
 }

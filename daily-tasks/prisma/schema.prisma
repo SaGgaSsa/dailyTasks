@@ -92,6 +92,8 @@ model Incidence {
   priority      Priority   @default(MEDIUM)
   technology    Technology @relation(fields: [technologyId], references: [id])
   technologyId  Int
+  tracklistId  Int?
+  tracklist    Tracklist? @relation(fields: [tracklistId], references: [id])
   estimatedTime Int?
   completedAt   DateTime?
   
@@ -186,6 +188,7 @@ model Tracklist {
   createdById Int
   createdBy   User      @relation(fields: [createdById], references: [id])
   tickets     TicketQA[]
+  incidences  Incidence[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
