@@ -1087,7 +1087,7 @@ export async function deleteIncidence(incidenceId: number) {
     }
 }
 
-export async function searchActiveIncidences(query: string) {
+export async function searchActiveIncidences(query: string, selectedIncidences: string[] = []) {
     if (query.length < 2) {
         return []
     }
@@ -1096,7 +1096,8 @@ export async function searchActiveIncidences(query: string) {
     const isValidNumber = !isNaN(queryNumber)
 
     const where: Record<string, unknown> = {
-        status: { not: TaskStatus.DONE }
+        status: { not: TaskStatus.DONE },
+        id: { notIn: selectedIncidences }
     }
 
     where.OR = [
