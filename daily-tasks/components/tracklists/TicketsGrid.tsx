@@ -22,15 +22,15 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
         <Table className="table-fixed w-full">
           <TableHeader className="sticky top-0 z-10 border-b-2 border-border bg-card">
             <TableRow>
-              <TableHead className="w-12 px-2 bg-card">#</TableHead>
-              <TableHead className="w-24 px-2 bg-card">Tipo</TableHead>
+              <TableHead className="w-12 px-2 bg-card text-center">#</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Tipo</TableHead>
               <TableHead className="w-20 px-2 bg-card">Módulo</TableHead>
               <TableHead className="w-auto px-2 bg-card">Descripción</TableHead>
-              <TableHead className="w-24 px-2 bg-card">Prioridad</TableHead>
-              <TableHead className="w-20 px-2 bg-card"><User className="h-4 w-4" /></TableHead>
-              <TableHead className="w-28 px-2 bg-card">Trámite</TableHead>
-              <TableHead className="w-24 px-2 bg-card">Estado Dev</TableHead>
-              <TableHead className="w-24 px-2 bg-card">Estado QA</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Prioridad</TableHead>
+              <TableHead className="w-20 px-2 bg-card text-center"><div className="flex justify-center"><User className="h-4 w-4" /></div></TableHead>
+              <TableHead className="w-28 px-2 bg-card text-center">Trámite</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Estado Dev</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Estado QA</TableHead>
             </TableRow>
           </TableHeader>
         </Table>
@@ -57,15 +57,15 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                   key={ticket.id} 
                   className="hover:bg-accent/50 transition-colors cursor-pointer"
                 >
-                  <TableCell className="w-12 font-mono text-xs px-2 py-3">{ticket.ticketNumber}</TableCell>
-                  <TableCell className="w-24 px-2 py-3">{ticket.type}</TableCell>
+                  <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">{ticket.ticketNumber}</TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.type}</TableCell>
                   <TableCell className="w-20 px-2 py-3">{ticket.module}</TableCell>
                   <TableCell className="w-auto min-w-0 px-2 py-3">
                     <div className="flex-1 min-w-0 truncate" title={ticket.description}>
                       {ticket.description}
                     </div>
                   </TableCell>
-                  <TableCell className="w-24 px-2 py-3">
+                  <TableCell className="w-24 px-2 py-3 text-center">
                     <span
                       className={cn(
                         'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
@@ -78,16 +78,16 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                       {ticket.priority}
                     </span>
                   </TableCell>
-                  <TableCell className="w-20 px-2 py-3">
+                  <TableCell className="w-20 px-2 py-3 text-center">
                     {ticket.assignedTo ? (
                       <UserAvatar username={ticket.assignedTo.username} size="sm" className="mx-auto" />
                     ) : (
                       '-'
                     )}
                   </TableCell>
-                  <TableCell className="w-28 font-mono text-xs px-2 py-3">{ticket.tramite || '-'}</TableCell>
-                  <TableCell className="w-24 px-2 py-3">{ticket.status}</TableCell>
-                  <TableCell className="w-24 px-2 py-3">{ticket.verificationStatus}</TableCell>
+                  <TableCell className="w-28 font-mono text-xs px-2 py-3 text-center">{ticket.tramite || '-'}</TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.status}</TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.verificationStatus}</TableCell>
                 </TableRow>
               ))
             )}
