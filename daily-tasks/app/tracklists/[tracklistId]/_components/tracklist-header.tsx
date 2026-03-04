@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/select'
 import { PlusIcon } from 'lucide-react'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
+import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 
@@ -18,6 +19,7 @@ interface Props {
 export function TracklistHeader({ tracklists, currentId }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false)
 
   const handleValueChange = (value: string) => {
     if (value === 'new') {
@@ -51,7 +53,7 @@ export function TracklistHeader({ tracklists, currentId }: Props) {
         </Select>
         <Button 
           className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
-          disabled
+          onClick={() => setIsTicketDialogOpen(true)}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -59,6 +61,11 @@ export function TracklistHeader({ tracklists, currentId }: Props) {
       <CreateTracklistDialog 
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen} 
+      />
+      <CreateTicketDialog 
+        tracklistId={currentId}
+        open={isTicketDialogOpen} 
+        onOpenChange={setIsTicketDialogOpen} 
       />
     </>
   )
