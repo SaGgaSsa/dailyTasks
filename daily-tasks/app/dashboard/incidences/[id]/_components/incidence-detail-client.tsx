@@ -13,18 +13,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { getIncidence } from '@/app/actions/incidence-actions'
-
-const typeColors: Record<TaskType, string> = {
-    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-}
-
-const priorityConfig: Record<Priority, { label: string; className: string }> = {
-    LOW: { label: 'Baja', className: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    MEDIUM: { label: 'Media', className: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
-    HIGH: { label: 'Alta', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-}
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 
 interface IncidenceDetailClientProps {
     incidence: IncidenceWithDetails
@@ -99,12 +89,12 @@ export function IncidenceDetailClient({
         <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-4rem)]">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Badge variant="outline" className={`text-sm font-medium ${typeColors[incidenceData.type]}`}>
-                        {incidenceData.type} {incidenceData.externalId}
-                    </Badge>
-                    <Badge variant="outline" className={`text-sm ${priorityConfig[incidenceData.priority].className}`}>
-                        {priorityConfig[incidenceData.priority].label}
-                    </Badge>
+                    <IncidenceBadge 
+                        type={incidenceData.type} 
+                        externalId={incidenceData.externalId}
+                        className="text-sm font-medium"
+                    />
+                    <PriorityBadge priority={incidenceData.priority} className="text-sm" />
                 </div>
                 {hasChanges && (
                     <Button

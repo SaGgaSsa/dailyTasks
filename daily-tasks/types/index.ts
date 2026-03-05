@@ -44,6 +44,7 @@ export type TracklistWithDetails = Tracklist & {
 export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
+  incidence: Pick<Incidence, 'id' | 'type' | 'externalId'> | null
 }
 
 export const createUserSchema = z.object({

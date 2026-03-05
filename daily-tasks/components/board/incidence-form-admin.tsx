@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, Priority, TaskStatus } from '@/types/enums'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 
 const TECH_OPTIONS = [
     { value: 'SISA', label: 'SISA' },
@@ -821,9 +823,11 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 <>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight ${initialData.type === 'I_MODAPL' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : initialData.type === 'I_CASO' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                {initialData.type} {initialData.externalId}
-                            </Badge>
+                            <IncidenceBadge 
+                                type={initialData.type} 
+                                externalId={initialData.externalId}
+                                className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight"
+                            />
                             <span className="text-sm text-foreground font-medium">{initialData.title}</span>
                         </div>
                     </div>
@@ -831,9 +835,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     <FormRow3>
                         <div className="space-y-2">
                             <Label className="text-card-foreground/80">Prioridad</Label>
-                            <div className="text-sm text-muted-foreground">
-                                {initialData.priority === 'HIGH' ? 'Alta' : initialData.priority === 'MEDIUM' ? 'Media' : 'Baja'}
-                            </div>
+                            <PriorityBadge priority={initialData.priority} />
                         </div>
                         
                         <div className="space-y-2">

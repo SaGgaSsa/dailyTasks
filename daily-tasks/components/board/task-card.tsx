@@ -16,6 +16,8 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { TaskStatus } from '@/types/enums'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 import { calculateCompletedHours, formatHoursDisplay } from '@/lib/hours-calculation'
 import {
     DropdownMenu,
@@ -41,18 +43,6 @@ interface TaskCardProps {
     onClick?: () => void
     canDrag?: boolean
     isDev?: boolean
-}
-
-const priorityColors = {
-    LOW: 'bg-green-500/10 text-green-400 border-green-500/20',
-    MEDIUM: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    HIGH: 'bg-red-500/10 text-red-400 border-red-500/20',
-}
-
-const typeColors: Record<string, string> = {
-    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-400/20',
 }
 
 export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskCardProps) {
@@ -166,19 +156,16 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
             <CardContent className="p-2 space-y-1.5">
                 {/* Header: ID + Priority */}
                 <div className="flex items-center justify-between">
-                    <Badge
-                        variant="outline"
-                        className={`text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight flex-shrink-0 ${typeColors[task.type] || 'bg-zinc-500/10 text-zinc-400'}`}
-                    >
-                        {task.type} {task.externalId}
-                    </Badge>
+                    <IncidenceBadge
+                        type={task.type}
+                        externalId={task.externalId}
+                        className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight flex-shrink-0"
+                    />
                     <div className="flex items-center gap-1">
-                        <Badge
-                            variant="secondary"
-                            className={`text-[9px] font-medium px-1.5 py-0 flex-shrink-0 ${priorityColors[task.priority as keyof typeof priorityColors] || ''} border`}
-                        >
-                            {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Media' : 'Baja'}
-                        </Badge>
+                        <PriorityBadge
+                            priority={task.priority}
+                            className="text-[9px] font-medium px-1.5 py-0 flex-shrink-0"
+                        />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button

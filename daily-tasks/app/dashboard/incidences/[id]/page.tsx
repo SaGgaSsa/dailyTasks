@@ -19,6 +19,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { TaskStatus, TaskType } from '@/types/enums'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { IncidenceDetailClient } from './_components/incidence-detail-client'
 import { User } from 'lucide-react'
 import { IncidencePageContent } from './_components/incidence-page-content'
@@ -37,12 +38,6 @@ const techLabels: Record<string, string> = {
     ANDROID: 'Android',
     ANGULAR: 'Angular',
     SPRING: 'Spring',
-}
-
-const typeColors: Record<TaskType, string> = {
-    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 }
 
 function formatDate(date: Date): string {
@@ -118,9 +113,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                 <div className="pt-6 pr-6">
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Trámite</span>
-                        <Badge variant="outline" className={typeColors[incidence.type]}>
-                            {incidence.type} {incidence.externalId}
-                        </Badge>
+                        <IncidenceBadge type={incidence.type} externalId={incidence.externalId} />
                     </div>
 
                     <div className="flex justify-between items-center py-2">

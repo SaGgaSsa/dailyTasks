@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CheckCircle2, Inbox, Clock, User, List, CheckCircle, GripVertical } from 'lucide-react'
 import { TaskStatus, TaskType } from '@/types/enums'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 import {
     Tooltip,
     TooltipContent,
@@ -75,18 +77,6 @@ const statusColors: Record<TaskStatus, string> = {
     IN_PROGRESS: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     REVIEW: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     DONE: 'bg-green-500/10 text-green-400 border-green-500/20',
-}
-
-const typeColors: Record<TaskType, string> = {
-    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-}
-
-const defaultPriorityLabels: Record<string, string> = {
-    HIGH: 'Alta',
-    MEDIUM: 'Media',
-    LOW: 'Baja',
 }
 
 interface SortableRowProps {
@@ -167,9 +157,11 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Tramite</div>,
         cell: ({ row }) => (
             <div className="flex justify-center">
-                <Badge variant="outline" className={`text-[10px] font-mono leading-none py-1 border-none bg-muted whitespace-nowrap ${typeColors[row.original.type]}`}>
-                    {row.original.type} {row.original.externalId}
-                </Badge>
+                <IncidenceBadge 
+                    type={row.original.type} 
+                    externalId={row.original.externalId}
+                    className="text-[10px] font-mono leading-none py-1 whitespace-nowrap"
+                />
             </div>
         ),
     },
@@ -211,15 +203,8 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => null,
         cell: ({ row }) => {
             const priority = row.original.priority
-            const colors = {
-                HIGH: 'text-red-400 bg-red-500/10 border-red-500/20',
-                MEDIUM: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-                LOW: 'text-green-400 bg-green-500/10 border-green-500/20',
-            }
             return (
-                <Badge variant="outline" className={`text-[10px] font-medium border whitespace-nowrap ${colors[priority as keyof typeof colors] || 'text-muted-foreground bg-muted border-border'}`}>
-                    {defaultPriorityLabels[priority] || priority}
-                </Badge>
+                <PriorityBadge priority={priority} className="text-[10px] font-medium whitespace-nowrap" />
             )
         },
     },

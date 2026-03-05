@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -66,17 +68,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                     </div>
                   </TableCell>
                   <TableCell className="w-24 px-2 py-3 text-center">
-                    <span
-                      className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                        ticket.priority === 'Bloqueante' && 'bg-red-500/20 text-red-400',
-                        ticket.priority === 'Alta' && 'bg-orange-500/20 text-orange-400',
-                        ticket.priority === 'Media' && 'bg-yellow-500/20 text-yellow-400',
-                        ticket.priority === 'Baja' && 'bg-green-500/20 text-green-400'
-                      )}
-                    >
-                      {ticket.priority}
-                    </span>
+                    <PriorityBadge priority={ticket.priority} className="text-xs" />
                   </TableCell>
                   <TableCell className="w-20 px-2 py-3 text-center">
                     {ticket.assignedTo ? (
@@ -85,7 +77,17 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                       '-'
                     )}
                   </TableCell>
-                  <TableCell className="w-28 font-mono text-xs px-2 py-3 text-center">{ticket.tramite || '-'}</TableCell>
+                  <TableCell className="w-28 px-2 py-3 text-center">
+                    {ticket.incidence ? (
+                      <IncidenceBadge 
+                        type={ticket.incidence.type} 
+                        externalId={ticket.incidence.externalId}
+                        className="text-[10px] font-mono"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="w-24 px-2 py-3 text-center">{ticket.status}</TableCell>
                   <TableCell className="w-24 px-2 py-3 text-center">{ticket.verificationStatus}</TableCell>
                 </TableRow>
