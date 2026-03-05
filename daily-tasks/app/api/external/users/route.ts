@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const hashedPassword = await bcrypt.hash('sisa0314', 10)
+    const hashedPassword = await bcrypt.hash('1234', 10)
 
     const allTechs = await db.technology.findMany()
     const technologies = allTechs.map(t => ({ connect: { id: t.id } }))
