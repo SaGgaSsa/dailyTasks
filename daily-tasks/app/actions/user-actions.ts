@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { TaskStatus, TaskType, Priority } from '@/types/enums'
 import { User, UserRole } from '@prisma/client'
+import { createUserSchema, updateUserSchema } from '@/types'
 
 interface GetUsersResult {
     data: User[]
@@ -34,6 +35,14 @@ interface UpsertUserData {
 }
 
 export async function upsertUser(data: UpsertUserData) {
+    const schema = data.id ? updateUserSchema : createUserSchema
+    const validation = schema.safeParse(data)
+
+    if (!validation.success) {
+        const errors = validation.error.issues.map(e => e.message).join(', ')
+        return { success: false, error: errors }
+    }
+
     try {
         if (data.id) {
             await db.user.update({
@@ -78,6 +87,20 @@ export async function createUser(formData: FormData) {
     const password = formData.get('password') as string
     const role = formData.get('role') as UserRole
     const techNames = formData.getAll('technologies') as string[]
+
+    const validation = createUserSchema.safeParse({
+        username,
+        name,
+        email,
+        password,
+        role,
+        technologies: techNames,
+    })
+
+    if (!validation.success) {
+        const errors = validation.error.issues.map(e => e.message).join(', ')
+        return { success: null, error: errors }
+    }
     
     const techIds = await Promise.all(
         techNames.map(name => db.technology.findUnique({ where: { name } }))
