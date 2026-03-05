@@ -22,6 +22,8 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<IncidenceQueryResult[]>([])
     const [isOpen, setIsOpen] = useState(false)
+    const [isSearching, setIsSearching] = useState(false)
+    const [isDebounced, setIsDebounced] = useState(false)
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const selectedIdsRef = useRef<number[]>([])
@@ -34,11 +36,14 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
     const performSearch = useCallback(async (searchQuery: string) => {
         if (searchQuery.length < 3) {
             setResults([])
+            setIsSearching(false)
             return
         }
 
+        setIsSearching(true)
         const searchResults = await searchActiveIncidences(searchQuery, selectedIdsRef.current)
         setResults(searchResults as IncidenceQueryResult[])
+        setIsSearching(false)
     }, [])
 
     useEffect(() => {
@@ -49,11 +54,14 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
         if (query.length >= 3) {
             debounceTimeoutRef.current = setTimeout(() => {
                 performSearch(query)
+                setIsDebounced(true)
             }, 300)
         } else {
             debounceTimeoutRef.current = setTimeout(() => {
                 setResults([])
                 setIsOpen(false)
+                setIsSearching(false)
+                setIsDebounced(false)
             }, 300)
         }
 
@@ -65,18 +73,25 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
     }, [query, performSearch])
 
     useEffect(() => {
-        if (query.length >= 3 && results.length > 0) {
+        if (query.length >= 3 && !isSearching && isDebounced) {
             setIsOpen(true)
-        } else {
+        } else if (query.length < 3) {
             setIsOpen(false)
         }
-    }, [results, query])
+    }, [results, query, isSearching, isDebounced])
 
     const handleSelect = (incidence: IncidenceQueryResult) => {
-        onChange([...selectedIncidences, incidence])
-        setQuery('')
-        setResults([])
-        setIsOpen(false)
+        const newSelected = [...selectedIncidences, incidence]
+        onChange(newSelected)
+        
+        // Update ref manually since it won't trigger re-render
+        selectedIdsRef.current = newSelected.map(i => i.id)
+        
+        // Re-search with updated exclusions
+        if (query.length >= 3) {
+            performSearch(query)
+        }
+        
         inputRef.current?.focus()
     }
 
@@ -102,7 +117,7 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
                 </PopoverTrigger>
                 <PopoverContent 
                     align="start" 
-                    className="w-[400px] p-0"
+                    className="w-auto min-w-[400px] max-w-[600px] p-0 shadow-lg border"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                 >
                     {query.length >= 3 && (
@@ -113,7 +128,7 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
                                         <button
                                             key={incidence.id}
                                             onClick={() => handleSelect(incidence)}
-                                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm cursor-pointer"
+                                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm cursor-pointer whitespace-nowrap"
                                         >
                                             <span className="font-medium">{incidence.type} {incidence.externalId}</span>
                                             <span className="text-muted-foreground"> - {incidence.title}</span>

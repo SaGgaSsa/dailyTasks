@@ -272,6 +272,76 @@ async function createTracklistWithIncidences() {
   console.log(`Tracklist "${tracklist.title}" created with ${incidenceTitles.length} incidences`)
 }
 
+async function createICasoIncidences() {
+  const sisaTech = await getTechnologyByName('SISA')
+  
+  if (!sisaTech) {
+    console.warn('SISA technology not found, skipping I_CASO creation')
+    return
+  }
+
+  const tracklist = await prisma.tracklist.findFirst({
+    where: { title: 'Liberacion Abril' },
+  })
+
+  const iCasosTitles = [
+    'Consulta de datos de cliente',
+    'Error en consulta de historial',
+    'Duplicado en consulta',
+  ]
+
+  for (let i = 0; i < iCasosTitles.length; i++) {
+    const externalId = 3000 + i
+    
+    let incidence = await prisma.incidence.findUnique({
+      where: { type_externalId: { type: TaskType.I_CASO, externalId } },
+    })
+
+    if (!incidence) {
+      incidence = await prisma.incidence.create({
+        data: {
+          type: TaskType.I_CASO,
+          externalId,
+          title: iCasosTitles[i],
+          comment: `Incidencia I_CASO #${i + 1}`,
+          status: TaskStatus.TODO,
+          priority: Priority.MEDIUM,
+          technologyId: sisaTech.id,
+          tracklistId: tracklist?.id,
+          estimatedTime: 8,
+        },
+      })
+      console.log(`Created I_CASO incidence: ${iCasosTitles[i]} (externalId: ${externalId})`)
+    }
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const externalId = 4000 + i
+    
+    let incidence = await prisma.incidence.findUnique({
+      where: { type_externalId: { type: TaskType.I_CASO, externalId } },
+    })
+
+    if (!incidence) {
+      await prisma.incidence.create({
+        data: {
+          type: TaskType.I_CASO,
+          externalId,
+          title: `Caso de prueba ${i + 1}`,
+          comment: `Incidencia I_CASO de prueba #${i + 1}`,
+          status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
+          priority: Priority.LOW,
+          technologyId: sisaTech.id,
+          estimatedTime: 4,
+        },
+      })
+      console.log(`Created I_CASO incidence: Caso de prueba ${i + 1} (externalId: ${externalId})`)
+    }
+  }
+
+  console.log('I_CASO incidences created with same externalIds as I_MODAPL')
+}
+
 async function main() {
   try {
     console.log('Starting seed data generation...')
@@ -298,6 +368,9 @@ async function main() {
 
     console.log('\n--- Creating Tracklist with Incidences ---')
     await createTracklistWithIncidences()
+
+    console.log('\n--- Creating I_CASO Incidences ---')
+    await createICasoIncidences()
     
     console.log('\n--- Seed completed successfully! ---')
     

@@ -1088,15 +1088,16 @@ export async function deleteIncidence(incidenceId: number) {
 }
 
 export async function searchActiveIncidences(query: string, selectedIncidences: number[] = []) {
-    if (query.length < 3) {
+    const trimmedQuery = query.trim()
+    if (trimmedQuery.length < 3) {
         return []
     }
 
-    const queryNumber = parseInt(query, 10)
+    const queryNumber = parseInt(trimmedQuery, 10)
     const isValidNumber = !isNaN(queryNumber)
 
     // Escape underscore to treat it as literal character, not wildcard (for title search)
-    const escapedQuery = query.replace(/_/g, '\\_')
+    const escapedQuery = trimmedQuery.replace(/_/g, '\\_')
 
     const where: Record<string, unknown> = {
         status: { not: TaskStatus.DONE },

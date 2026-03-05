@@ -23,7 +23,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         incidences: { 
           select: { id: true, externalId: true, type: true, title: true },
           orderBy: [
-            { type: 'asc' },
+            { type: 'desc' },
             { id: 'asc' }
           ]
         }
