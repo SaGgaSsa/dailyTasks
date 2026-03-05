@@ -164,7 +164,8 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                 tramite: data.tramite,
                 observations: data.observations,
                 reportedById: Number(session.user.id),
-                assignedToId: data.assignedToId
+                assignedToId: data.assignedToId,
+                incidenceId: data.incidenceId
             }
         })
         revalidatePath('/tracklists')
@@ -185,7 +186,11 @@ export async function getTracklistIncidences(tracklistId: number) {
                         id: true,
                         type: true,
                         externalId: true
-                    }
+                    },
+                    orderBy: [
+                        { type: 'asc' },
+                        { externalId: 'asc' }
+                    ]
                 }
             }
         })

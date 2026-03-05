@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createTicket } from '@/app/actions/tracklists'
+import { createTicket, getTracklistIncidences } from '@/app/actions/tracklists'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { Button } from '@/components/ui/button'
@@ -79,6 +79,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [typeOpen, setTypeOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
+  const [incidenceOpen, setIncidenceOpen] = useState(false)
+  const [selectedIncidence, setSelectedIncidence] = useState<{ id: number; type: string; externalId: number } | null>(null)
+  const [incidencesList, setIncidencesList] = useState<{ id: number; type: string; externalId: number }[]>([])
+  const [isLoadingIncidences, setIsLoadingIncidences] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -104,6 +108,20 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       loadData()
     }
   }, [open])
+
+  useEffect(() => {
+    async function loadIncidences() {
+      if (incidenceOpen) {
+        setIsLoadingIncidences(true)
+        const result = await getTracklistIncidences(tracklistId)
+        if (result.success) {
+          setIncidencesList(result.data ?? [])
+        }
+        setIsLoadingIncidences(false)
+      }
+    }
+    loadIncidences()
+  }, [incidenceOpen, tracklistId])
 
   useEffect(() => {
     if (selectedTech) {
@@ -134,7 +152,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       priority,
       impact,
       observations: observations.trim() || undefined,
-      assignedToId: selectedAssignee?.id
+      assignedToId: selectedAssignee?.id,
+      incidenceId: selectedIncidence?.id
     })
     setIsPending(false)
     
@@ -152,6 +171,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setObservations('')
     setSelectedPriority('MEDIUM')
     setSelectedAssignee(null)
+    setSelectedIncidence(null)
     onOpenChange(false)
   }
 
@@ -162,6 +182,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setObservations('')
       setSelectedPriority('MEDIUM')
       setSelectedAssignee(null)
+      setSelectedIncidence(null)
     }
     onOpenChange(newOpen)
   }
@@ -406,6 +427,65 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                       </CommandItem>
                     ))}
                   </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={incidenceOpen} onOpenChange={setIncidenceOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 rounded-full border-dashed"
+                >
+                  {selectedIncidence ? (
+                    <span className="text-xs">
+                      {selectedIncidence.type} {selectedIncidence.externalId}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">+ Incidencia</span>
+                  )}
+                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[250px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Filtrar incidencia..." />
+                  {isLoadingIncidences ? (
+                    <CommandItem disabled>Cargando...</CommandItem>
+                  ) : incidencesList.length === 0 ? (
+                    <CommandEmpty>No hay incidencias en este Tracklist</CommandEmpty>
+                  ) : (
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={() => {
+                          setSelectedIncidence(null)
+                          setIncidenceOpen(false)
+                        }}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Sin incidencia
+                      </CommandItem>
+                      {incidencesList.map((incidence) => (
+                        <CommandItem
+                          key={incidence.id}
+                          value={`${incidence.type} ${incidence.externalId}`}
+                          onSelect={() => {
+                            setSelectedIncidence(incidence)
+                            setIncidenceOpen(false)
+                          }}
+                        >
+                          <Check 
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedIncidence?.id === incidence.id ? "opacity-100" : "opacity-0"
+                            )} 
+                          />
+                          {incidence.type} {incidence.externalId}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
                 </Command>
               </PopoverContent>
             </Popover>
