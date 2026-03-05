@@ -22,7 +22,10 @@ export default async function TracklistDetailPage({ params }: Props) {
         dueDate: true,
         incidences: { 
           select: { id: true, externalId: true, type: true, title: true },
-          orderBy: { createdAt: 'desc' }
+          orderBy: [
+            { type: 'asc' },
+            { id: 'asc' }
+          ]
         }
       }
     }),
