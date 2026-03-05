@@ -126,9 +126,6 @@ export async function uploadAttachment(formData: FormData) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
 
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-
         const originalName = file.name
         const ext = originalName.split('.').pop() || ''
         const uniqueName = `${randomUUID()}.${ext}`

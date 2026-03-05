@@ -41,8 +41,8 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
         }
 
         setIsSearching(true)
-        const searchResults = await searchActiveIncidences(searchQuery, selectedIdsRef.current)
-        setResults(searchResults as IncidenceQueryResult[])
+        const result = await searchActiveIncidences(searchQuery, selectedIdsRef.current)
+        setResults(result.success ? (result.data as IncidenceQueryResult[]) : [])
         setIsSearching(false)
     }, [])
 

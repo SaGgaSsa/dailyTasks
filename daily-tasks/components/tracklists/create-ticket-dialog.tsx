@@ -84,7 +84,12 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
   useEffect(() => {
     async function loadData() {
-      const formData = await getTicketFormData(tracklistId)
+      const result = await getTicketFormData(tracklistId)
+      if (!result.success) {
+        console.error(result.error)
+        return
+      }
+      const formData = result.data!
       
       setTechs(formData.techs)
       setDefaultModules(formData.defaultModules.map(dm => ({

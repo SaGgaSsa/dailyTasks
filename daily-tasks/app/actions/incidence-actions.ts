@@ -1088,37 +1088,46 @@ export async function deleteIncidence(incidenceId: number) {
 }
 
 export async function searchActiveIncidences(query: string, selectedIncidences: number[] = []) {
-    const trimmedQuery = query.trim()
-    if (trimmedQuery.length < 3) {
-        return []
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
     }
 
-    const queryNumber = parseInt(trimmedQuery, 10)
-    const isValidNumber = !isNaN(queryNumber)
+    try {
+        const trimmedQuery = query.trim()
+        if (trimmedQuery.length < 3) {
+            return { success: true, data: [] }
+        }
 
-    // Escape underscore to treat it as literal character, not wildcard (for title search)
-    const escapedQuery = trimmedQuery.replace(/_/g, '\\_')
+        const queryNumber = parseInt(trimmedQuery, 10)
+        const isValidNumber = !isNaN(queryNumber)
 
-    const where: Record<string, unknown> = {
-        status: { not: TaskStatus.DONE },
-        id: { notIn: selectedIncidences }
+        const escapedQuery = trimmedQuery.replace(/_/g, '\\_')
+
+        const where: Record<string, unknown> = {
+            status: { not: TaskStatus.DONE },
+            id: { notIn: selectedIncidences }
+        }
+
+        where.OR = isValidNumber
+            ? [{ externalId: queryNumber }]
+            : [{ title: { contains: escapedQuery, mode: 'insensitive' } }]
+
+        const incidences = await db.incidence.findMany({
+            where,
+            select: {
+                id: true,
+                type: true,
+                externalId: true,
+                title: true
+            },
+            take: 10,
+            orderBy: { title: 'asc' }
+        })
+
+        return { success: true, data: incidences }
+    } catch (error) {
+        console.error('Error searching incidences:', error)
+        return { success: false, error: 'Error al buscar incidencias' }
     }
-
-    where.OR = isValidNumber
-        ? [{ externalId: queryNumber }]
-        : [{ title: { contains: escapedQuery, mode: 'insensitive' } }]
-
-    const incidences = await db.incidence.findMany({
-        where,
-        select: {
-            id: true,
-            type: true,
-            externalId: true,
-            title: true
-        },
-        take: 10,
-        orderBy: { title: 'asc' }
-    })
-
-    return incidences
 }

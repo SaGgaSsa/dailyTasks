@@ -34,6 +34,11 @@ interface CreateTicketData {
 }
 
 export async function getTracklists(locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
     try {
         const tracklists = await db.tracklist.findMany({
             orderBy: { createdAt: 'desc' },
@@ -199,16 +204,29 @@ export async function getTracklistIncidences(tracklistId: number) {
 }
 
 export async function getTicketFormData(tracklistId: number) {
-    const [techsResult, incidencesResult] = await Promise.all([
-        getCachedTechsWithModules(),
-        getTracklistIncidences(tracklistId)
-    ])
-    
-    return {
-        techs: techsResult.techs,
-        allModules: techsResult.allModules,
-        defaultTech: techsResult.defaultTech,
-        defaultModules: techsResult.defaultModules,
-        incidences: incidencesResult.success ? incidencesResult.data : []
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
+    try {
+        const [techsResult, incidencesResult] = await Promise.all([
+            getCachedTechsWithModules(),
+            getTracklistIncidences(tracklistId)
+        ])
+        
+        return {
+            success: true,
+            data: {
+                techs: techsResult.techs,
+                allModules: techsResult.allModules,
+                defaultTech: techsResult.defaultTech,
+                defaultModules: techsResult.defaultModules,
+                incidences: incidencesResult.success ? incidencesResult.data : []
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching ticket form data:', error)
+        return { success: false, error: 'Error al obtener datos del formulario' }
     }
 }
