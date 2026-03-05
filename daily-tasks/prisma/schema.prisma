@@ -43,9 +43,9 @@ enum TaskStatus {
 }
 
 enum TaskType {
-  I_MODAPL
   I_CASO
   I_CONS
+  I_MODAPL
 }
 
 model Technology {

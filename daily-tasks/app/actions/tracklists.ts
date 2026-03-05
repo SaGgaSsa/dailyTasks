@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
+import { getCachedTechsWithModules } from '@/app/actions/tech'
 
 interface CreateTracklistData {
     title: string
@@ -186,11 +187,7 @@ export async function getTracklistIncidences(tracklistId: number) {
                         id: true,
                         type: true,
                         externalId: true
-                    },
-                    orderBy: [
-                        { type: 'asc' },
-                        { externalId: 'asc' }
-                    ]
+                    }
                 }
             }
         })
@@ -198,5 +195,20 @@ export async function getTracklistIncidences(tracklistId: number) {
     } catch (error) {
         console.error('Error fetching tracklist incidences:', error)
         return { success: false, error: 'Error al obtener incidencias' }
+    }
+}
+
+export async function getTicketFormData(tracklistId: number) {
+    const [techsResult, incidencesResult] = await Promise.all([
+        getCachedTechsWithModules(),
+        getTracklistIncidences(tracklistId)
+    ])
+    
+    return {
+        techs: techsResult.techs,
+        allModules: techsResult.allModules,
+        defaultTech: techsResult.defaultTech,
+        defaultModules: techsResult.defaultModules,
+        incidences: incidencesResult.success ? incidencesResult.data : []
     }
 }

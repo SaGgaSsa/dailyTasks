@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createTicket, getTracklistIncidences } from '@/app/actions/tracklists'
-import { getCachedTechsWithModules } from '@/app/actions/tech'
+import { createTicket, getTicketFormData } from '@/app/actions/tracklists'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,23 +81,25 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [incidenceOpen, setIncidenceOpen] = useState(false)
   const [selectedIncidence, setSelectedIncidence] = useState<{ id: number; type: string; externalId: number } | null>(null)
   const [incidencesList, setIncidencesList] = useState<{ id: number; type: string; externalId: number }[]>([])
-  const [isLoadingIncidences, setIsLoadingIncidences] = useState(false)
 
   useEffect(() => {
     async function loadData() {
-      const data = await getCachedTechsWithModules()
-      setTechs(data.techs)
-      setDefaultModules(data.defaultModules.map(dm => ({
+      const formData = await getTicketFormData(tracklistId)
+      
+      setTechs(formData.techs)
+      setDefaultModules(formData.defaultModules.map(dm => ({
         techId: dm.techId,
         module: { id: dm.module.id, name: dm.module.name }
       })))
       
+      setIncidencesList(formData.incidences ?? [])
+      
       // Solo setear valores por defecto si no hay selección previa
-      if (!selectedTech && data.defaultTech) {
-        const defaultTechWithModules = data.techs.find(t => t.id === data.defaultTech!.id) || null
-        setDefaultTech({ id: data.defaultTech.id, name: data.defaultTech.name })
+      if (!selectedTech && formData.defaultTech) {
+        const defaultTechWithModules = formData.techs.find(t => t.id === formData.defaultTech!.id) || null
+        setDefaultTech({ id: formData.defaultTech.id, name: formData.defaultTech.name })
         setSelectedTech(defaultTechWithModules)
-        const defaultForTech = data.defaultModules.find(dm => dm.techId === data.defaultTech!.id)
+        const defaultForTech = formData.defaultModules.find(dm => dm.techId === formData.defaultTech!.id)
         if (defaultForTech) {
           setSelectedModule({ id: defaultForTech.module.id, name: defaultForTech.module.name })
         }
@@ -108,20 +109,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       loadData()
     }
   }, [open])
-
-  useEffect(() => {
-    async function loadIncidences() {
-      if (incidenceOpen) {
-        setIsLoadingIncidences(true)
-        const result = await getTracklistIncidences(tracklistId)
-        if (result.success) {
-          setIncidencesList(result.data ?? [])
-        }
-        setIsLoadingIncidences(false)
-      }
-    }
-    loadIncidences()
-  }, [incidenceOpen, tracklistId])
 
   useEffect(() => {
     if (selectedTech) {
@@ -172,6 +159,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setSelectedPriority('MEDIUM')
     setSelectedAssignee(null)
     setSelectedIncidence(null)
+    setIncidencesList([])
     onOpenChange(false)
   }
 
@@ -183,6 +171,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setSelectedPriority('MEDIUM')
       setSelectedAssignee(null)
       setSelectedIncidence(null)
+      setIncidencesList([])
     }
     onOpenChange(newOpen)
   }
@@ -451,9 +440,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Filtrar incidencia..." />
-                  {isLoadingIncidences ? (
-                    <CommandItem disabled>Cargando...</CommandItem>
-                  ) : incidencesList.length === 0 ? (
+                  {incidencesList.length === 0 ? (
                     <CommandEmpty>No hay incidencias en este Tracklist</CommandEmpty>
                   ) : (
                     <CommandGroup>
