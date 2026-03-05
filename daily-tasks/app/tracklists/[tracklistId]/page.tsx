@@ -15,7 +15,16 @@ export default async function TracklistDetailPage({ params }: Props) {
   const [currentTracklist, tickets, allTracklists, assignableUsers] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      select: { id: true, title: true, description: true, dueDate: true }
+      select: { 
+        id: true, 
+        title: true, 
+        description: true, 
+        dueDate: true,
+        incidences: { 
+          select: { id: true, externalId: true, type: true, title: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
     }),
     db.ticketQA.findMany({
       where: { tracklistId: numericId },
@@ -47,6 +56,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         currentId={numericId}
         assignableUsers={assignableUsers}
         currentTracklist={currentTracklist || undefined}
+        incidences={currentTracklist?.incidences || []}
       />
       <TicketsGrid initialTickets={tickets} assignableUsers={assignableUsers} />
     </div>

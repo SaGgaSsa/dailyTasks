@@ -12,11 +12,19 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { AssignableUser } from '@/app/actions/user-actions'
 
+interface TracklistIncidence {
+  id: number
+  type: string
+  externalId: number
+  title: string
+}
+
 interface TracklistData {
   id: number
   title: string
   description: string | null
   dueDate: Date | null
+  incidences: TracklistIncidence[]
 }
 
 interface Props {
@@ -24,9 +32,10 @@ interface Props {
   currentId: number
   assignableUsers: AssignableUser[]
   currentTracklist?: TracklistData
+  incidences: TracklistIncidence[]
 }
 
-export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist }: Props) {
+export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, incidences }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -86,6 +95,7 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen}
         tracklist={isEditMode && currentTracklist ? currentTracklist : undefined}
+        incidences={incidences}
       />
       <CreateTicketDialog 
         tracklistId={currentId}

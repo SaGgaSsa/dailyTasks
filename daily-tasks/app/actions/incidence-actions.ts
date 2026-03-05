@@ -1087,23 +1087,25 @@ export async function deleteIncidence(incidenceId: number) {
     }
 }
 
-export async function searchActiveIncidences(query: string, selectedIncidences: string[] = []) {
-    if (query.length < 2) {
+export async function searchActiveIncidences(query: string, selectedIncidences: number[] = []) {
+    if (query.length < 3) {
         return []
     }
 
     const queryNumber = parseInt(query, 10)
     const isValidNumber = !isNaN(queryNumber)
 
+    // Escape underscore to treat it as literal character, not wildcard (for title search)
+    const escapedQuery = query.replace(/_/g, '\\_')
+
     const where: Record<string, unknown> = {
         status: { not: TaskStatus.DONE },
         id: { notIn: selectedIncidences }
     }
 
-    where.OR = [
-        { title: { contains: query, mode: 'insensitive' } },
-        { externalId: isValidNumber ? queryNumber : undefined }
-    ].filter(condition => Object.values(condition).some(v => v !== undefined))
+    where.OR = isValidNumber
+        ? [{ externalId: queryNumber }]
+        : [{ title: { contains: escapedQuery, mode: 'insensitive' } }]
 
     const incidences = await db.incidence.findMany({
         where,

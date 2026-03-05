@@ -9,6 +9,7 @@ interface CreateTracklistData {
     title: string
     description?: string
     dueDate?: Date
+    incidenceIds?: number[]
 }
 
 interface UpdateTracklistData {
@@ -16,6 +17,7 @@ interface UpdateTracklistData {
     title: string
     description?: string
     dueDate?: Date
+    incidenceIds?: number[]
 }
 
 interface CreateTicketData {
@@ -52,13 +54,27 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
     }
 
     try {
-        const tracklist = await db.tracklist.create({
-            data: {
-                title: data.title,
-                description: data.description,
-                dueDate: data.dueDate,
-                createdById: Number(session.user.id)
+        const tracklistData: {
+            title: string
+            description?: string
+            dueDate?: Date
+            createdById: number
+            incidences?: { connect: { id: number }[] }
+        } = {
+            title: data.title,
+            description: data.description,
+            dueDate: data.dueDate,
+            createdById: Number(session.user.id)
+        }
+
+        if (data.incidenceIds && data.incidenceIds.length > 0) {
+            tracklistData.incidences = {
+                connect: data.incidenceIds.map(id => ({ id }))
             }
+        }
+
+        const tracklist = await db.tracklist.create({
+            data: tracklistData
         })
         revalidatePath('/tracklists')
         return { success: true, data: tracklist }
@@ -75,12 +91,25 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
     }
 
     try {
+        const currentIncidences = await db.incidence.findMany({
+            where: { tracklistId: data.id }
+        })
+        const currentIncidenceIds = currentIncidences.map(i => i.id)
+        const newIncidenceIds = data.incidenceIds || []
+        
+        const toDisconnect = currentIncidenceIds.filter(id => !newIncidenceIds.includes(id))
+        const toConnect = newIncidenceIds.filter(id => !currentIncidenceIds.includes(id))
+
         const tracklist = await db.tracklist.update({
             where: { id: data.id },
             data: {
                 title: data.title,
                 description: data.description,
-                dueDate: data.dueDate
+                dueDate: data.dueDate,
+                incidences: {
+                    disconnect: toDisconnect.map(id => ({ id })),
+                    connect: toConnect.map(id => ({ id }))
+                }
             }
         })
         revalidatePath('/tracklists')
