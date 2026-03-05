@@ -133,8 +133,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const handleSubmit = async () => {
     if (!description.trim()) return
     
-    const priority = selectedPriority === 'BLOQUEANTE' ? 'HIGH' : selectedPriority
-    const impact = selectedPriority === 'BLOQUEANTE'
+    const priority = selectedPriority
     
     setIsPending(true)
     const result = await createTicket(tracklistId, {
@@ -142,7 +141,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       module: selectedModule?.name || '',
       description: description.trim(),
       priority,
-      impact,
       observations: observations.trim() || undefined,
       assignedToId: selectedAssignee?.id,
       incidenceId: selectedIncidence?.id

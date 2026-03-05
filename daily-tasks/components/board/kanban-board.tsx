@@ -86,7 +86,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
 
     const sortedTasks = useMemo(() => {
         return [...filteredTasks].sort((a, b) => {
-            const prioOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+            const prioOrder: Record<string, number> = { BLOQUEANTE: -1, HIGH: 0, MEDIUM: 1, LOW: 2 };
             const aPri = prioOrder[a.priority] ?? 9;
             const bPri = prioOrder[b.priority] ?? 9;
             if (aPri !== bPri) return aPri - bPri;

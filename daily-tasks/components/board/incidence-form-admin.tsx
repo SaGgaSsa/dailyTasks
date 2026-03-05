@@ -20,7 +20,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
-import { TaskType, Priority, TaskStatus } from '@/types/enums'
+import { TaskType, TaskStatus, Priority } from '@/types/enums'
+import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 
@@ -54,9 +55,9 @@ const typeOptions = [
 ]
 
 const priorityOptions = [
-    { value: Priority.LOW, label: 'Baja' },
-    { value: Priority.MEDIUM, label: 'Media' },
     { value: Priority.HIGH, label: 'Alta' },
+    { value: Priority.MEDIUM, label: 'Media' },
+    { value: Priority.LOW, label: 'Baja' },
 ]
 
 interface AssigneeFormData {

@@ -204,7 +204,6 @@ model TicketQA {
   module            String
   description       String
   priority          String
-  impact            Boolean      @default(false)
   tramite           String?
   reportedById      Int
   reportedBy        User      @relation("ReportedBy", fields: [reportedById], references: [id])

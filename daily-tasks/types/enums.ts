@@ -16,6 +16,7 @@ export enum Priority {
     LOW = "LOW",
     MEDIUM = "MEDIUM",
     HIGH = "HIGH",
+    BLOQUEANTE = "BLOQUEANTE",
 }
 
 export enum UserRole {

@@ -26,7 +26,6 @@ interface CreateTicketData {
     module: string
     description: string
     priority: string
-    impact: boolean
     tramite?: string
     observations?: string
     assignedToId?: number
@@ -166,7 +165,6 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                 module: data.module,
                 description: data.description,
                 priority: data.priority,
-                impact: data.impact,
                 tramite: data.tramite,
                 observations: data.observations,
                 reportedById: Number(session.user.id),

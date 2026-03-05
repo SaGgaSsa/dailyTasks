@@ -3,7 +3,8 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority, TaskStatus, TaskType } from '@/types/enums'
+import { Priority as PrismaPriority, TaskStatus, TaskType } from '@prisma/client'
+import { Priority, TaskStatus as EnumTaskStatus, TaskType as EnumTaskType } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -102,7 +103,7 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
                 title: data.title,
                 comment: data.description,
                 technology: { connect: { id: tech.id } },
-                priority: data.priority,
+                priority: data.priority as PrismaPriority,
                 estimatedTime: data.estimatedTime,
                 status: TaskStatus.BACKLOG,
             }
