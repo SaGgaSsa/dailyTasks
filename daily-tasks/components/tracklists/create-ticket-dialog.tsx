@@ -127,7 +127,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     const impact = selectedPriority === 'BLOQUEANTE'
     
     setIsPending(true)
-    const result = await createTicket(tracklistId.toString(), {
+    const result = await createTicket(tracklistId, {
       type,
       module: selectedModule?.name || '',
       description: description.trim(),

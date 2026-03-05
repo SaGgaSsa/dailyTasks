@@ -29,6 +29,7 @@ interface CreateTicketData {
     tramite?: string
     observations?: string
     assignedToId?: number
+    incidenceId?: number
 }
 
 export async function getTracklists(locale: Locale = 'es') {
@@ -121,10 +122,10 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
     }
 }
 
-export async function getTicketsByTracklist(tracklistId: string, locale: Locale = 'es') {
+export async function getTicketsByTracklist(tracklistId: number, locale: Locale = 'es') {
     try {
         const tickets = await db.ticketQA.findMany({
-            where: { tracklistId: Number(tracklistId) },
+            where: { tracklistId: tracklistId },
             orderBy: { ticketNumber: 'desc' },
             include: {
                 reportedBy: { select: { id: true, name: true, username: true } },
@@ -138,7 +139,7 @@ export async function getTicketsByTracklist(tracklistId: string, locale: Locale 
     }
 }
 
-export async function createTicket(tracklistId: string, data: CreateTicketData, locale: Locale = 'es') {
+export async function createTicket(tracklistId: number, data: CreateTicketData, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) {
         return { success: false, error: t(locale, 'auth.unauthorized') }
@@ -146,14 +147,14 @@ export async function createTicket(tracklistId: string, data: CreateTicketData, 
 
     try {
         const lastTicket = await db.ticketQA.findFirst({
-            where: { tracklistId: Number(tracklistId) },
+            where: { tracklistId: tracklistId },
             orderBy: { ticketNumber: 'desc' }
         })
         const nextTicketNumber = (lastTicket?.ticketNumber ?? 0) + 1
 
         const ticket = await db.ticketQA.create({
             data: {
-                tracklistId: Number(tracklistId),
+                tracklistId: tracklistId,
                 ticketNumber: nextTicketNumber,
                 type: data.type,
                 module: data.module,
@@ -171,5 +172,26 @@ export async function createTicket(tracklistId: string, data: CreateTicketData, 
     } catch (error) {
         console.error('Error creating ticket:', error)
         return { success: false, error: t(locale, 'errors.saveError') }
+    }
+}
+
+export async function getTracklistIncidences(tracklistId: number) {
+    try {
+        const tracklist = await db.tracklist.findUnique({
+            where: { id: tracklistId },
+            select: {
+                incidences: {
+                    select: {
+                        id: true,
+                        type: true,
+                        externalId: true
+                    }
+                }
+            }
+        })
+        return { success: true, data: tracklist?.incidences ?? [] }
+    } catch (error) {
+        console.error('Error fetching tracklist incidences:', error)
+        return { success: false, error: 'Error al obtener incidencias' }
     }
 }
