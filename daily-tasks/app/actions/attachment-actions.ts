@@ -9,6 +9,83 @@ import { randomUUID } from 'crypto'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+  'application/zip',
+])
+
+const ALLOWED_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx',
+  'txt', 'csv', 'zip',
+])
+
+const MAGIC_BYTES: Record<string, number[][]> = {
+  pdf: [[0x25, 0x50, 0x44, 0x46]],
+  jpg: [[0xFF, 0xD8, 0xFF]],
+  png: [[0x89, 0x50, 0x4E, 0x47]],
+  gif: [[0x47, 0x49, 0x46]],
+  zip: [[0x50, 0x4B, 0x03, 0x04]],
+}
+
+function getMimeFromExtension(ext: string): string | null {
+  const mimeMap: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    txt: 'text/plain',
+    csv: 'text/csv',
+    zip: 'application/zip',
+  }
+  return mimeMap[ext.toLowerCase()] || null
+}
+
+function validateFileType(file: File, buffer: Buffer): { valid: boolean; error?: string } {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+    return { valid: false, error: `Extensión no permitida: .${ext || 'desconocida'}` }
+  }
+
+  const expectedMime = getMimeFromExtension(ext)
+  const fileMime = file.type || expectedMime
+
+  if (!fileMime || (!ALLOWED_MIME_TYPES.has(fileMime) && fileMime !== expectedMime)) {
+    return { valid: false, error: 'Tipo de archivo no permitido' }
+  }
+
+  const magic = MAGIC_BYTES[ext]
+  if (magic) {
+    const header = Array.from(buffer.subarray(0, 4))
+    const isValidMagic = magic.some(sig => 
+      sig.length <= header.length && sig.every((byte, i) => header[i] === byte)
+    )
+    if (!isValidMagic) {
+      return { valid: false, error: 'El contenido del archivo no coincide con su extensión' }
+    }
+  }
+
+  return { valid: true }
+}
+
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
 
@@ -30,6 +107,14 @@ export async function uploadAttachment(formData: FormData) {
 
     if (file.size > MAX_FILE_SIZE) {
         return { success: false, error: 'El archivo excede el límite de 10MB' }
+    }
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    const fileValidation = validateFileType(file, buffer)
+    if (!fileValidation.valid) {
+        return { success: false, error: fileValidation.error }
     }
 
     try {
