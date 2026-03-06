@@ -19,6 +19,18 @@ export enum Priority {
     BLOQUEANTE = "BLOQUEANTE",
 }
 
+export enum TicketType {
+    BUG = "BUG",
+    CAMBIO = "CAMBIO",
+    CONSULTA = "CONSULTA",
+}
+
+export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
+    [TicketType.BUG]: 'Bug',
+    [TicketType.CAMBIO]: 'Cambio',
+    [TicketType.CONSULTA]: 'Consulta',
+}
+
 export enum UserRole {
     ADMIN = "ADMIN",
     DEV = "DEV",

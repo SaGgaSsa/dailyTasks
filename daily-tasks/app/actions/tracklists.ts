@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
+import { createTicketSchema } from '@/types'
 
 interface CreateTracklistData {
     title: string
@@ -150,7 +151,27 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         return { success: false, error: t(locale, 'auth.unauthorized') }
     }
 
+    const parsed = createTicketSchema.safeParse(data)
+    if (!parsed.success) {
+        const errors = parsed.error.issues.map(i => i.message).join(', ')
+        return { success: false, error: errors }
+    }
+
     try {
+        const moduleExists = await db.module.findUnique({ where: { slug: data.module.toLowerCase() } })
+        if (!moduleExists) {
+            return { success: false, error: 'Módulo no encontrado' }
+        }
+
+        if (data.incidenceId) {
+            const incidenceInTracklist = await db.incidence.findFirst({
+                where: { id: data.incidenceId, tracklistId }
+            })
+            if (!incidenceInTracklist) {
+                return { success: false, error: 'La incidencia no pertenece a este tracklist' }
+            }
+        }
+
         const lastTicket = await db.ticketQA.findFirst({
             where: { tracklistId: tracklistId },
             orderBy: { ticketNumber: 'desc' }

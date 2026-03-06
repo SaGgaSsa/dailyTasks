@@ -12,6 +12,11 @@ const prisma = new PrismaClient({ adapter })
 
 const PASSWORD = 'sisa0314'
 
+async function truncateTables() {
+  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, modules, tracklists, technologies, users CASCADE`
+  console.log('All tables truncated')
+}
+
 const TECHNOLOGIES = [
   { name: 'SISA', slug: 'sisa', isDefault:true },
   { name: 'WEB', slug: 'web' },
@@ -191,15 +196,19 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
         })
       }
 
+      const assignment = await prisma.assignment.findUnique({
+        where: { incidenceId_userId: { incidenceId: incidence.id, userId: user.id } },
+      })
+
       const existingSubtask = await prisma.subTask.findFirst({
-        where: { assignmentId: incidence.id },
+        where: { assignmentId: assignment!.id },
       })
       if (!existingSubtask) {
         await prisma.subTask.create({
           data: {
             title: TASK_TITLES[incidences.length % TASK_TITLES.length],
             isCompleted: false,
-            assignmentId: incidence.id,
+            assignmentId: assignment!.id,
           },
         })
       }
@@ -269,7 +278,78 @@ async function createTracklistWithIncidences() {
     console.log(`Created/updated incidence: ${incidenceTitles[i]} linked to tracklist`)
   }
 
-  console.log(`Tracklist "${tracklist.title}" created with ${incidenceTitles.length} incidences`)
+  await createAdditionalTracklistTickets(tracklist.id, sisaTech.id, admin.id)
+
+  console.log(`Tracklist "${tracklist.title}" created with ${incidenceTitles.length} incidences and 30 tickets QA`)
+}
+
+async function createAdditionalTracklistTickets(tracklistId: number, technologyId: number, adminId: number) {
+  const additionalTitles = [
+    'Actualizacion de modulo de clientes',
+    'Mejora en rendimiento de consultas',
+    'Nuevo reporte de ventas',
+    'Correccion de bugs menores',
+    'Implementacion de cache',
+    'Refactorizacion de servicios',
+    'Optimizacion de base de datos',
+    'Actualizacion de dependencias',
+    'Mejora en interfaz de usuario',
+    'Implementacion de logueo',
+    'Correccion de errores de seguridad',
+    'Actualizacion de documentacion',
+    'Pruebas de integracion',
+    'Mejora en tiempos de respuesta',
+    'Implementacion de filtros avanzados',
+    'Actualizacion de modulos legacy',
+    'Mejora en manejo de errores',
+    'Implementacion de exportacion PDF',
+    'Actualizacion de API rest',
+    'Mejora en validaciones',
+    'Implementacion de webhooks',
+    'Optimizacion de memoria',
+    'Actualizacion de caches',
+    'Mejora en autenticacion',
+    'Implementacion de auditoria',
+    'Actualizacion de reportes',
+    'Mejora en busquedas',
+    'Implementacion de GraphQL',
+    'Actualizacion de dashboard',
+    'Mejora en rendimiento general',
+  ]
+
+  const statuses = ['Nuevo', 'En proceso', 'Resuelto', 'Cerrado']
+  const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH]
+  const modules = ['Serv', 'Comun', 'WkFlow', 'OBase']
+  const types = ['BUG', 'CAMBIO', 'CONSULTA']
+
+  const lastTicket = await prisma.ticketQA.findFirst({
+    where: { tracklistId },
+    orderBy: { ticketNumber: 'desc' },
+  })
+  let ticketNumber = (lastTicket?.ticketNumber || 0)
+
+  for (let i = 0; i < additionalTitles.length; i++) {
+    ticketNumber++
+    await prisma.ticketQA.upsert({
+      where: { tracklistId_ticketNumber: { tracklistId, ticketNumber } },
+      update: { priority: priorities[i % priorities.length] },
+      create: {
+        tracklistId,
+        ticketNumber,
+        type: types[i % types.length],
+        module: modules[i % modules.length],
+        description: additionalTitles[i],
+        priority: priorities[i % priorities.length],
+        tramite: `TRAM-${1000 + i}`,
+        reportedById: adminId,
+        assignedToId: adminId,
+        status: statuses[i % statuses.length],
+        verificationStatus: 'Analizar',
+        correctionStatus: 'Pendiente',
+      },
+    })
+  }
+  console.log(`Created/updated ${additionalTitles.length} TicketQA records for tracklist`)
 }
 
 async function createICasoIncidences() {
@@ -345,6 +425,9 @@ async function createICasoIncidences() {
 async function main() {
   try {
     console.log('Starting seed data generation...')
+    
+    console.log('\n--- Truncating Tables ---')
+    await truncateTables()
     
     const passwordHash = await hash(PASSWORD, 12)
     

@@ -29,16 +29,16 @@ import { Check, Plus, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TIPO_TICKET = [
-  { value: 'Bug', label: 'Bug' },
-  { value: 'Cambio', label: 'Cambio' },
-  { value: 'Consulta', label: 'Consulta' }
+  { value: 'BUG', label: 'Bug' },
+  { value: 'CAMBIO', label: 'Cambio' },
+  { value: 'CONSULTA', label: 'Consulta' }
 ]
 
 const PRIORITIES = [
   { value: 'BLOQUEANTE', label: 'Bloqueante' },
-  { value: 'HIGH', label: 'Alto' },
-  { value: 'MEDIUM', label: 'Medio' },
-  { value: 'LOW', label: 'Bajo' }
+  { value: 'HIGH', label: 'Alta' },
+  { value: 'MEDIUM', label: 'Media' },
+  { value: 'LOW', label: 'Baja' }
 ]
 
 interface TechWithModules {
@@ -61,7 +61,7 @@ interface Props {
 
 export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange }: Props) {
   const [isPending, setIsPending] = useState(false)
-  const [type, setType] = useState('Bug')
+  const [type, setType] = useState('BUG')
   const [description, setDescription] = useState('')
   const [observations, setObservations] = useState('')
   
@@ -156,7 +156,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   }
 
   const handleClose = () => {
-    setType('Bug')
+    setType('BUG')
     setDescription('')
     setObservations('')
     setSelectedPriority('MEDIUM')
@@ -168,7 +168,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setType('Bug')
+      setType('BUG')
       setDescription('')
       setObservations('')
       setSelectedPriority('MEDIUM')

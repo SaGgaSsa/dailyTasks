@@ -9,10 +9,15 @@ import { AssignableUser } from '@/app/actions/user-actions'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
+import { TICKET_TYPE_LABELS, TicketType } from '@/types/enums'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
   assignableUsers: AssignableUser[]
+}
+
+function getTicketTypeLabel(type: string): string {
+  return TICKET_TYPE_LABELS[type as TicketType] || type
 }
 
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
@@ -60,7 +65,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                   className="hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">{ticket.ticketNumber}</TableCell>
-                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.type}</TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">{getTicketTypeLabel(ticket.type)}</TableCell>
                   <TableCell className="w-20 px-2 py-3">{ticket.module}</TableCell>
                   <TableCell className="w-auto min-w-0 px-2 py-3">
                     <div className="flex-1 min-w-0 truncate" title={ticket.description}>
