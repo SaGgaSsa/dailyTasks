@@ -84,10 +84,17 @@ enum AttachmentType {
 
 enum TicketQAStatus {
   NEW
+  ASSIGNED
   IN_DEVELOPMENT
   TEST
   COMPLETED
-  DISCARDED
+  DISMISSED
+}
+
+enum TicketType {
+  BUG
+  CAMBIO
+  CONSULTA
 }
 
 model Incidence {
@@ -208,7 +215,7 @@ model TicketQA {
   ticketNumber      Int       @default(autoincrement())
   tracklistId       Int
   tracklist         Tracklist @relation(fields: [tracklistId], references: [id], onDelete: Cascade)
-  type              String
+  type              TicketType
   module            String
   description       String
   priority          String

@@ -7,6 +7,7 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
+import { TicketType, TicketQAStatus, Priority } from '@/types/enums'
 
 interface CreateTracklistData {
     title: string
@@ -24,10 +25,10 @@ interface UpdateTracklistData {
 }
 
 interface CreateTicketData {
-    type: string
+    type: TicketType
     module: string
     description: string
-    priority: string
+    priority: Priority
     tramite?: string
     observations?: string
     assignedToId?: number

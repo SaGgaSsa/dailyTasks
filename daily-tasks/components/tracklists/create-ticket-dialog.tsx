@@ -29,18 +29,19 @@ import { Check, Plus, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
+import { TicketType, Priority } from '@/types/enums'
 
 const TIPO_TICKET = [
-  { value: 'BUG', label: 'Bug' },
-  { value: 'CAMBIO', label: 'Cambio' },
-  { value: 'CONSULTA', label: 'Consulta' }
+  { value: TicketType.BUG, label: 'Bug' },
+  { value: TicketType.CAMBIO, label: 'Cambio' },
+  { value: TicketType.CONSULTA, label: 'Consulta' }
 ]
 
 const PRIORITIES = [
-  { value: 'BLOQUEANTE', label: 'Bloqueante' },
-  { value: 'HIGH', label: 'Alta' },
-  { value: 'MEDIUM', label: 'Media' },
-  { value: 'LOW', label: 'Baja' }
+  { value: Priority.BLOQUEANTE, label: 'Bloqueante' },
+  { value: Priority.HIGH, label: 'Alta' },
+  { value: Priority.MEDIUM, label: 'Media' },
+  { value: Priority.LOW, label: 'Baja' }
 ]
 
 interface TechWithModules {
@@ -63,7 +64,7 @@ interface Props {
 
 export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange }: Props) {
   const [isPending, setIsPending] = useState(false)
-  const [type, setType] = useState('BUG')
+  const [type, setType] = useState<TicketType>(TicketType.BUG)
   const [description, setDescription] = useState('')
   const [observations, setObservations] = useState('')
   
@@ -72,7 +73,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [defaultModules, setDefaultModules] = useState<DefaultModule[]>([])
   const [selectedTech, setSelectedTech] = useState<TechWithModules | null>(null)
   const [selectedModule, setSelectedModule] = useState<{ id: number; name: string } | null>(null)
-  const [selectedPriority, setSelectedPriority] = useState('MEDIUM')
+  const [selectedPriority, setSelectedPriority] = useState<Priority>(Priority.MEDIUM)
   const [selectedAssignee, setSelectedAssignee] = useState<AssignableUser | null>(null)
   
   const [techOpen, setTechOpen] = useState(false)
@@ -158,10 +159,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   }
 
   const handleClose = () => {
-    setType('BUG')
+    setType(TicketType.BUG)
     setDescription('')
     setObservations('')
-    setSelectedPriority('MEDIUM')
+    setSelectedPriority(Priority.MEDIUM)
     setSelectedAssignee(null)
     setSelectedIncidence(null)
     setIncidencesList([])
@@ -170,10 +171,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setType('BUG')
+      setType(TicketType.BUG)
       setDescription('')
       setObservations('')
-      setSelectedPriority('MEDIUM')
+      setSelectedPriority(Priority.MEDIUM)
       setSelectedAssignee(null)
       setSelectedIncidence(null)
       setIncidencesList([])

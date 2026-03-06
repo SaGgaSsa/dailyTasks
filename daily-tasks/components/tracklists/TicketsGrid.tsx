@@ -1,6 +1,6 @@
 'use client'
 
-import { Inbox, User } from 'lucide-react'
+import { Inbox, User, MoreVertical } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -9,6 +9,12 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS } from '@/types/enums'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+} from '@/components/ui/dropdown-menu'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -37,9 +43,10 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
               <TableHead className="w-20 px-2 bg-card">Módulo</TableHead>
               <TableHead className="w-auto px-2 bg-card">Descripción</TableHead>
               <TableHead className="w-24 px-2 bg-card text-center">Prioridad</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Estado</TableHead>
               <TableHead className="w-20 px-2 bg-card text-center"><div className="flex justify-center"><User className="h-4 w-4" /></div></TableHead>
               <TableHead className="w-28 px-2 bg-card text-center">Trámite</TableHead>
-              <TableHead className="w-24 px-2 bg-card text-center">Estado</TableHead>
+              <TableHead className="w-10 px-0 bg-card text-center" />
             </TableRow>
           </TableHeader>
         </Table>
@@ -51,7 +58,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
           <TableBody className="divide-y divide-border">
             {initialTickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="p-12 text-center">
+                <TableCell colSpan={10} className="p-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="p-4 rounded-full bg-muted/50">
                       <Inbox className="h-8 w-8 text-muted-foreground/60" />
@@ -77,6 +84,9 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                   <TableCell className="w-24 px-2 py-3 text-center">
                     <PriorityBadge priority={ticket.priority} className="text-xs" />
                   </TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">
+                    {getTicketStatusLabel(ticket.status as string)}
+                  </TableCell>
                   <TableCell className="w-20 px-2 py-3 text-center">
                     {ticket.assignedTo ? (
                       <UserAvatar username={ticket.assignedTo.username} size="sm" className="mx-auto" />
@@ -95,8 +105,16 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-24 px-2 py-3 text-center">
-                    {getTicketStatusLabel(ticket.status as string)}
+                  <TableCell className="w-10 px-0 py-3 text-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Abrir menú</span>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" />
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

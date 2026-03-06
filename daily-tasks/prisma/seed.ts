@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus } from '@prisma/client'
+import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus, TicketType } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
@@ -400,11 +400,10 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
     TicketQAStatus.NEW,
     TicketQAStatus.IN_DEVELOPMENT,
     TicketQAStatus.TEST,
-    TicketQAStatus.COMPLETED,
   ]
   const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH]
   const modules = ['Serv', 'Comun', 'WkFlow', 'OBase']
-  const types = ['BUG', 'CAMBIO', 'CONSULTA']
+  const types = [TicketType.BUG, TicketType.CAMBIO, TicketType.CONSULTA]
 
   const lastTicket = await prisma.ticketQA.findFirst({
     where: { tracklistId },

@@ -33,18 +33,20 @@ export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
 
 export enum TicketQAStatus {
     NEW = "NEW",
+    ASSIGNED = "ASSIGNED",
     IN_DEVELOPMENT = "IN_DEVELOPMENT",
     TEST = "TEST",
     COMPLETED = "COMPLETED",
-    DISCARDED = "DISCARDED",
+    DISMISSED = "DISMISSED",
 }
 
 export const TICKET_QA_STATUS_LABELS: Record<TicketQAStatus, string> = {
     [TicketQAStatus.NEW]: 'Nuevo',
+    [TicketQAStatus.ASSIGNED]: 'Asignado',
     [TicketQAStatus.IN_DEVELOPMENT]: 'En Desarrollo',
     [TicketQAStatus.TEST]: 'Test',
     [TicketQAStatus.COMPLETED]: 'Completado',
-    [TicketQAStatus.DISCARDED]: 'Descartado',
+    [TicketQAStatus.DISMISSED]: 'Desestimado',
 }
 
 export enum UserRole {
