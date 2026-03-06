@@ -82,6 +82,14 @@ enum AttachmentType {
   LINK
 }
 
+enum TicketQAStatus {
+  NEW
+  IN_DEVELOPMENT
+  TEST
+  COMPLETED
+  DISCARDED
+}
+
 model Incidence {
   id            Int       @id @default(autoincrement())
   type          TaskType
@@ -211,9 +219,7 @@ model TicketQA {
   assignedTo        User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   incidenceId       Int?
   incidence         Incidence? @relation(fields: [incidenceId], references: [id])
-  status            String    @default("Nuevo")
-  verificationStatus String   @default("Analizar")
-  correctionStatus  String    @default("Pendiente")
+  status            TicketQAStatus @default(NEW)
   logs              String?   @db.Text
   observations      String?   @db.Text
   createdAt         DateTime  @default(now())

@@ -31,6 +31,22 @@ export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
     [TicketType.CONSULTA]: 'Consulta',
 }
 
+export enum TicketQAStatus {
+    NEW = "NEW",
+    IN_DEVELOPMENT = "IN_DEVELOPMENT",
+    TEST = "TEST",
+    COMPLETED = "COMPLETED",
+    DISCARDED = "DISCARDED",
+}
+
+export const TICKET_QA_STATUS_LABELS: Record<TicketQAStatus, string> = {
+    [TicketQAStatus.NEW]: 'Nuevo',
+    [TicketQAStatus.IN_DEVELOPMENT]: 'En Desarrollo',
+    [TicketQAStatus.TEST]: 'Test',
+    [TicketQAStatus.COMPLETED]: 'Completado',
+    [TicketQAStatus.DISCARDED]: 'Descartado',
+}
+
 export enum UserRole {
     ADMIN = "ADMIN",
     DEV = "DEV",

@@ -3,13 +3,12 @@
 import { Inbox, User } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
-import { TICKET_TYPE_LABELS, TicketType } from '@/types/enums'
+import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS } from '@/types/enums'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -18,6 +17,10 @@ interface TicketsGridProps {
 
 function getTicketTypeLabel(type: string): string {
   return TICKET_TYPE_LABELS[type as TicketType] || type
+}
+
+function getTicketStatusLabel(status: keyof typeof TICKET_QA_STATUS_LABELS | string): string {
+  return TICKET_QA_STATUS_LABELS[status as keyof typeof TICKET_QA_STATUS_LABELS] || status
 }
 
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
@@ -36,8 +39,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
               <TableHead className="w-24 px-2 bg-card text-center">Prioridad</TableHead>
               <TableHead className="w-20 px-2 bg-card text-center"><div className="flex justify-center"><User className="h-4 w-4" /></div></TableHead>
               <TableHead className="w-28 px-2 bg-card text-center">Trámite</TableHead>
-              <TableHead className="w-24 px-2 bg-card text-center">Estado Dev</TableHead>
-              <TableHead className="w-24 px-2 bg-card text-center">Estado QA</TableHead>
+              <TableHead className="w-24 px-2 bg-card text-center">Estado</TableHead>
             </TableRow>
           </TableHeader>
         </Table>
@@ -60,7 +62,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
               </TableRow>
             ) : (
               initialTickets.map((ticket) => (
-                <TableRow 
+                <TableRow
                   key={ticket.id} 
                   className="hover:bg-accent/50 transition-colors cursor-pointer"
                 >
@@ -93,8 +95,9 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.status}</TableCell>
-                  <TableCell className="w-24 px-2 py-3 text-center">{ticket.verificationStatus}</TableCell>
+                  <TableCell className="w-24 px-2 py-3 text-center">
+                    {getTicketStatusLabel(ticket.status as string)}
+                  </TableCell>
                 </TableRow>
               ))
             )}

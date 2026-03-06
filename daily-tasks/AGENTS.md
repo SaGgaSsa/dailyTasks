@@ -168,6 +168,7 @@ export function MyForm({ onSubmit }: MyFormProps) {
 - Use `@map("table_name")` for snake_case columns
 - Singleton client: `import { db } from '@/lib/db'`
 - Enums in Prisma schema match `types/enums.ts`
+- After running `npm run seed` or resetting the database, always sign out and sign in again so the session user id matches the `users` table.
 
 ---
 

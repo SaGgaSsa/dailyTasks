@@ -1,8 +1,8 @@
 import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma } from '@prisma/client'
-import { TaskStatus, TaskType, Priority, AttachmentType, TicketType } from './enums'
+import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
-export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType }
+export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology }
 export type { SubTask, Attachment, IncidencePage }
 

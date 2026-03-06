@@ -164,6 +164,15 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
             return { success: false, error: 'Módulo no encontrado' }
         }
 
+        const sessionUserId = Number(session.user.id)
+        const sessionUser = await db.user.findUnique({
+            where: { id: sessionUserId }
+        })
+
+        if (!sessionUser) {
+            return { success: false, error: 'Usuario de la sesión no encontrado. Inicia sesión de nuevo.' }
+        }
+
         if (data.incidenceId) {
             const incidenceInTracklist = await db.incidence.findFirst({
                 where: { id: data.incidenceId, tracklistId }
@@ -189,7 +198,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                 priority: data.priority,
                 tramite: data.tramite,
                 observations: data.observations,
-                reportedById: Number(session.user.id),
+                reportedById: sessionUserId,
                 assignedToId: data.assignedToId,
                 incidenceId: data.incidenceId
             }
