@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
+import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistHeader } from './_components/tracklist-header'
 import { TicketsGrid } from './_components/tickets-grid'
 
@@ -27,13 +28,12 @@ export default async function TracklistDetailPage({ params }: Props) {
     }),
     db.ticketQA.findMany({
       where: { tracklistId: numericId },
-      orderBy: { ticketNumber: 'desc' },
       include: {
         reportedBy: { select: { id: true, name: true, username: true } },
         assignedTo: { select: { id: true, name: true, username: true } },
         incidence: { select: { id: true, type: true, externalId: true } }
       }
-    }),
+    }).then(sortTicketsByPriorityAndNumber),
     db.tracklist.findMany({
       select: { id: true, title: true, createdAt: true },
       orderBy: { createdAt: 'desc' }

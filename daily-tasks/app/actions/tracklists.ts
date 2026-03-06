@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
+import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
@@ -132,13 +133,13 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
     try {
         const tickets = await db.ticketQA.findMany({
             where: { tracklistId: tracklistId },
-            orderBy: { ticketNumber: 'desc' },
             include: {
                 reportedBy: { select: { id: true, name: true, username: true } },
                 assignedTo: { select: { id: true, name: true, username: true } }
             }
         })
-        return { success: true, data: tickets }
+        const sorted = sortTicketsByPriorityAndNumber(tickets)
+        return { success: true, data: sorted }
     } catch (error) {
         console.error('Error fetching tickets:', error)
         return { success: false, error: t(locale, 'errors.fetchError') }

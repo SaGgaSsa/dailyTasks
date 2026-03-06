@@ -283,6 +283,85 @@ async function createTracklistWithIncidences() {
   console.log(`Tracklist "${tracklist.title}" created with ${incidenceTitles.length} incidences and 30 tickets QA`)
 }
 
+const TRACKLIST_RANDOM_TITLES = [
+  'Sprint Q2 Revisión',
+  'Hotfix Producción Marzo',
+  'Mejoras UX Pendientes',
+  'Deuda técnica Backend',
+  'Validación Pre-Release',
+]
+
+const TRACKLIST_RANDOM_DESCRIPTIONS = [
+  'Revisión de cambios previos a merge.',
+  'Correcciones críticas detectadas en producción.',
+  'Listado de mejoras priorizadas por producto.',
+  'Tareas de refactor y limpieza de código.',
+  'Checklist antes de liberar a clientes.',
+]
+
+function randomItem<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function randomFutureDate(daysFromNowMin: number, daysFromNowMax: number): Date {
+  const days = daysFromNowMin + Math.floor(Math.random() * (daysFromNowMax - daysFromNowMin + 1))
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+async function createTracklistWithoutTickets() {
+  const admin = await prisma.user.findUnique({ where: { username: 'ADM' } })
+  const sisaTech = await getTechnologyByName('SISA')
+
+  if (!admin || !sisaTech) {
+    console.warn('Admin or SISA technology not found, skipping tracklist without tickets')
+    return
+  }
+
+  const title = randomItem(TRACKLIST_RANDOM_TITLES)
+  const existing = await prisma.tracklist.findFirst({ where: { title } })
+  if (existing) {
+    console.log(`Tracklist "${title}" already exists, skipping`)
+    return
+  }
+
+  const tracklist = await prisma.tracklist.create({
+    data: {
+      title,
+      description: randomItem(TRACKLIST_RANDOM_DESCRIPTIONS),
+      dueDate: randomFutureDate(7, 60),
+      createdById: admin.id,
+    },
+  })
+
+  // Opcional: vincular 1–2 incidencias al tracklist (sin crear tickets QA)
+  const incidenceTitles = [
+    'Tarea de revisión pendiente',
+    'Ajuste post-release',
+  ]
+  const baseExternalId = 5000
+  for (let i = 0; i < incidenceTitles.length; i++) {
+    await prisma.incidence.upsert({
+      where: { type_externalId: { type: TaskType.I_MODAPL, externalId: baseExternalId + i } },
+      update: { tracklistId: tracklist.id },
+      create: {
+        type: TaskType.I_MODAPL,
+        externalId: baseExternalId + i,
+        title: incidenceTitles[i],
+        comment: `Incidencia vinculada al tracklist ${tracklist.title}`,
+        status: TaskStatus.TODO,
+        priority: Priority.MEDIUM,
+        technologyId: sisaTech.id,
+        tracklistId: tracklist.id,
+        estimatedTime: 8,
+      },
+    })
+  }
+
+  console.log(`Created tracklist without tickets: ${tracklist.title} (${incidenceTitles.length} incidences, 0 tickets)`)
+}
+
 async function createAdditionalTracklistTickets(tracklistId: number, technologyId: number, adminId: number) {
   const additionalTitles = [
     'Actualizacion de modulo de clientes',
@@ -451,6 +530,9 @@ async function main() {
 
     console.log('\n--- Creating Tracklist with Incidences ---')
     await createTracklistWithIncidences()
+
+    console.log('\n--- Creating Tracklist without Tickets ---')
+    await createTracklistWithoutTickets()
 
     console.log('\n--- Creating I_CASO Incidences ---')
     await createICasoIncidences()
