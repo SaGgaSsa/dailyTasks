@@ -27,6 +27,8 @@ import {
 import { toast } from 'sonner'
 import { Check, Plus, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
+import { PriorityBadge } from '@/components/ui/priority-badge'
 
 const TIPO_TICKET = [
   { value: 'BUG', label: 'Bug' },
@@ -336,9 +338,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   size="sm" 
                   className="h-8 rounded-full border-dashed"
                 >
-                  <span className="text-xs">
-                    {PRIORITIES.find(p => p.value === selectedPriority)?.label || 'Medio'}
-                  </span>
+                  <PriorityBadge priority={selectedPriority} className="text-xs" />
                   <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -360,7 +360,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                             selectedPriority === priority.value ? "opacity-100" : "opacity-0"
                           )} 
                         />
-                        {priority.label}
+                        <PriorityBadge priority={priority.value} className="text-xs" />
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -431,9 +431,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   className="h-8 rounded-full border-dashed"
                 >
                   {selectedIncidence ? (
-                    <span className="text-xs">
-                      {selectedIncidence.type} {selectedIncidence.externalId}
-                    </span>
+                    <IncidenceBadge type={selectedIncidence.type} externalId={selectedIncidence.externalId} className="text-xs" />
                   ) : (
                     <span className="text-xs text-muted-foreground">+ Incidencia</span>
                   )}
@@ -471,7 +469,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                               selectedIncidence?.id === incidence.id ? "opacity-100" : "opacity-0"
                             )} 
                           />
-                          {incidence.type} {incidence.externalId}
+                          <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs" />
                         </CommandItem>
                       ))}
                     </CommandGroup>

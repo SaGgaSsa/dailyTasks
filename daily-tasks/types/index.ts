@@ -71,7 +71,7 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>
 
 const MODULE_NAMES = ['Serv', 'Comun', 'WkFlow', 'OBase', 'MyTasksApp', 'MobileLibrary', 'FormLibrary', 'MyTasks', 'Mobile', 'MyTasksServer', 'MobileServer'] as const
 
-export const createTicketSchema = z.object({
+const ticketSchemaBase = z.object({
   type: z.nativeEnum(TicketType),
   module: z.enum(MODULE_NAMES),
   description: z.string().min(1, 'Descripción requerida').max(500, 'Máximo 500 caracteres'),
@@ -82,7 +82,17 @@ export const createTicketSchema = z.object({
   incidenceId: z.number().optional(),
 })
 
-export const updateTicketSchema = createTicketSchema.partial()
+export const createTicketSchema = ticketSchemaBase.refine(
+  (data) =>
+    (data.assignedToId == null && data.incidenceId == null) ||
+    (data.assignedToId != null && data.incidenceId != null),
+  {
+    message:
+      'Si asignas un responsable debe indicarse una incidencia; si indicas una incidencia debe asignarse un responsable.',
+  }
+)
+
+export const updateTicketSchema = ticketSchemaBase.partial()
 
 export type CreateTicketInput = z.infer<typeof createTicketSchema>
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>

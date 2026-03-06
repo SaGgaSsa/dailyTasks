@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { searchActiveIncidences } from '@/app/actions/incidence-actions'
 
 interface IncidenceQueryResult {
@@ -128,10 +129,10 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
                                         <button
                                             key={incidence.id}
                                             onClick={() => handleSelect(incidence)}
-                                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm cursor-pointer whitespace-nowrap"
+                                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm cursor-pointer whitespace-nowrap flex items-center gap-2"
                                         >
-                                            <span className="font-medium">{incidence.type} {incidence.externalId}</span>
-                                            <span className="text-muted-foreground"> - {incidence.title}</span>
+                                            <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs shrink-0" />
+                                            <span className="text-muted-foreground truncate">{incidence.title}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -152,9 +153,9 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
                             key={incidence.id}
                             className="flex items-center justify-between bg-secondary rounded-md px-3 py-2 text-sm"
                         >
-                            <span>
-                                <span className="font-medium">{incidence.type} {incidence.externalId}</span>
-                                <span className="text-muted-foreground"> - {incidence.title}</span>
+                            <span className="flex items-center gap-2 min-w-0">
+                                <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs shrink-0" />
+                                <span className="text-muted-foreground truncate">{incidence.title}</span>
                             </span>
                             <button
                                 onClick={() => handleRemove(incidence.id)}
