@@ -1,4 +1,13 @@
+import { Priority } from '@/types/enums'
+
 const PRIORITY_ORDER = ['BLOQUEANTE', 'HIGH', 'MEDIUM', 'LOW']
+
+export const PRIORITY_OPTIONS = [
+  { value: Priority.BLOQUEANTE, label: 'Bloqueante' },
+  { value: Priority.HIGH, label: 'Alta' },
+  { value: Priority.MEDIUM, label: 'Media' },
+  { value: Priority.LOW, label: 'Baja' },
+]
 
 function indexOfCaseInsensitive(order: string[], value: string): number {
   const upper = (value || '').toUpperCase()

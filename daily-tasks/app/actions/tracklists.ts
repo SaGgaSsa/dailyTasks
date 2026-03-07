@@ -8,7 +8,7 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TaskType } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority } from '@prisma/client'
+import { TaskStatus } from '@prisma/client'
 
 interface CreateTracklistData {
     title: string
@@ -53,12 +53,6 @@ const TICKET_TYPE_SUBTASK_TITLE: Record<TicketType, string> = {
     [TicketType.CONSULTA]: 'Análisis',
 }
 
-const PRIORITY_MAP: Record<string, PrismaPriority> = {
-    LOW: 'LOW',
-    MEDIUM: 'MEDIUM',
-    HIGH: 'HIGH',
-    BLOQUEANTE: 'BLOQUEANTE',
-}
 
 async function runAssignmentTransaction(
     ticketId: number,
@@ -72,7 +66,7 @@ async function runAssignmentTransaction(
         const moduleRecord = await db.module.findUnique({ where: { slug: ticket.module.toLowerCase() } })
         if (!moduleRecord) return { success: false, error: 'Módulo no encontrado' }
 
-        const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
+        const incidencePriority = ticket.priority
         const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
         const subTaskTitle = TICKET_TYPE_SUBTASK_TITLE[ticket.type as TicketType]
 

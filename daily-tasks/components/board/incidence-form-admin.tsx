@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails, SubTask } from '@/types'
 import { TaskType, TaskStatus, Priority } from '@/types/enums'
+import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
@@ -54,12 +55,6 @@ const typeOptions = [
     { value: TaskType.I_CONS, label: 'I_CONS' },
 ]
 
-const priorityOptions = [
-    { value: Priority.BLOQUEANTE, label: 'Bloqueante' },
-    { value: Priority.HIGH, label: 'Alta' },
-    { value: Priority.MEDIUM, label: 'Media' },
-    { value: Priority.LOW, label: 'Baja' },
-]
 
 interface AssigneeFormData {
     userId: number
@@ -786,7 +781,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     label="Prioridad"
                     value={formData.priority}
                     onValueChange={(value) => updateFormData({ priority: value as Priority })}
-                    options={priorityOptions}
+                    options={PRIORITY_OPTIONS}
                 />
 
                 <FormSelect

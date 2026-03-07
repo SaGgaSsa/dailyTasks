@@ -27,18 +27,12 @@ import { cn } from '@/lib/utils'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TicketType, Priority } from '@/types/enums'
+import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 
 const TIPO_TICKET = [
   { value: TicketType.BUG, label: 'Bug' },
   { value: TicketType.CAMBIO, label: 'Cambio' },
   { value: TicketType.CONSULTA, label: 'Consulta' }
-]
-
-const PRIORITIES = [
-  { value: Priority.BLOQUEANTE, label: 'Bloqueante' },
-  { value: Priority.HIGH, label: 'Alta' },
-  { value: Priority.MEDIUM, label: 'Media' },
-  { value: Priority.LOW, label: 'Baja' }
 ]
 
 interface TechWithModules {
@@ -346,7 +340,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               <PopoverContent className="w-[200px] p-0" align="start">
                 <Command>
                   <CommandGroup>
-                    {PRIORITIES.map((priority) => (
+                    {PRIORITY_OPTIONS.map((priority) => (
                       <CommandItem
                         key={priority.value}
                         value={priority.label}

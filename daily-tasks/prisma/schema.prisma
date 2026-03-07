@@ -231,7 +231,7 @@ model TicketQA {
   type                TicketType
   module              String
   description         String
-  priority            String
+  priority            Priority   @default(MEDIUM)
   externalWorkItemId  Int?
   externalWorkItem    ExternalWorkItem? @relation(fields: [externalWorkItemId], references: [id])
   reportedById        Int
