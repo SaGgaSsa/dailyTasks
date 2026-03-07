@@ -13,7 +13,7 @@ const prisma = new PrismaClient({ adapter })
 const PASSWORD = 'sisa0314'
 
 async function truncateTables() {
-  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, modules, tracklists, technologies, users CASCADE`
+  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, modules, tracklists, technologies, users RESTART IDENTITY CASCADE`
   console.log('All tables truncated')
 }
 
