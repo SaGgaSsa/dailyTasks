@@ -13,7 +13,7 @@ interface Props {
 
 export function TicketsGrid({ initialTickets, assignableUsers, view }: Props) {
   if (view === 'kanban') {
-    return <TicketKanbanBoard tickets={initialTickets} />
+    return <TicketKanbanBoard tickets={initialTickets} assignableUsers={assignableUsers} />
   }
   return (
     <TicketsGridComponent

@@ -47,6 +47,7 @@ export type TicketQAWithDetails = TicketQA & {
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
   incidence: Pick<Incidence, 'id' | 'type' | 'externalId'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
+  hasUnreadUpdates: boolean
 }
 
 export const createUserSchema = z.object({
@@ -83,15 +84,7 @@ const ticketSchemaBase = z.object({
   incidenceId: z.number().optional(),
 })
 
-export const createTicketSchema = ticketSchemaBase.refine(
-  (data) =>
-    (data.assignedToId == null && data.incidenceId == null) ||
-    (data.assignedToId != null && data.incidenceId != null),
-  {
-    message:
-      'Si asignas un responsable debe indicarse una incidencia; si indicas una incidencia debe asignarse un responsable.',
-  }
-)
+export const createTicketSchema = ticketSchemaBase
 
 export const updateTicketSchema = ticketSchemaBase.partial()
 

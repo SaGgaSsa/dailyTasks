@@ -233,6 +233,7 @@ model TicketQA {
   dismissedBy       User?     @relation("DismissedBy", fields: [dismissedById], references: [id])
   logs              String?   @db.Text
   observations      String?   @db.Text
+  hasUnreadUpdates  Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

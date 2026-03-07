@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { DismissTicketDialog } from './DismissTicketDialog'
+import { TicketDetailModal } from './TicketDetailModal'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -35,6 +36,9 @@ function getTicketStatusLabel(status: keyof typeof TICKET_QA_STATUS_LABELS | str
 
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
   const [dismissTarget, setDismissTarget] = useState<{ ticketId: number; tracklistId: number } | null>(null)
+  const [openTicketId, setOpenTicketId] = useState<number | null>(null)
+
+  const openTicket = openTicketId !== null ? initialTickets.find((t) => t.id === openTicketId) ?? null : null
 
   return (
     <div className="border border-border rounded-2xl bg-card shadow-inner flex flex-col h-full overflow-hidden min-w-0">
@@ -78,7 +82,14 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                   key={ticket.id} 
                   className="hover:bg-accent/50 transition-colors cursor-pointer"
                 >
-                  <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">{ticket.ticketNumber}</TableCell>
+                  <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
+                    <div className="relative inline-flex items-center justify-center">
+                      {ticket.ticketNumber}
+                      {ticket.hasUnreadUpdates && (
+                        <span className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-red-500" />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="w-24 px-2 py-3 text-center">{getTicketTypeLabel(ticket.type)}</TableCell>
                   <TableCell className="w-20 px-2 py-3">{ticket.module}</TableCell>
                   <TableCell className="w-auto min-w-0 px-2 py-3">
@@ -119,7 +130,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-[180px]" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem disabled>
+                        <DropdownMenuItem onClick={() => setOpenTicketId(ticket.id)}>
                           <Eye className="mr-2 h-4 w-4" />
                           Ver ticket
                         </DropdownMenuItem>
@@ -151,6 +162,16 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
           onOpenChange={(open) => { if (!open) setDismissTarget(null) }}
           ticketId={dismissTarget.ticketId}
           tracklistId={dismissTarget.tracklistId}
+        />
+      )}
+
+      {openTicket && (
+        <TicketDetailModal
+          ticket={openTicket}
+          tracklistId={openTicket.tracklistId}
+          assignableUsers={assignableUsers}
+          open={openTicketId !== null}
+          onOpenChange={(open) => { if (!open) setOpenTicketId(null) }}
         />
       )}
     </div>

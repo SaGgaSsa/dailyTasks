@@ -1,6 +1,7 @@
 import { TicketQAWithDetails } from '@/types'
 import { TicketQAStatus, TICKET_QA_STATUS_LABELS } from '@/types/enums'
 import { TicketKanbanCard } from './TicketKanbanCard'
+import { AssignableUser } from '@/app/actions/user-actions'
 
 const COLUMNS = [
   { id: TicketQAStatus.ASSIGNED, title: TICKET_QA_STATUS_LABELS[TicketQAStatus.ASSIGNED] },
@@ -10,9 +11,10 @@ const COLUMNS = [
 
 interface Props {
   tickets: TicketQAWithDetails[]
+  assignableUsers: AssignableUser[]
 }
 
-export function TicketKanbanBoard({ tickets }: Props) {
+export function TicketKanbanBoard({ tickets, assignableUsers }: Props) {
   return (
     <div className="grid grid-cols-3 gap-4">
       {COLUMNS.map((col) => {
@@ -30,7 +32,7 @@ export function TicketKanbanBoard({ tickets }: Props) {
                 <p className="text-xs text-muted-foreground text-center py-4">Sin tickets</p>
               ) : (
                 colTickets.map((ticket) => (
-                  <TicketKanbanCard key={ticket.id} ticket={ticket} />
+                  <TicketKanbanCard key={ticket.id} ticket={ticket} assignableUsers={assignableUsers} />
                 ))
               )}
             </div>

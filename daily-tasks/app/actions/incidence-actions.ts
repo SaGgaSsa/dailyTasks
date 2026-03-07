@@ -411,6 +411,11 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             }
         })
 
+        await db.ticketQA.updateMany({
+            where: { incidenceId },
+            data: { hasUnreadUpdates: true },
+        })
+
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {

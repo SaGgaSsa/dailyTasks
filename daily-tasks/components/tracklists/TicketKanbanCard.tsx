@@ -17,16 +17,23 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { DismissTicketDialog } from './DismissTicketDialog'
+import { TicketDetailModal } from './TicketDetailModal'
+import { AssignableUser } from '@/app/actions/user-actions'
 
 interface Props {
   ticket: TicketQAWithDetails
+  assignableUsers: AssignableUser[]
 }
 
-export function TicketKanbanCard({ ticket }: Props) {
+export function TicketKanbanCard({ ticket, assignableUsers }: Props) {
   const [dismissOpen, setDismissOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   return (
-    <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+    <div className="bg-card border border-border rounded-lg p-3 space-y-2 relative">
+      {ticket.hasUnreadUpdates && (
+        <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-red-500" />
+      )}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           {ticket.incidence ? (
@@ -44,7 +51,7 @@ export function TicketKanbanCard({ ticket }: Props) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => setDetailOpen(true)}>
                 <Eye className="mr-2 h-4 w-4" />
                 Ver ticket
               </DropdownMenuItem>
@@ -80,6 +87,14 @@ export function TicketKanbanCard({ ticket }: Props) {
         onOpenChange={setDismissOpen}
         ticketId={ticket.id}
         tracklistId={ticket.tracklistId}
+      />
+
+      <TicketDetailModal
+        ticket={ticket}
+        tracklistId={ticket.tracklistId}
+        assignableUsers={assignableUsers}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
       />
     </div>
   )
