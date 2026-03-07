@@ -1,4 +1,7 @@
-import { EllipsisVertical } from 'lucide-react'
+'use client'
+
+import { useState } from 'react'
+import { EllipsisVertical, Eye, BarChart3, Ban } from 'lucide-react'
 import { TicketQAWithDetails } from '@/types'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
@@ -6,12 +9,22 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { DismissTicketDialog } from './DismissTicketDialog'
 
 interface Props {
   ticket: TicketQAWithDetails
 }
 
 export function TicketKanbanCard({ ticket }: Props) {
+  const [dismissOpen, setDismissOpen] = useState(false)
+
   return (
     <div className="bg-card border border-border rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -24,9 +37,31 @@ export function TicketKanbanCard({ ticket }: Props) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <PriorityBadge priority={ticket.priority} />
-          <Button variant="ghost" size="icon" className="h-6 w-6">
-            <EllipsisVertical className="h-3 w-3" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6">
+                <EllipsisVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[180px]">
+              <DropdownMenuItem disabled>
+                <Eye className="mr-2 h-4 w-4" />
+                Ver ticket
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Ver Métricas
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={() => setDismissOpen(true)}
+              >
+                <Ban className="mr-2 h-4 w-4" />
+                Desestimar ticket
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <p className="text-xs text-foreground line-clamp-2">{ticket.description}</p>
@@ -39,6 +74,13 @@ export function TicketKanbanCard({ ticket }: Props) {
           <UserAvatar username={ticket.assignedTo.username} size="sm" />
         )}
       </div>
+
+      <DismissTicketDialog
+        open={dismissOpen}
+        onOpenChange={setDismissOpen}
+        ticketId={ticket.id}
+        tracklistId={ticket.tracklistId}
+      />
     </div>
   )
 }

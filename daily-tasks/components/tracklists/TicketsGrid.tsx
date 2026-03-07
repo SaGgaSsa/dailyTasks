@@ -1,6 +1,7 @@
 'use client'
 
-import { Inbox, User, MoreVertical } from 'lucide-react'
+import { useState } from 'react'
+import { Inbox, User, MoreVertical, Eye, BarChart3, Ban } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -14,7 +15,10 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { DismissTicketDialog } from './DismissTicketDialog'
 
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
@@ -30,6 +34,7 @@ function getTicketStatusLabel(status: keyof typeof TICKET_QA_STATUS_LABELS | str
 }
 
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
+  const [dismissTarget, setDismissTarget] = useState<{ ticketId: number; tracklistId: number } | null>(null)
 
   return (
     <div className="border border-border rounded-2xl bg-card shadow-inner flex flex-col h-full overflow-hidden min-w-0">
@@ -108,12 +113,29 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                   <TableCell className="w-10 px-0 py-3 text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                           <span className="sr-only">Abrir menú</span>
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" />
+                      <DropdownMenuContent align="end" className="w-[180px]" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem disabled>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Ver ticket
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled>
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          Ver Métricas
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => setDismissTarget({ ticketId: ticket.id, tracklistId: ticket.tracklistId })}
+                        >
+                          <Ban className="mr-2 h-4 w-4" />
+                          Desestimar ticket
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
@@ -122,6 +144,15 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
           </TableBody>
         </Table>
       </ScrollArea>
+
+      {dismissTarget && (
+        <DismissTicketDialog
+          open={!!dismissTarget}
+          onOpenChange={(open) => { if (!open) setDismissTarget(null) }}
+          ticketId={dismissTarget.ticketId}
+          tracklistId={dismissTarget.tracklistId}
+        />
+      )}
     </div>
   )
 }

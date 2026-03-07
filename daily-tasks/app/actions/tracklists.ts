@@ -136,7 +136,8 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
             where: { tracklistId: tracklistId },
             include: {
                 reportedBy: { select: { id: true, name: true, username: true } },
-                assignedTo: { select: { id: true, name: true, username: true } }
+                assignedTo: { select: { id: true, name: true, username: true } },
+                dismissedBy: { select: { id: true, name: true, username: true } }
             }
         })
         const sorted = sortTicketsByPriorityAndNumber(tickets)
@@ -230,6 +231,29 @@ export async function getTracklistIncidences(tracklistId: number) {
     } catch (error) {
         console.error('Error fetching tracklist incidences:', error)
         return { success: false, error: 'Error al obtener incidencias' }
+    }
+}
+
+export async function dismissTicket(ticketId: number, reason: string, tracklistId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
+    if (reason.trim().length < 3) {
+        return { success: false, error: 'La razón debe tener al menos 3 caracteres' }
+    }
+
+    try {
+        await db.ticketQA.update({
+            where: { id: ticketId },
+            data: { status: TicketQAStatus.DISMISSED, dismissReason: reason.trim(), dismissedById: Number(session.user.id) }
+        })
+        revalidatePath(`/tracklists/${tracklistId}`)
+        return { success: true }
+    } catch (error) {
+        console.error('Error dismissing ticket:', error)
+        return { success: false, error: t(locale, 'errors.saveError') }
     }
 }
 

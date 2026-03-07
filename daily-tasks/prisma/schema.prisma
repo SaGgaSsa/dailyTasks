@@ -20,6 +20,7 @@ model User {
   createdTracklists   Tracklist[]
   reportedTickets    TicketQA[]  @relation("ReportedBy")
   assignedTickets    TicketQA[]  @relation("AssignedTo")
+  dismissedTickets   TicketQA[]  @relation("DismissedBy")
 
   assignments        Assignment[]
   attachments        Attachment[]
@@ -227,6 +228,9 @@ model TicketQA {
   incidenceId       Int?
   incidence         Incidence? @relation(fields: [incidenceId], references: [id])
   status            TicketQAStatus @default(NEW)
+  dismissReason     String?   @db.Text
+  dismissedById     Int?
+  dismissedBy       User?     @relation("DismissedBy", fields: [dismissedById], references: [id])
   logs              String?   @db.Text
   observations      String?   @db.Text
   createdAt         DateTime  @default(now())

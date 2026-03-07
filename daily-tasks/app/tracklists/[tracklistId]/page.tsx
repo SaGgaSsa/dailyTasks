@@ -30,7 +30,8 @@ export default async function TracklistDetailPage({ params }: Props) {
       include: {
         reportedBy: { select: { id: true, name: true, username: true } },
         assignedTo: { select: { id: true, name: true, username: true } },
-        incidence: { select: { id: true, type: true, externalId: true } }
+        incidence: { select: { id: true, type: true, externalId: true } },
+        dismissedBy: { select: { id: true, name: true, username: true } }
       }
     }).then(sortTicketsByPriorityAndNumber),
     db.tracklist.findMany({
