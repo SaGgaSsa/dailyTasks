@@ -2,8 +2,7 @@ import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
-import { TracklistHeader } from './_components/tracklist-header'
-import { TicketsGrid } from './_components/tickets-grid'
+import { TracklistViewClient } from './_components/tracklist-view-client'
 
 interface Props {
   params: Promise<{ tracklistId: string }>
@@ -51,14 +50,14 @@ export default async function TracklistDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <TracklistHeader 
-        tracklists={allTracklists} 
+      <TracklistViewClient
+        tracklists={allTracklists}
         currentId={numericId}
         assignableUsers={assignableUsers}
-        currentTracklist={currentTracklist || undefined}
-        incidences={currentTracklist?.incidences || []}
+        currentTracklist={currentTracklist}
+        incidences={currentTracklist.incidences}
+        initialTickets={tickets}
       />
-      <TicketsGrid initialTickets={tickets} assignableUsers={assignableUsers} />
     </div>
   )
 }

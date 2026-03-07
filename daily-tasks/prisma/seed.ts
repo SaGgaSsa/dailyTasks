@@ -398,8 +398,11 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
 
   const statuses: TicketQAStatus[] = [
     TicketQAStatus.NEW,
+    TicketQAStatus.ASSIGNED,
     TicketQAStatus.IN_DEVELOPMENT,
     TicketQAStatus.TEST,
+    TicketQAStatus.COMPLETED,
+    TicketQAStatus.DISMISSED,
   ]
   const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH]
   const modules = ['Serv', 'Comun', 'WkFlow', 'OBase']

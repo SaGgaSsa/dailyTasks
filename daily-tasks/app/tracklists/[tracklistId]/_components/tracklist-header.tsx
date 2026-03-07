@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { 
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem 
 } from '@/components/ui/select'
-import { PlusIcon, PencilIcon } from 'lucide-react'
+import { PlusIcon, PencilIcon, ListTodo, LayoutDashboard } from 'lucide-react'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AssignableUser } from '@/app/actions/user-actions'
 
 interface TracklistIncidence {
@@ -33,9 +34,11 @@ interface Props {
   assignableUsers: AssignableUser[]
   currentTracklist?: TracklistData
   incidences: TracklistIncidence[]
+  view: 'list' | 'kanban'
+  onViewChange: (v: 'list' | 'kanban') => void
 }
 
-export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, incidences }: Props) {
+export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, incidences, view, onViewChange }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -84,12 +87,24 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
             </Button>
           )}
         </div>
-        <Button 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
-          onClick={() => setIsTicketDialogOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
+            onClick={() => setIsTicketDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Tabs value={view} onValueChange={(v) => onViewChange(v as 'list' | 'kanban')}>
+            <TabsList className="bg-muted border border-border h-8">
+              <TabsTrigger value="list" className="data-[state=active]:bg-accent px-3">
+                <ListTodo className="h-4 w-4" />
+              </TabsTrigger>
+              <TabsTrigger value="kanban" className="data-[state=active]:bg-accent px-3">
+                <LayoutDashboard className="h-4 w-4" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
       <CreateTracklistDialog 
         open={isDialogOpen} 
