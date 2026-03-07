@@ -60,7 +60,7 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
           <Select 
             value={currentId.toString()} 
