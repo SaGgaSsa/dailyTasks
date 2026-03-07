@@ -186,8 +186,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         const allAssignments = incidence.assignments
                         const activeAssignments = allAssignments.filter(a => a.isAssigned)
                         const data = {
-                            type: incidence.type,
-                            externalId: incidence.externalId?.toString() || '',
+                            type: (incidence.externalWorkItem?.type as TaskType) || TaskType.I_MODAPL,
+                            externalId: incidence.externalWorkItem?.externalId?.toString() || '',
                             title: incidence.title || '',
                             description: incidence.comment || '',
                             priority: incidence.priority,
@@ -561,7 +561,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 })
 
                 if (result.success) {
-                    toast.success(`${initialData.type} ${initialData.externalId} actualizada`)
+                    toast.success(`${initialData.externalWorkItem?.type ?? ''} ${initialData.externalWorkItem?.externalId ?? ''} actualizada`)
 
                     let autoTransitionedToReview = false
                     let reviewMessage = ''
@@ -699,7 +699,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     }
 
     const title = isKanban && initialData
-        ? `${initialData.status} - ${initialData.type} ${initialData.externalId}`
+        ? `${initialData.status} - ${initialData.externalWorkItem?.type ?? ''} ${initialData.externalWorkItem?.externalId ?? ''}`
         : (isEditMode ? 'Editar Incidencia' : 'Nueva Incidencia')
 
     return (
@@ -824,9 +824,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 <>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <IncidenceBadge 
-                                type={initialData.type} 
-                                externalId={initialData.externalId}
+                            <IncidenceBadge
+                                type={initialData.externalWorkItem?.type ?? ''}
+                                externalId={initialData.externalWorkItem?.externalId ?? ''}
                                 className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight"
                             />
                             <span className="text-sm text-foreground font-medium">{initialData.title}</span>

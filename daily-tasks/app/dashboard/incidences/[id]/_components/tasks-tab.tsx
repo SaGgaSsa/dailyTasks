@@ -326,7 +326,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             if (autoTransitionedToReview) {
                 toast.success('Todas las tareas completadas. Incidencia en revisión.')
             } else {
-                toast.success(`${incidence.type} ${incidence.externalId} actualizada`)
+                toast.success(`${incidence.externalWorkItem?.type ?? ''} ${incidence.externalWorkItem?.externalId ?? ''} actualizada`)
             }
         } catch (error) {
             console.error('Error saving changes:', error)

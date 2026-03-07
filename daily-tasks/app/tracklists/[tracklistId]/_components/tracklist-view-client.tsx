@@ -6,11 +6,11 @@ import { TicketsGrid } from './tickets-grid'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
 
-interface TracklistIncidence {
+interface TracklistExternalWorkItem {
   id: number
   type: string
   externalId: number
-  title: string
+  title: string | null
 }
 
 interface TracklistData {
@@ -18,7 +18,7 @@ interface TracklistData {
   title: string
   description: string | null
   dueDate: Date | null
-  incidences: TracklistIncidence[]
+  externalWorkItems: TracklistExternalWorkItem[]
 }
 
 interface Props {
@@ -26,7 +26,7 @@ interface Props {
   currentId: number
   assignableUsers: AssignableUser[]
   currentTracklist: TracklistData
-  incidences: TracklistIncidence[]
+  externalWorkItems: TracklistExternalWorkItem[]
   initialTickets: TicketQAWithDetails[]
 }
 
@@ -35,7 +35,7 @@ export function TracklistViewClient({
   currentId,
   assignableUsers,
   currentTracklist,
-  incidences,
+  externalWorkItems,
   initialTickets,
 }: Props) {
   const [view, setView] = useState<'list' | 'kanban'>('list')
@@ -47,7 +47,7 @@ export function TracklistViewClient({
         currentId={currentId}
         assignableUsers={assignableUsers}
         currentTracklist={currentTracklist}
-        incidences={incidences}
+        externalWorkItems={externalWorkItems}
         view={view}
         onViewChange={setView}
       />

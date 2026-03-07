@@ -48,28 +48,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const existing = await db.incidence.findUnique({
-      where: {
-        type_externalId: {
-          type: taskType,
-          externalId: Number(externalId),
-        },
-      },
+    const workItem = await db.externalWorkItem.upsert({
+      where: { type_externalId: { type: taskType, externalId: Number(externalId) } },
+      create: { type: taskType, externalId: Number(externalId), title },
+      update: { title },
     })
-
-    if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'La incidencia ya existe' },
-        { status: 409 }
-      )
-    }
 
     const incidence = await db.incidence.create({
       data: {
-        type: taskType,
-        externalId: Number(externalId),
+        externalWorkItemId: workItem.id,
         title,
-        technology: { connect: { id: tech.id } },
+        technologyId: tech.id,
         status: TaskStatus.BACKLOG,
         priority: Priority.MEDIUM,
         estimatedTime: 0,
@@ -78,7 +67,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { success: true, id: incidence.id },
+      { success: true, incidenceId: incidence.id, externalWorkItemId: workItem.id },
       { status: 201 }
     )
   } catch (error) {

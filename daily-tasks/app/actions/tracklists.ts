@@ -14,7 +14,7 @@ interface CreateTracklistData {
     title: string
     description?: string
     dueDate?: Date
-    incidenceIds?: number[]
+    externalWorkItemIds?: number[]
 }
 
 interface UpdateTracklistData {
@@ -22,7 +22,7 @@ interface UpdateTracklistData {
     title: string
     description?: string
     dueDate?: Date
-    incidenceIds?: number[]
+    externalWorkItemIds?: number[]
 }
 
 interface CreateTicketData {
@@ -30,10 +30,9 @@ interface CreateTicketData {
     module: string
     description: string
     priority: Priority
-    tramite?: string
+    externalWorkItemId?: number
     observations?: string
     assignedToId?: number
-    incidenceId?: number
 }
 
 const TICKET_TYPE_TO_TASK_TYPE: Record<TicketType, TaskType> = {
@@ -73,28 +72,39 @@ async function runAssignmentTransaction(
         const moduleRecord = await db.module.findUnique({ where: { slug: ticket.module.toLowerCase() } })
         if (!moduleRecord) return { success: false, error: 'Módulo no encontrado' }
 
-        const taskType = TICKET_TYPE_TO_TASK_TYPE[ticket.type as TicketType]
         const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
-        const tramite = ticket.tramite
-        const parsedTramite = tramite ? parseInt(tramite, 10) : NaN
-        const externalId = !isNaN(parsedTramite) ? parsedTramite : ticket.id
         const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
-        const title = `${titlePrefix} – Tramite ${tramite || ticket.id}`
         const subTaskTitle = TICKET_TYPE_SUBTASK_TITLE[ticket.type as TicketType]
 
+        let workItem = ticket.externalWorkItemId
+            ? await db.externalWorkItem.findUnique({ where: { id: ticket.externalWorkItemId } })
+            : null
+
+        if (!workItem) {
+            // Fallback: create ExternalWorkItem from ticket type + id if none linked
+            const taskType = TICKET_TYPE_TO_TASK_TYPE[ticket.type as TicketType]
+            workItem = await db.externalWorkItem.upsert({
+                where: { type_externalId: { type: taskType, externalId: ticket.id } },
+                create: { type: taskType, externalId: ticket.id, title: `${titlePrefix} – Ticket ${ticket.id}` },
+                update: {},
+            })
+        }
+
+        const title = workItem.title || `${titlePrefix} – ${workItem.type} ${workItem.externalId}`
+
         await db.$transaction(async (tx) => {
-            const newIncidence = await tx.incidence.upsert({
-                where: { type_externalId: { type: taskType, externalId } },
-                create: {
-                    type: taskType,
-                    externalId,
+            const existingIncidence = await tx.incidence.findFirst({
+                where: { externalWorkItemId: workItem!.id },
+            })
+
+            const newIncidence = existingIncidence ?? await tx.incidence.create({
+                data: {
+                    externalWorkItemId: workItem!.id,
                     title,
                     technologyId: moduleRecord.technologyId,
                     priority: incidencePriority,
-                    tracklistId,
                     status: TaskStatus.BACKLOG,
                 },
-                update: {},
             })
 
             const assignment = await tx.assignment.upsert({
@@ -124,7 +134,7 @@ async function runAssignmentTransaction(
     } catch (error) {
         console.error('Error in assignment transaction:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'Ya existe una incidencia con ese tramite y tipo' }
+            return { success: false, error: 'Ya existe una incidencia con ese trámite y tipo' }
         }
         return { success: false, error: 'Error al ejecutar la asignación' }
     }
@@ -150,7 +160,7 @@ export async function assignTicket(
     } catch (error) {
         console.error('Error assigning ticket:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'Ya existe una incidencia con ese tramite y tipo' }
+            return { success: false, error: 'Ya existe una incidencia con ese trámite y tipo' }
         }
         return { success: false, error: 'Error al asignar ticket' }
     }
@@ -206,7 +216,7 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
             description?: string
             dueDate?: Date
             createdById: number
-            incidences?: { connect: { id: number }[] }
+            externalWorkItems?: { connect: { id: number }[] }
         } = {
             title: data.title,
             description: data.description,
@@ -214,9 +224,9 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
             createdById: Number(session.user.id)
         }
 
-        if (data.incidenceIds && data.incidenceIds.length > 0) {
-            tracklistData.incidences = {
-                connect: data.incidenceIds.map(id => ({ id }))
+        if (data.externalWorkItemIds && data.externalWorkItemIds.length > 0) {
+            tracklistData.externalWorkItems = {
+                connect: data.externalWorkItemIds.map(id => ({ id }))
             }
         }
 
@@ -238,14 +248,15 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
     }
 
     try {
-        const currentIncidences = await db.incidence.findMany({
-            where: { tracklistId: data.id }
+        const currentTracklist = await db.tracklist.findUnique({
+            where: { id: data.id },
+            select: { externalWorkItems: { select: { id: true } } }
         })
-        const currentIncidenceIds = currentIncidences.map(i => i.id)
-        const newIncidenceIds = data.incidenceIds || []
-        
-        const toDisconnect = currentIncidenceIds.filter(id => !newIncidenceIds.includes(id))
-        const toConnect = newIncidenceIds.filter(id => !currentIncidenceIds.includes(id))
+        const currentWorkItemIds = currentTracklist?.externalWorkItems.map(i => i.id) ?? []
+        const newWorkItemIds = data.externalWorkItemIds || []
+
+        const toDisconnect = currentWorkItemIds.filter(id => !newWorkItemIds.includes(id))
+        const toConnect = newWorkItemIds.filter(id => !currentWorkItemIds.includes(id))
 
         const tracklist = await db.tracklist.update({
             where: { id: data.id },
@@ -253,7 +264,7 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
                 title: data.title,
                 description: data.description,
                 dueDate: data.dueDate,
-                incidences: {
+                externalWorkItems: {
                     disconnect: toDisconnect.map(id => ({ id })),
                     connect: toConnect.map(id => ({ id }))
                 }
@@ -275,6 +286,7 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
             include: {
                 reportedBy: { select: { id: true, name: true, username: true } },
                 assignedTo: { select: { id: true, name: true, username: true } },
+                externalWorkItem: { select: { id: true, type: true, externalId: true } },
                 dismissedBy: { select: { id: true, name: true, username: true } }
             }
         })
@@ -313,15 +325,6 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
             return { success: false, error: 'Usuario de la sesión no encontrado. Inicia sesión de nuevo.' }
         }
 
-        if (data.incidenceId) {
-            const incidenceInTracklist = await db.incidence.findFirst({
-                where: { id: data.incidenceId, tracklistId }
-            })
-            if (!incidenceInTracklist) {
-                return { success: false, error: 'La incidencia no pertenece a este tracklist' }
-            }
-        }
-
         const lastTicket = await db.ticketQA.findFirst({
             where: { tracklistId: tracklistId },
             orderBy: { ticketNumber: 'desc' }
@@ -336,10 +339,9 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                 module: data.module,
                 description: data.description,
                 priority: data.priority,
-                tramite: data.tramite,
+                externalWorkItemId: data.externalWorkItemId,
                 observations: data.observations,
                 reportedById: sessionUserId,
-                incidenceId: data.incidenceId
             }
         })
 
@@ -358,24 +360,20 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
     }
 }
 
-export async function getTracklistIncidences(tracklistId: number) {
+export async function getTracklistExternalWorkItems(tracklistId: number) {
     try {
         const tracklist = await db.tracklist.findUnique({
             where: { id: tracklistId },
             select: {
-                incidences: {
-                    select: {
-                        id: true,
-                        type: true,
-                        externalId: true
-                    }
+                externalWorkItems: {
+                    select: { id: true, type: true, externalId: true }
                 }
             }
         })
-        return { success: true, data: tracklist?.incidences ?? [] }
+        return { success: true, data: tracklist?.externalWorkItems ?? [] }
     } catch (error) {
-        console.error('Error fetching tracklist incidences:', error)
-        return { success: false, error: 'Error al obtener incidencias' }
+        console.error('Error fetching tracklist external work items:', error)
+        return { success: false, error: 'Error al obtener trámites' }
     }
 }
 
@@ -409,11 +407,11 @@ export async function getTicketFormData(tracklistId: number) {
     }
 
     try {
-        const [techsResult, incidencesResult] = await Promise.all([
+        const [techsResult, workItemsResult] = await Promise.all([
             getCachedTechsWithModules(),
-            getTracklistIncidences(tracklistId)
+            getTracklistExternalWorkItems(tracklistId)
         ])
-        
+
         return {
             success: true,
             data: {
@@ -421,7 +419,7 @@ export async function getTicketFormData(tracklistId: number) {
                 allModules: techsResult.allModules,
                 defaultTech: techsResult.defaultTech,
                 defaultModules: techsResult.defaultModules,
-                incidences: incidencesResult.success ? incidencesResult.data : []
+                externalWorkItems: workItemsResult.success ? workItemsResult.data : []
             }
         }
     } catch (error) {

@@ -4,7 +4,7 @@ import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Priority as PrismaPriority, TaskStatus, TaskType } from '@prisma/client'
-import { Priority, TaskStatus as EnumTaskStatus, TaskType as EnumTaskType } from '@/types/enums'
+import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -13,6 +13,7 @@ const getIncidenceCached = cache(async (id: number) => {
     return db.incidence.findUnique({
         where: { id },
             include: {
+                externalWorkItem: true,
                 technology: true,
                 assignments: {
                 where: { isAssigned: true },
@@ -72,6 +73,7 @@ interface CreateIncidenceData {
     assignees?: AssigneeWithHours[]
 }
 
+
 interface UpdateIncidenceData {
     status?: TaskStatus
     priority?: Priority
@@ -95,14 +97,19 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
         if (!tech) {
             return { success: false, error: 'Tecnología no válida' }
         }
-        
+
+        const workItem = await db.externalWorkItem.upsert({
+            where: { type_externalId: { type: data.type, externalId: data.externalId } },
+            create: { type: data.type, externalId: data.externalId, title: data.title },
+            update: { title: data.title },
+        })
+
         await db.incidence.create({
             data: {
-                type: data.type,
-                externalId: data.externalId,
+                externalWorkItemId: workItem.id,
                 title: data.title,
                 comment: data.description,
-                technology: { connect: { id: tech.id } },
+                technologyId: tech.id,
                 priority: data.priority as PrismaPriority,
                 estimatedTime: data.estimatedTime,
                 status: TaskStatus.BACKLOG,
@@ -161,10 +168,10 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                 { title: { contains: search, mode: 'insensitive' } },
                 { comment: { contains: search, mode: 'insensitive' } }
             ] as unknown[]
-            
-            // Add externalId search only if valid number
+
+            // Add externalId search only if valid number (via ExternalWorkItem relation)
             if (isValidNumber) {
-                orConditions.push({ externalId: searchNumber })
+                orConditions.push({ externalWorkItem: { externalId: searchNumber } })
             }
             
             where.OR = orConditions
@@ -215,6 +222,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         const incidences = await db.incidence.findMany({
             where,
             include: {
+                externalWorkItem: true,
                 technology: true,
                 assignments: {
                     where: { isAssigned: true },
@@ -312,14 +320,12 @@ export async function getIncidencePageData(id: number): Promise<{
 export async function getIncidenceWithUsers(type: TaskType, externalId: number): Promise<GetIncidenceWithUsersResult> {
     try {
         const [incidence, users] = await Promise.all([
-            db.incidence.findUnique({
+            db.incidence.findFirst({
                 where: {
-                    type_externalId: {
-                        type,
-                        externalId
-                    }
+                    externalWorkItem: { type, externalId }
                 },
                 include: {
+                    externalWorkItem: true,
                     assignments: {
                         where: { isAssigned: true },
                         include: {
@@ -1111,7 +1117,6 @@ export async function searchActiveIncidences(query: string, selectedIncidences: 
         const escapedQuery = trimmedQuery.replace(/_/g, '\\_')
 
         const where: Record<string, unknown> = {
-            status: { not: TaskStatus.DONE },
             id: { notIn: selectedIncidences }
         }
 
@@ -1119,7 +1124,7 @@ export async function searchActiveIncidences(query: string, selectedIncidences: 
             ? [{ externalId: queryNumber }]
             : [{ title: { contains: escapedQuery, mode: 'insensitive' } }]
 
-        const incidences = await db.incidence.findMany({
+        const workItems = await db.externalWorkItem.findMany({
             where,
             select: {
                 id: true,
@@ -1128,10 +1133,10 @@ export async function searchActiveIncidences(query: string, selectedIncidences: 
                 title: true
             },
             take: 10,
-            orderBy: { title: 'asc' }
+            orderBy: { externalId: 'asc' }
         })
 
-        return { success: true, data: incidences }
+        return { success: true, data: workItems }
     } catch (error) {
         console.error('Error searching incidences:', error)
         return { success: false, error: 'Error al buscar incidencias' }

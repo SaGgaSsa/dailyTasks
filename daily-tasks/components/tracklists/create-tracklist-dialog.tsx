@@ -7,11 +7,11 @@ import { FormSheet, FormInput, FormTextarea } from '@/components/ui/form-sheet'
 import { IncidenceQuery } from '@/components/ui/incidence-query'
 import { toast } from 'sonner'
 
-interface TracklistIncidence {
+interface TracklistExternalWorkItem {
   id: number
   type: string
   externalId: number
-  title: string
+  title: string | null
 }
 
 interface TracklistData {
@@ -25,16 +25,16 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   tracklist?: TracklistData
-  incidences?: TracklistIncidence[]
+  externalWorkItems?: TracklistExternalWorkItem[]
 }
 
-export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidences = [] }: Props) {
+export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalWorkItems = [] }: Props) {
   const router = useRouter()
   const [isPending, setIsPending] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
-  const [selectedIncidences, setSelectedIncidences] = useState<TracklistIncidence[]>([])
+  const [selectedWorkItems, setSelectedWorkItems] = useState<TracklistExternalWorkItem[]>([])
   const [hasInitialized, setHasInitialized] = useState(false)
 
   const isEditing = !!tracklist
@@ -45,12 +45,12 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidence
         setTitle(tracklist.title)
         setDescription(tracklist.description || '')
         setDueDate(tracklist.dueDate ? new Date(tracklist.dueDate).toISOString().split('T')[0] : '')
-        setSelectedIncidences(incidences)
+        setSelectedWorkItems(externalWorkItems.map(w => ({ ...w, title: w.title ?? null })))
       } else {
         setTitle('')
         setDescription('')
         setDueDate('')
-        setSelectedIncidences([])
+        setSelectedWorkItems([])
       }
       setHasInitialized(true)
     }
@@ -58,7 +58,7 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidence
     if (!open) {
       setHasInitialized(false)
     }
-  }, [open, tracklist, incidences, hasInitialized])
+  }, [open, tracklist, externalWorkItems, hasInitialized])
 
   const handleSave = async () => {
     if (!title.trim()) return false
@@ -72,14 +72,14 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidence
         title: title.trim(),
         description: description.trim() || undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
-        incidenceIds: selectedIncidences.map(i => i.id)
+        externalWorkItemIds: selectedWorkItems.map(i => i.id)
       })
     } else {
       result = await createTracklist({
         title: title.trim(),
         description: description.trim() || undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
-        incidenceIds: selectedIncidences.map(i => i.id)
+        externalWorkItemIds: selectedWorkItems.map(i => i.id)
       })
     }
 
@@ -101,7 +101,7 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidence
     setTitle('')
     setDescription('')
     setDueDate('')
-    setSelectedIncidences([])
+    setSelectedWorkItems([])
   }
 
   return (
@@ -136,12 +136,12 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, incidence
         />
         <div>
           <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Incidencias
+            Trámites
           </label>
           <div className="mt-2">
             <IncidenceQuery
-              selectedIncidences={selectedIncidences}
-              onChange={setSelectedIncidences}
+              selectedIncidences={selectedWorkItems}
+              onChange={setSelectedWorkItems}
             />
           </div>
         </div>

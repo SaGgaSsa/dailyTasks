@@ -11,7 +11,7 @@ interface IncidenceQueryResult {
     id: number
     type: string
     externalId: number
-    title: string
+    title: string | null
 }
 
 interface IncidenceQueryProps {

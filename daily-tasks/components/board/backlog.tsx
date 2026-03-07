@@ -157,9 +157,9 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Tramite</div>,
         cell: ({ row }) => (
             <div className="flex justify-center">
-                <IncidenceBadge 
-                    type={row.original.type} 
-                    externalId={row.original.externalId}
+                <IncidenceBadge
+                    type={row.original.externalWorkItem?.type ?? ''}
+                    externalId={row.original.externalWorkItem?.externalId ?? ''}
                     className="text-[10px] font-mono leading-none py-1 whitespace-nowrap"
                 />
             </div>
@@ -384,7 +384,7 @@ export function Backlog({
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
+                `${task.externalWorkItem?.type ?? ''} ${task.externalWorkItem?.externalId ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology?.name)
             const matchesStatus = statusFilter.length === 0 || statusFilter.includes(task.status)

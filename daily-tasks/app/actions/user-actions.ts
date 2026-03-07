@@ -204,7 +204,7 @@ export async function getUserDetails(userId: number) {
       include: {
         assignments: {
           include: {
-            incidence: true,
+            incidence: { include: { externalWorkItem: true } },
           },
           orderBy: { incidence: { updatedAt: 'desc' } },
           take: 5,

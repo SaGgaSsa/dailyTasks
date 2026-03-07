@@ -98,21 +98,33 @@ enum TicketType {
   CONSULTA
 }
 
+model ExternalWorkItem {
+  id         Int        @id @default(autoincrement())
+  type       TaskType
+  externalId Int
+  title      String?
+
+  incidences  Incidence[]
+  qaTickets   TicketQA[]
+  tracklists  Tracklist[]
+
+  @@unique([type, externalId])
+  @@map("external_work_items")
+}
+
 model Incidence {
-  id            Int       @id @default(autoincrement())
-  type          TaskType
-  externalId    Int
-  title         String
-  comment      String?   @db.Text
-  status        TaskStatus @default(BACKLOG)
-  priority      Priority   @default(MEDIUM)
-  technology    Technology @relation(fields: [technologyId], references: [id])
-  technologyId  Int
-  tracklistId  Int?
-  tracklist    Tracklist? @relation(fields: [tracklistId], references: [id])
-  estimatedTime Int?
-  completedAt   DateTime?
-  
+  id                  Int       @id @default(autoincrement())
+  externalWorkItemId  Int
+  externalWorkItem    ExternalWorkItem @relation(fields: [externalWorkItemId], references: [id])
+  title               String
+  comment             String?   @db.Text
+  status              TaskStatus @default(BACKLOG)
+  priority            Priority   @default(MEDIUM)
+  technology          Technology @relation(fields: [technologyId], references: [id])
+  technologyId        Int
+  estimatedTime       Int?
+  completedAt         DateTime?
+
   position      Float     @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -122,22 +134,21 @@ model Incidence {
   pages         IncidencePage[]
   qaTickets     TicketQA[]
 
-  @@unique([type, externalId])
   @@map("incidences")
 }
 
 model Assignment {
   id             Int       @id @default(autoincrement())
-  
+
   incidenceId    Int
   incidence      Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
   userId         Int
   user           User      @relation(fields: [userId], references: [id])
-  
+
   assignedHours Int?
   isAssigned     Boolean   @default(true)
   tasks          SubTask[]
-  
+
   @@unique([incidenceId, userId])
   @@map("assignments")
 }
@@ -147,10 +158,10 @@ model SubTask {
   title       String
   isCompleted Boolean   @default(false)
   completedAt DateTime?
-  
+
   assignmentId Int
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  
+
   createdAt   DateTime  @default(now())
 
   @@map("sub_tasks")
@@ -165,13 +176,13 @@ model Attachment {
   size         Int?
   mimeType     String?
   description  String?
-  
+
   incidenceId  Int
   incidence    Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
-  
+
   uploadedById Int
   uploadedBy   User      @relation(fields: [uploadedById], references: [id])
-  
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -183,13 +194,13 @@ model IncidencePage {
   title       String
   content     Json?
   isMainPage  Boolean   @default(false)
-  
+
   incidenceId Int
   incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
-  
+
   authorId    Int
   author      User      @relation(fields: [authorId], references: [id])
-  
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -204,7 +215,7 @@ model Tracklist {
   createdById Int
   createdBy   User      @relation(fields: [createdById], references: [id])
   tickets     TicketQA[]
-  incidences  Incidence[]
+  externalWorkItems ExternalWorkItem[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -212,30 +223,31 @@ model Tracklist {
 }
 
 model TicketQA {
-  id                Int       @id @default(autoincrement())
-  ticketNumber      Int       @default(autoincrement())
-  tracklistId       Int
-  tracklist         Tracklist @relation(fields: [tracklistId], references: [id], onDelete: Cascade)
-  type              TicketType
-  module            String
-  description       String
-  priority          String
-  tramite           String?
-  reportedById      Int
-  reportedBy        User      @relation("ReportedBy", fields: [reportedById], references: [id])
-  assignedToId      Int?
-  assignedTo        User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
-  incidenceId       Int?
-  incidence         Incidence? @relation(fields: [incidenceId], references: [id])
-  status            TicketQAStatus @default(NEW)
-  dismissReason     String?   @db.Text
-  dismissedById     Int?
-  dismissedBy       User?     @relation("DismissedBy", fields: [dismissedById], references: [id])
-  logs              String?   @db.Text
-  observations      String?   @db.Text
-  hasUnreadUpdates  Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                  Int       @id @default(autoincrement())
+  ticketNumber        Int       @default(autoincrement())
+  tracklistId         Int
+  tracklist           Tracklist @relation(fields: [tracklistId], references: [id], onDelete: Cascade)
+  type                TicketType
+  module              String
+  description         String
+  priority            String
+  externalWorkItemId  Int?
+  externalWorkItem    ExternalWorkItem? @relation(fields: [externalWorkItemId], references: [id])
+  reportedById        Int
+  reportedBy          User      @relation("ReportedBy", fields: [reportedById], references: [id])
+  assignedToId        Int?
+  assignedTo          User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  incidenceId         Int?
+  incidence           Incidence? @relation(fields: [incidenceId], references: [id])
+  status              TicketQAStatus @default(NEW)
+  dismissReason       String?   @db.Text
+  dismissedById       Int?
+  dismissedBy         User?     @relation("DismissedBy", fields: [dismissedById], references: [id])
+  logs                String?   @db.Text
+  observations        String?   @db.Text
+  hasUnreadUpdates    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@unique([tracklistId, ticketNumber])
   @@map("tickets_qa")

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem 
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
 } from '@/components/ui/select'
 import { PlusIcon, PencilIcon, ListTodo, LayoutDashboard } from 'lucide-react'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
@@ -13,11 +13,11 @@ import { Plus } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AssignableUser } from '@/app/actions/user-actions'
 
-interface TracklistIncidence {
+interface TracklistExternalWorkItem {
   id: number
   type: string
   externalId: number
-  title: string
+  title: string | null
 }
 
 interface TracklistData {
@@ -25,7 +25,7 @@ interface TracklistData {
   title: string
   description: string | null
   dueDate: Date | null
-  incidences: TracklistIncidence[]
+  externalWorkItems: TracklistExternalWorkItem[]
 }
 
 interface Props {
@@ -33,12 +33,12 @@ interface Props {
   currentId: number
   assignableUsers: AssignableUser[]
   currentTracklist?: TracklistData
-  incidences: TracklistIncidence[]
+  externalWorkItems: TracklistExternalWorkItem[]
   view: 'list' | 'kanban'
   onViewChange: (v: 'list' | 'kanban') => void
 }
 
-export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, incidences, view, onViewChange }: Props) {
+export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, externalWorkItems, view, onViewChange }: Props) {
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -62,8 +62,8 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
     <>
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
-          <Select 
-            value={currentId.toString()} 
+          <Select
+            value={currentId.toString()}
             onValueChange={handleValueChange}
           >
             <SelectTrigger className="w-[300px]">
@@ -106,17 +106,17 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
           </Tabs>
         </div>
       </div>
-      <CreateTracklistDialog 
-        open={isDialogOpen} 
+      <CreateTracklistDialog
+        open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         tracklist={isEditMode && currentTracklist ? currentTracklist : undefined}
-        incidences={incidences}
+        externalWorkItems={externalWorkItems}
       />
-      <CreateTicketDialog 
+      <CreateTicketDialog
         tracklistId={currentId}
         assignableUsers={assignableUsers}
-        open={isTicketDialogOpen} 
-        onOpenChange={setIsTicketDialogOpen} 
+        open={isTicketDialogOpen}
+        onOpenChange={setIsTicketDialogOpen}
       />
     </>
   )

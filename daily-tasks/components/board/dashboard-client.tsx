@@ -370,8 +370,8 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
-                type={selectedTask?.type}
-                externalId={selectedTask?.externalId}
+                type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
+                externalId={selectedTask?.externalWorkItem?.externalId}
                 onTaskUpdate={handleTaskUpdate}
                 onIncidenceCreated={handleIncidenceCreated}
                 isDev={!isAdmin}

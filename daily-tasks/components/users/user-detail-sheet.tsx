@@ -53,8 +53,7 @@ interface UserDetails {
     title: string
     status: string
     priority: string
-    type: string
-    externalId: number
+    externalWorkItem: { type: string; externalId: number } | null
     updatedAt: Date
   }>
 }
@@ -298,7 +297,7 @@ export function UserDetailSheet({
                           <div className="truncate">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] text-zinc-500 font-mono">
-                                {incidence.type}-{incidence.externalId}
+                                {incidence.externalWorkItem ? `${incidence.externalWorkItem.type}-${incidence.externalWorkItem.externalId}` : ''}
                               </span>
                               <StatusBadge status={incidence.status as TaskStatus} />
                             </div>

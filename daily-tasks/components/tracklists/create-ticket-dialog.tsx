@@ -6,11 +6,8 @@ import { AssignableUser } from '@/app/actions/user-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem 
-} from '@/components/ui/select'
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog'
 import {
   Popover,
@@ -25,7 +22,7 @@ import {
   CommandItem,
 } from '@/components/ui/command'
 import { toast } from 'sonner'
-import { Check, Plus, ChevronDown, User, X } from 'lucide-react'
+import { Check, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
@@ -55,6 +52,12 @@ interface DefaultModule {
   module: { id: number; name: string }
 }
 
+interface ExternalWorkItem {
+  id: number
+  type: string
+  externalId: number
+}
+
 interface Props {
   tracklistId: number
   assignableUsers: AssignableUser[]
@@ -67,23 +70,22 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [type, setType] = useState<TicketType>(TicketType.BUG)
   const [description, setDescription] = useState('')
   const [observations, setObservations] = useState('')
-  
+
   const [techs, setTechs] = useState<TechWithModules[]>([])
-  const [defaultTech, setDefaultTech] = useState<{ id: number; name: string } | null>(null)
   const [defaultModules, setDefaultModules] = useState<DefaultModule[]>([])
   const [selectedTech, setSelectedTech] = useState<TechWithModules | null>(null)
   const [selectedModule, setSelectedModule] = useState<{ id: number; name: string } | null>(null)
   const [selectedPriority, setSelectedPriority] = useState<Priority>(Priority.MEDIUM)
   const [selectedAssignee, setSelectedAssignee] = useState<AssignableUser | null>(null)
-  
+
   const [techOpen, setTechOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
   const [typeOpen, setTypeOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
-  const [incidenceOpen, setIncidenceOpen] = useState(false)
-  const [selectedIncidence, setSelectedIncidence] = useState<{ id: number; type: string; externalId: number } | null>(null)
-  const [incidencesList, setIncidencesList] = useState<{ id: number; type: string; externalId: number }[]>([])
+  const [workItemOpen, setWorkItemOpen] = useState(false)
+  const [selectedWorkItem, setSelectedWorkItem] = useState<ExternalWorkItem | null>(null)
+  const [workItemsList, setWorkItemsList] = useState<ExternalWorkItem[]>([])
 
   useEffect(() => {
     async function loadData() {
@@ -93,19 +95,17 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         return
       }
       const formData = result.data!
-      
+
       setTechs(formData.techs)
       setDefaultModules(formData.defaultModules.map(dm => ({
         techId: dm.techId,
         module: { id: dm.module.id, name: dm.module.name }
       })))
-      
-      setIncidencesList(formData.incidences ?? [])
-      
-      // Solo setear valores por defecto si no hay selección previa
+
+      setWorkItemsList(formData.externalWorkItems ?? [])
+
       if (!selectedTech && formData.defaultTech) {
         const defaultTechWithModules = formData.techs.find(t => t.id === formData.defaultTech!.id) || null
-        setDefaultTech({ id: formData.defaultTech.id, name: formData.defaultTech.name })
         setSelectedTech(defaultTechWithModules)
         const defaultForTech = formData.defaultModules.find(dm => dm.techId === formData.defaultTech!.id)
         if (defaultForTech) {
@@ -129,15 +129,15 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     }
   }, [selectedTech, defaultModules])
 
-  const filteredModules = selectedTech 
-    ? selectedTech.modules 
+  const filteredModules = selectedTech
+    ? selectedTech.modules
     : []
 
   const handleSubmit = async () => {
     if (!description.trim()) return
-    
+
     const priority = selectedPriority
-    
+
     setIsPending(true)
     const result = await createTicket(tracklistId, {
       type,
@@ -146,10 +146,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       priority,
       observations: observations.trim() || undefined,
       assignedToId: selectedAssignee?.id,
-      incidenceId: selectedIncidence?.id
+      externalWorkItemId: selectedWorkItem?.id
     })
     setIsPending(false)
-    
+
     if (result.success) {
       toast.success('Ticket creado correctamente')
       handleClose()
@@ -164,8 +164,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setObservations('')
     setSelectedPriority(Priority.MEDIUM)
     setSelectedAssignee(null)
-    setSelectedIncidence(null)
-    setIncidencesList([])
+    setSelectedWorkItem(null)
+    setWorkItemsList([])
     onOpenChange(false)
   }
 
@@ -176,15 +176,15 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setObservations('')
       setSelectedPriority(Priority.MEDIUM)
       setSelectedAssignee(null)
-      setSelectedIncidence(null)
-      setIncidencesList([])
+      setSelectedWorkItem(null)
+      setWorkItemsList([])
     }
     onOpenChange(newOpen)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent 
+      <DialogContent
         className="sm:max-w-[900px]"
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -193,15 +193,15 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Input 
-              value={description} 
+            <Input
+              value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Descripción"
             />
           </div>
           <div className="space-y-2">
-            <Textarea 
-              value={observations} 
+            <Textarea
+              value={observations}
               onChange={e => setObservations(e.target.value)}
               placeholder="Observación"
               rows={4}
@@ -210,9 +210,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
           <div className="flex items-center gap-2 flex-wrap">
             <Popover open={typeOpen} onOpenChange={setTypeOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed w-[100px]"
                 >
                   <span className="text-xs">{type}</span>
@@ -231,11 +231,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                           setTypeOpen(false)
                         }}
                       >
-                        <Check 
+                        <Check
                           className={cn(
                             "mr-2 h-4 w-4",
                             type === t.value ? "opacity-100" : "opacity-0"
-                          )} 
+                          )}
                         />
                         {t.label}
                       </CommandItem>
@@ -247,9 +247,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
             <Popover open={techOpen} onOpenChange={setTechOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed"
                 >
                   {selectedTech ? (
@@ -274,11 +274,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                           setTechOpen(false)
                         }}
                       >
-                        <Check 
+                        <Check
                           className={cn(
                             "mr-2 h-4 w-4",
                             selectedTech?.id === tech.id ? "opacity-100" : "opacity-0"
-                          )} 
+                          )}
                         />
                         {tech.name}
                       </CommandItem>
@@ -290,9 +290,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
             <Popover open={moduleOpen} onOpenChange={setModuleOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed"
                   disabled={!selectedTech}
                 >
@@ -318,11 +318,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                           setModuleOpen(false)
                         }}
                       >
-                        <Check 
+                        <Check
                           className={cn(
                             "mr-2 h-4 w-4",
                             selectedModule?.id === mod.id ? "opacity-100" : "opacity-0"
-                          )} 
+                          )}
                         />
                         {mod.name}
                       </CommandItem>
@@ -334,9 +334,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
             <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed"
                 >
                   <PriorityBadge priority={selectedPriority} className="text-xs" />
@@ -355,11 +355,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                           setPriorityOpen(false)
                         }}
                       >
-                        <Check 
+                        <Check
                           className={cn(
                             "mr-2 h-4 w-4",
                             selectedPriority === priority.value ? "opacity-100" : "opacity-0"
-                          )} 
+                          )}
                         />
                         <PriorityBadge priority={priority.value} className="text-xs" />
                       </CommandItem>
@@ -371,9 +371,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
             <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed"
                 >
                   {selectedAssignee ? (
@@ -410,11 +410,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                           setAssigneeOpen(false)
                         }}
                       >
-                        <Check 
+                        <Check
                           className={cn(
                             "mr-2 h-4 w-4",
                             selectedAssignee?.id === user.id ? "opacity-100" : "opacity-0"
-                          )} 
+                          )}
                         />
                         {user.username}
                       </CommandItem>
@@ -424,53 +424,53 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               </PopoverContent>
             </Popover>
 
-            <Popover open={incidenceOpen} onOpenChange={setIncidenceOpen}>
+            <Popover open={workItemOpen} onOpenChange={setWorkItemOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-full border-dashed"
                 >
-                  {selectedIncidence ? (
-                    <IncidenceBadge type={selectedIncidence.type} externalId={selectedIncidence.externalId} className="text-xs" />
+                  {selectedWorkItem ? (
+                    <IncidenceBadge type={selectedWorkItem.type} externalId={selectedWorkItem.externalId} className="text-xs" />
                   ) : (
-                    <span className="text-xs text-muted-foreground">+ Incidencia</span>
+                    <span className="text-xs text-muted-foreground">+ Trámite</span>
                   )}
                   <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Filtrar incidencia..." />
-                  {incidencesList.length === 0 ? (
-                    <CommandEmpty>No hay incidencias en este Tracklist</CommandEmpty>
+                  <CommandInput placeholder="Filtrar trámite..." />
+                  {workItemsList.length === 0 ? (
+                    <CommandEmpty>No hay trámites en este Tracklist</CommandEmpty>
                   ) : (
                     <CommandGroup>
                       <CommandItem
                         onSelect={() => {
-                          setSelectedIncidence(null)
-                          setIncidenceOpen(false)
+                          setSelectedWorkItem(null)
+                          setWorkItemOpen(false)
                         }}
                       >
                         <X className="mr-2 h-4 w-4" />
-                        Sin incidencia
+                        Sin trámite
                       </CommandItem>
-                      {incidencesList.map((incidence) => (
+                      {workItemsList.map((item) => (
                         <CommandItem
-                          key={incidence.id}
-                          value={`${incidence.type} ${incidence.externalId}`}
+                          key={item.id}
+                          value={`${item.type} ${item.externalId}`}
                           onSelect={() => {
-                            setSelectedIncidence(incidence)
-                            setIncidenceOpen(false)
+                            setSelectedWorkItem(item)
+                            setWorkItemOpen(false)
                           }}
                         >
-                          <Check 
+                          <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              selectedIncidence?.id === incidence.id ? "opacity-100" : "opacity-0"
-                            )} 
+                              selectedWorkItem?.id === item.id ? "opacity-100" : "opacity-0"
+                            )}
                           />
-                          <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs" />
+                          <IncidenceBadge type={item.type} externalId={item.externalId} className="text-xs" />
                         </CommandItem>
                       ))}
                     </CommandGroup>

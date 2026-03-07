@@ -36,8 +36,8 @@ export function TicketKanbanCard({ ticket, assignableUsers }: Props) {
       )}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          {ticket.incidence ? (
-            <IncidenceBadge type={ticket.incidence.type} externalId={ticket.incidence.externalId} />
+          {ticket.externalWorkItem ? (
+            <IncidenceBadge type={ticket.externalWorkItem.type} externalId={ticket.externalWorkItem.externalId} />
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           )}

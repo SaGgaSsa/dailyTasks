@@ -75,10 +75,10 @@ export function TicketDetailModal({ ticket, tracklistId, assignableUsers, open, 
             </div>
           </div>
 
-          {ticket.tramite && (
+          {ticket.externalWorkItem && (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Trámite</p>
-              <p className="text-sm font-mono">{ticket.tramite}</p>
+              <p className="text-sm font-mono">{ticket.externalWorkItem.type} {ticket.externalWorkItem.externalId}</p>
             </div>
           )}
 

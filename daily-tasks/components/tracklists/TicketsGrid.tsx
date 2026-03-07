@@ -111,10 +111,10 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                     )}
                   </TableCell>
                   <TableCell className="w-28 px-2 py-3 text-center">
-                    {ticket.incidence ? (
-                      <IncidenceBadge 
-                        type={ticket.incidence.type} 
-                        externalId={ticket.incidence.externalId}
+                    {ticket.externalWorkItem ? (
+                      <IncidenceBadge
+                        type={ticket.externalWorkItem.type}
+                        externalId={ticket.externalWorkItem.externalId}
                         className="text-[10px] font-mono"
                       />
                     ) : (

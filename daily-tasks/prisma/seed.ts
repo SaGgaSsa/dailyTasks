@@ -13,7 +13,7 @@ const prisma = new PrismaClient({ adapter })
 const PASSWORD = 'sisa0314'
 
 async function truncateTables() {
-  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, modules, tracklists, technologies, users RESTART IDENTITY CASCADE`
+  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, external_work_items, modules, tracklists, technologies, users RESTART IDENTITY CASCADE`
   console.log('All tables truncated')
 }
 
@@ -151,7 +151,7 @@ async function createDev(passwordHash: string) {
 }
 
 async function createIncidencesForUser(user: { id: number }, userType: 'admin' | 'dev') {
-  const incidences: { id: number; type: string; externalId: number }[] = []
+  const incidences: { id: number }[] = []
   let externalId = userType === 'admin' ? 1000 : 2000
   const INCIDENCES_PER_STATUS = 5
 
@@ -162,20 +162,25 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
       const titleIndex = (incidences.length) % INCIDENCE_TITLES.length
       const title = `${INCIDENCE_TITLES[titleIndex]} #${i + 1}`
 
-      let incidence = await prisma.incidence.findUnique({
+      const workItem = await prisma.externalWorkItem.upsert({
         where: { type_externalId: { type: TaskType.I_MODAPL, externalId } },
+        create: { type: TaskType.I_MODAPL, externalId, title },
+        update: {},
+      })
+
+      let incidence = await prisma.incidence.findFirst({
+        where: { externalWorkItemId: workItem.id },
       })
 
       if (!incidence) {
         incidence = await prisma.incidence.create({
           data: {
-            type: TaskType.I_MODAPL,
-            externalId,
+            externalWorkItemId: workItem.id,
             title,
             comment: title,
             status,
             priority: Priority.MEDIUM,
-            technology: { connect: { id: sisaTech!.id } },
+            technologyId: sisaTech!.id,
             estimatedTime: 8,
           },
         })
@@ -259,24 +264,35 @@ async function createTracklistWithIncidences() {
     'Implementacion de notificaciones push',
   ]
 
+  const createdWorkItems = []
   for (let i = 0; i < incidenceTitles.length; i++) {
-    await prisma.incidence.upsert({
+    const workItem = await prisma.externalWorkItem.upsert({
       where: { type_externalId: { type: TaskType.I_MODAPL, externalId: 3000 + i } },
+      create: { type: TaskType.I_MODAPL, externalId: 3000 + i, title: incidenceTitles[i] },
       update: {},
-      create: {
-        type: TaskType.I_MODAPL,
-        externalId: 3000 + i,
-        title: incidenceTitles[i],
-        comment: `Incidencia para liberacion de abril #${i + 1}`,
-        status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
-        priority: Priority.HIGH,
-        technologyId: sisaTech.id,
-        tracklistId: tracklist.id,
-        estimatedTime: 16,
-      },
     })
-    console.log(`Created/updated incidence: ${incidenceTitles[i]} linked to tracklist`)
+    createdWorkItems.push(workItem)
+
+    const existingInc = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
+    if (!existingInc) {
+      await prisma.incidence.create({
+        data: {
+          externalWorkItemId: workItem.id,
+          title: incidenceTitles[i],
+          comment: `Incidencia para liberacion de abril #${i + 1}`,
+          status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
+          priority: Priority.HIGH,
+          technologyId: sisaTech.id,
+          estimatedTime: 16,
+        },
+      })
+    }
+    console.log(`Created/updated ExternalWorkItem: ${incidenceTitles[i]} linked to tracklist`)
   }
+  await prisma.tracklist.update({
+    where: { id: tracklist.id },
+    data: { externalWorkItems: { connect: createdWorkItems.map(w => ({ id: w.id })) } }
+  })
 
   await createAdditionalTracklistTickets(tracklist.id, sisaTech.id, admin.id)
 
@@ -335,31 +351,29 @@ async function createTracklistWithoutTickets() {
     },
   })
 
-  // Opcional: vincular 1–2 incidencias al tracklist (sin crear tickets QA)
-  const incidenceTitles = [
+  // Opcional: vincular 1–2 ExternalWorkItems al tracklist (sin crear tickets QA)
+  const workItemTitles = [
     'Tarea de revisión pendiente',
     'Ajuste post-release',
   ]
   const baseExternalId = 5000
-  for (let i = 0; i < incidenceTitles.length; i++) {
-    await prisma.incidence.upsert({
+  for (let i = 0; i < workItemTitles.length; i++) {
+    await prisma.externalWorkItem.upsert({
       where: { type_externalId: { type: TaskType.I_MODAPL, externalId: baseExternalId + i } },
-      update: { tracklistId: tracklist.id },
-      create: {
-        type: TaskType.I_MODAPL,
-        externalId: baseExternalId + i,
-        title: incidenceTitles[i],
-        comment: `Incidencia vinculada al tracklist ${tracklist.title}`,
-        status: TaskStatus.TODO,
-        priority: Priority.MEDIUM,
-        technologyId: sisaTech.id,
-        tracklistId: tracklist.id,
-        estimatedTime: 8,
-      },
+      create: { type: TaskType.I_MODAPL, externalId: baseExternalId + i, title: workItemTitles[i] },
+      update: {},
     })
   }
 
-  console.log(`Created tracklist without tickets: ${tracklist.title} (${incidenceTitles.length} incidences, 0 tickets)`)
+  const workItems = await prisma.externalWorkItem.findMany({
+    where: { externalId: { in: workItemTitles.map((_, i) => baseExternalId + i) } }
+  })
+  await prisma.tracklist.update({
+    where: { id: tracklist.id },
+    data: { externalWorkItems: { connect: workItems.map(w => ({ id: w.id })) } }
+  })
+
+  console.log(`Created tracklist without tickets: ${tracklist.title} (${workItemTitles.length} work items, 0 tickets)`)
 }
 
 async function createAdditionalTracklistTickets(tracklistId: number, technologyId: number, adminId: number) {
@@ -426,7 +440,6 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
         module: modules[i % modules.length],
         description: additionalTitles[i],
         priority: priorities[i % priorities.length],
-        tramite: `TRAM-${1000 + i}`,
         reportedById: adminId,
         assignedToId: adminId,
         status: statuses[i % statuses.length],
@@ -454,44 +467,59 @@ async function createICasoIncidences() {
     'Duplicado en consulta',
   ]
 
+  const workItemIds: number[] = []
+
   for (let i = 0; i < iCasosTitles.length; i++) {
     const externalId = 3000 + i
-    
-    let incidence = await prisma.incidence.findUnique({
-      where: { type_externalId: { type: TaskType.I_CASO, externalId } },
-    })
+    const title = iCasosTitles[i]
 
-    if (!incidence) {
-      incidence = await prisma.incidence.create({
+    const workItem = await prisma.externalWorkItem.upsert({
+      where: { type_externalId: { type: TaskType.I_CASO, externalId } },
+      create: { type: TaskType.I_CASO, externalId, title },
+      update: { title },
+    })
+    workItemIds.push(workItem.id)
+
+    const existing = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
+    if (!existing) {
+      await prisma.incidence.create({
         data: {
-          type: TaskType.I_CASO,
-          externalId,
-          title: iCasosTitles[i],
+          externalWorkItemId: workItem.id,
+          title,
           comment: `Incidencia I_CASO #${i + 1}`,
           status: TaskStatus.TODO,
           priority: Priority.MEDIUM,
           technologyId: sisaTech.id,
-          tracklistId: tracklist?.id,
           estimatedTime: 8,
         },
       })
-      console.log(`Created I_CASO incidence: ${iCasosTitles[i]} (externalId: ${externalId})`)
+      console.log(`Created I_CASO incidence: ${title} (externalId: ${externalId})`)
     }
+  }
+
+  if (tracklist && workItemIds.length > 0) {
+    await prisma.tracklist.update({
+      where: { id: tracklist.id },
+      data: { externalWorkItems: { connect: workItemIds.map(id => ({ id })) } },
+    })
   }
 
   for (let i = 0; i < 5; i++) {
     const externalId = 4000 + i
-    
-    let incidence = await prisma.incidence.findUnique({
+    const title = `Caso de prueba ${i + 1}`
+
+    const workItem = await prisma.externalWorkItem.upsert({
       where: { type_externalId: { type: TaskType.I_CASO, externalId } },
+      create: { type: TaskType.I_CASO, externalId, title },
+      update: { title },
     })
 
-    if (!incidence) {
+    const existing = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
+    if (!existing) {
       await prisma.incidence.create({
         data: {
-          type: TaskType.I_CASO,
-          externalId,
-          title: `Caso de prueba ${i + 1}`,
+          externalWorkItemId: workItem.id,
+          title,
           comment: `Incidencia I_CASO de prueba #${i + 1}`,
           status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
           priority: Priority.LOW,
@@ -499,7 +527,7 @@ async function createICasoIncidences() {
           estimatedTime: 4,
         },
       })
-      console.log(`Created I_CASO incidence: Caso de prueba ${i + 1} (externalId: ${externalId})`)
+      console.log(`Created I_CASO incidence: ${title} (externalId: ${externalId})`)
     }
   }
 

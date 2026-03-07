@@ -157,8 +157,8 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
                 {/* Header: ID + Priority */}
                 <div className="flex items-center justify-between">
                     <IncidenceBadge
-                        type={task.type}
-                        externalId={task.externalId}
+                        type={task.externalWorkItem?.type ?? ''}
+                        externalId={task.externalWorkItem?.externalId ?? ''}
                         className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight flex-shrink-0"
                     />
                     <div className="flex items-center gap-1">
@@ -341,7 +341,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
             <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
                 <DialogHeader>
                     <DialogTitle>
-                        Completar Incidencia {task.type} {task.externalId}
+                        Completar Incidencia {task.externalWorkItem?.type ?? ''} {task.externalWorkItem?.externalId ?? ''}
                     </DialogTitle>
                     <DialogDescription>
                         {task.title}

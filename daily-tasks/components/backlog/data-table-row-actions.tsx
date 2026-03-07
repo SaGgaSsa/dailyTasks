@@ -158,7 +158,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>
-              Completar Incidencia {task.type} {task.externalId}
+              Completar Incidencia {task.externalWorkItem?.type ?? ''} {task.externalWorkItem?.externalId ?? ''}
             </DialogTitle>
             <DialogDescription>
               {task.title}

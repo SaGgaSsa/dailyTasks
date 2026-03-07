@@ -113,7 +113,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                 <div className="pt-6 pr-6">
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Trámite</span>
-                        <IncidenceBadge type={incidence.type} externalId={incidence.externalId} />
+                        <IncidenceBadge type={incidence.externalWorkItem?.type ?? ''} externalId={incidence.externalWorkItem?.externalId ?? ''} />
                     </div>
 
                     <div className="flex justify-between items-center py-2">

@@ -15,12 +15,12 @@ export default async function TracklistDetailPage({ params }: Props) {
   const [currentTracklist, tickets, allTracklists, assignableUsers] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      select: { 
-        id: true, 
-        title: true, 
-        description: true, 
+      select: {
+        id: true,
+        title: true,
+        description: true,
         dueDate: true,
-        incidences: { 
+        externalWorkItems: {
           select: { id: true, externalId: true, type: true, title: true }
         }
       }
@@ -30,7 +30,7 @@ export default async function TracklistDetailPage({ params }: Props) {
       include: {
         reportedBy: { select: { id: true, name: true, username: true } },
         assignedTo: { select: { id: true, name: true, username: true } },
-        incidence: { select: { id: true, type: true, externalId: true } },
+        externalWorkItem: { select: { id: true, type: true, externalId: true } },
         dismissedBy: { select: { id: true, name: true, username: true } }
       }
     }).then(sortTicketsByPriorityAndNumber),
@@ -56,7 +56,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         currentId={numericId}
         assignableUsers={assignableUsers}
         currentTracklist={currentTracklist}
-        incidences={currentTracklist.incidences}
+        externalWorkItems={currentTracklist.externalWorkItems}
         initialTickets={tickets}
       />
     </div>

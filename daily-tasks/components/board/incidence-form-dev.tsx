@@ -56,8 +56,8 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
     const [description, setDescription] = useState('')
     const [originalDescription, setOriginalDescription] = useState('')
 
-    const tramiteNumber = initialData
-        ? `${initialData.type} ${initialData.externalId}`
+    const tramiteNumber = initialData?.externalWorkItem
+        ? `${initialData.externalWorkItem.type} ${initialData.externalWorkItem.externalId}`
         : 'Trámite'
 
     const title = isKanban && initialData

@@ -89,9 +89,9 @@ export function IncidenceDetailClient({
         <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-4rem)]">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <IncidenceBadge 
-                        type={incidenceData.type} 
-                        externalId={incidenceData.externalId}
+                    <IncidenceBadge
+                        type={incidenceData.externalWorkItem?.type ?? ''}
+                        externalId={incidenceData.externalWorkItem?.externalId ?? ''}
                         className="text-sm font-medium"
                     />
                     <PriorityBadge priority={incidenceData.priority} className="text-sm" />

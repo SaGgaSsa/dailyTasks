@@ -1,10 +1,10 @@
-import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma } from '@prisma/client'
+import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem } from '@prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
 export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology }
-export type { SubTask, Attachment, IncidencePage }
+export type { SubTask, Attachment, IncidencePage, ExternalWorkItem }
 
 export type ModuleWithTech = ModulePrisma & { technology: Technology }
 
@@ -26,12 +26,12 @@ export type IncidencePageWithAuthor = IncidencePage & {
   author: User
 }
 
-export type IncidenceWithDetails = Omit<Incidence, 'status' | 'type' | 'technology' | 'priority' | 'position'> & {
+export type IncidenceWithDetails = Omit<Incidence, 'status' | 'technology' | 'priority' | 'position'> & {
   status: TaskStatus
-  type: TaskType
   technology: Technology
   priority: Priority
   position: number
+  externalWorkItem: ExternalWorkItem
   assignments: AssignmentWithDetails[]
   attachments: AttachmentWithDetails[]
   pages: IncidencePageWithAuthor[]
@@ -45,7 +45,7 @@ export type TracklistWithDetails = Tracklist & {
 export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
-  incidence: Pick<Incidence, 'id' | 'type' | 'externalId'> | null
+  externalWorkItem: Pick<ExternalWorkItem, 'id' | 'type' | 'externalId'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   hasUnreadUpdates: boolean
 }
@@ -78,10 +78,9 @@ const ticketSchemaBase = z.object({
   module: z.enum(MODULE_NAMES),
   description: z.string().min(1, 'Descripción requerida').max(500, 'Máximo 500 caracteres'),
   priority: z.nativeEnum(Priority),
-  tramite: z.string().max(50, 'Máximo 50 caracteres').optional(),
+  externalWorkItemId: z.number().optional(),
   observations: z.string().max(1000, 'Máximo 1000 caracteres').optional(),
   assignedToId: z.number().optional(),
-  incidenceId: z.number().optional(),
 })
 
 export const createTicketSchema = ticketSchemaBase

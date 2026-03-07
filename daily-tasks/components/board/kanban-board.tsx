@@ -74,7 +74,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             const matchesSearch = searchQuery === '' ||
                 task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                `${task.type} ${task.externalId}`.toLowerCase().includes(searchQuery.toLowerCase())
+                `${task.externalWorkItem?.type ?? ''} ${task.externalWorkItem?.externalId ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology?.name)
 
@@ -279,8 +279,8 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
-                type={selectedTask?.type}
-                externalId={selectedTask?.externalId}
+                type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
+                externalId={selectedTask?.externalWorkItem?.externalId}
                 onTaskUpdate={handleTaskUpdate}
                 isDev={isDev}
                 isKanban={true}
