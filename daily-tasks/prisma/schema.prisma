@@ -76,6 +76,7 @@ enum Priority {
   LOW
   MEDIUM
   HIGH
+  BLOQUEANTE
 }
 
 enum AttachmentType {

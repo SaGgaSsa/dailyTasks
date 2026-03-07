@@ -55,6 +55,7 @@ const typeOptions = [
 ]
 
 const priorityOptions = [
+    { value: Priority.BLOQUEANTE, label: 'Bloqueante' },
     { value: Priority.HIGH, label: 'Alta' },
     { value: Priority.MEDIUM, label: 'Media' },
     { value: Priority.LOW, label: 'Baja' },

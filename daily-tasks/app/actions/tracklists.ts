@@ -57,7 +57,7 @@ const PRIORITY_MAP: Record<string, PrismaPriority> = {
     LOW: 'LOW',
     MEDIUM: 'MEDIUM',
     HIGH: 'HIGH',
-    BLOQUEANTE: 'HIGH',
+    BLOQUEANTE: 'BLOQUEANTE',
 }
 
 async function runAssignmentTransaction(
@@ -103,7 +103,7 @@ async function runAssignmentTransaction(
                     title,
                     technologyId: moduleRecord.technologyId,
                     priority: incidencePriority,
-                    status: TaskStatus.BACKLOG,
+                    status: TaskStatus.TODO,
                 },
             })
 
