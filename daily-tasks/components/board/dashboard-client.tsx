@@ -141,6 +141,11 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         router.refresh()
     }, [router])
 
+    const handleKanbanCardClick = useCallback((task: IncidenceWithDetails) => {
+        setSelectedTask(task)
+        setIsSheetOpen(true)
+    }, [])
+
     const handleResetKanbanFilters = useCallback(() => {
         updateTech([])
         updateAssignee([])
@@ -359,6 +364,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         kanbanOnlyMyAssignments={params.mine || false}
                         onResetFilters={handleResetKanbanFilters}
                         isDev={false}
+                        onCardClick={handleKanbanCardClick}
                     />
                 )}
             </div>
