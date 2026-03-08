@@ -230,8 +230,21 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         kanbanOnlyMyAssignments={false}
                         onResetFilters={handleResetKanbanFilters}
                         isDev={true}
+                        onCardClick={handleKanbanCardClick}
                     />
                 </div>
+                <IncidenceForm
+                    open={isSheetOpen}
+                    onOpenChange={(open) => {
+                        setIsSheetOpen(open)
+                        if (!open) setSelectedTask(null)
+                    }}
+                    initialData={selectedTask}
+                    type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
+                    externalId={selectedTask?.externalWorkItem?.externalId}
+                    onTaskUpdate={handleTaskUpdate}
+                    isDev={true}
+                />
             </div>
         )
     }
