@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard,
+  Layers,
   BookOpen,
   Users,
   Settings,
@@ -79,7 +79,7 @@ export function Sidebar({ userId }: SidebarProps) {
               variant="ghost"
               className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
             >
-              <LayoutDashboard className="h-4 w-4" />
+              <Layers className="h-4 w-4" />
               {isOpen && <span>{t.incidences.title}</span>}
             </Button>
           </Link>

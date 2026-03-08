@@ -105,6 +105,13 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             update: { title: data.title },
         })
 
+        const existingIncidence = await db.incidence.findFirst({
+            where: { externalWorkItemId: workItem.id },
+        })
+        if (existingIncidence) {
+            return { success: false, error: t(locale, 'business.alreadyExists') }
+        }
+
         await db.incidence.create({
             data: {
                 externalWorkItemId: workItem.id,

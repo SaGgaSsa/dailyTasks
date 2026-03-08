@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
-import { LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
+import { SquircleDashed, LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -269,7 +269,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
 
                     {view === 'BACKLOG' && (
                         <FilterDropdown
-                            icon={<LayoutDashboard className="h-4 w-4" />}
+                            icon={<SquircleDashed className="h-4 w-4" />}
                             label="Estado"
                             options={statusOptions}
                             selectedValues={params.status || []}

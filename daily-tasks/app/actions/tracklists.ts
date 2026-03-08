@@ -94,27 +94,15 @@ async function runAssignmentTransaction(
         const title = workItem.title || `${titlePrefix} – ${workItem.type} ${workItem.externalId}`
 
         await db.$transaction(async (tx) => {
-            const existingIncidence = await tx.incidence.findFirst({
-                where: { externalWorkItemId: workItem!.id },
+            const newIncidence = await tx.incidence.create({
+                data: {
+                    externalWorkItemId: workItem!.id,
+                    title,
+                    technologyId: ticket.module.technologyId,
+                    priority: incidencePriority,
+                    status: TaskStatus.BACKLOG,
+                },
             })
-
-            let newIncidence
-            if (existingIncidence) {
-                newIncidence = await tx.incidence.update({
-                    where: { id: existingIncidence.id },
-                    data: { technologyId: ticket.module.technologyId },
-                })
-            } else {
-                newIncidence = await tx.incidence.create({
-                    data: {
-                        externalWorkItemId: workItem!.id,
-                        title,
-                        technologyId: ticket.module.technologyId,
-                        priority: incidencePriority,
-                        status: TaskStatus.TODO,
-                    },
-                })
-            }
 
             const assignment = await tx.assignment.upsert({
                 where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },

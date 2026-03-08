@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ListTodo, LayoutDashboard, BrainCircuit, User } from 'lucide-react'
+import { ListTodo, SquircleDashed, LayoutDashboard, BrainCircuit, User } from 'lucide-react'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -42,7 +42,7 @@ export function TracklistHeader({ currentId, assignableUsers, view, onViewChange
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
           <FilterDropdown
-            icon={<LayoutDashboard className="h-4 w-4" />}
+            icon={<SquircleDashed className="h-4 w-4" />}
             label="Estado"
             options={TICKET_STATUS_OPTIONS}
             selectedValues={selectedStatus}
