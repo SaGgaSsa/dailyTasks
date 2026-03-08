@@ -19,35 +19,6 @@ export default auth((req) => {
     if (!isLoggedIn) return NextResponse.redirect(new URL("/auth/login", req.nextUrl))
   }
   
-  // Redirección de tracklists al último visitado
-  if (pathname === '/tracklists') {
-    // Si viene con ?invalid=1, borrar cookie y redirigir limpio
-    if (req.nextUrl.searchParams.get('invalid') === '1') {
-      const response = NextResponse.redirect(new URL('/tracklists', req.nextUrl))
-      response.cookies.delete('last_tracklist_id')
-      return response
-    }
-
-    const lastTracklistId = req.cookies.get('last_tracklist_id')?.value
-
-    if (lastTracklistId) {
-      return NextResponse.redirect(new URL(`/tracklists/${lastTracklistId}`, req.nextUrl))
-    }
-  }
-
-  // Actualizar cookie cuando visita un tracklist específico
-  const tracklistMatch = pathname.match(/^\/tracklists\/(\d+)$/)
-  if (tracklistMatch) {
-    const tracklistId = tracklistMatch[1]
-    const response = NextResponse.next()
-    response.cookies.set('last_tracklist_id', tracklistId, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-    })
-    return response
-  }
-  
   return // Deja pasar
 })
 

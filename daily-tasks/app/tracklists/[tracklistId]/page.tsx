@@ -31,7 +31,7 @@ export default async function TracklistDetailPage({ params }: Props) {
   ])
 
   if (!currentTracklist) {
-    redirect('/tracklists?invalid=1')
+    redirect('/tracklists')
   }
 
   return (
