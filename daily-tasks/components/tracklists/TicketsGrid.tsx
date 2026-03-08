@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Inbox, User, MoreVertical, Eye, BarChart3, Ban } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Inbox, User, MoreVertical, Eye, BarChart3, Ban, ExternalLink } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -37,6 +38,7 @@ function getTicketStatusLabel(status: keyof typeof TICKET_QA_STATUS_LABELS | str
 }
 
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
+  const router = useRouter()
   const [dismissTarget, setDismissTarget] = useState<{ ticketId: number; tracklistId: number } | null>(null)
   const [openTicketId, setOpenTicketId] = useState<number | null>(null)
 
@@ -136,6 +138,12 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                           <Eye className="mr-2 h-4 w-4" />
                           Ver ticket
                         </DropdownMenuItem>
+                        {ticket.incidenceId && (
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/incidences/${ticket.incidenceId}`)}>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Ver Incidencia
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem disabled>
                           <BarChart3 className="mr-2 h-4 w-4" />
                           Ver Métricas

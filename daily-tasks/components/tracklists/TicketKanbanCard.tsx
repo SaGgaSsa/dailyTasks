@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { EllipsisVertical, Eye, BarChart3, Ban } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { EllipsisVertical, Eye, BarChart3, Ban, ExternalLink } from 'lucide-react'
 import { TicketQAWithDetails } from '@/types'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function TicketKanbanCard({ ticket, assignableUsers }: Props) {
+  const router = useRouter()
   const [dismissOpen, setDismissOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
 
@@ -55,6 +57,12 @@ export function TicketKanbanCard({ ticket, assignableUsers }: Props) {
                 <Eye className="mr-2 h-4 w-4" />
                 Ver ticket
               </DropdownMenuItem>
+              {ticket.incidenceId && (
+                <DropdownMenuItem onClick={() => router.push(`/dashboard/incidences/${ticket.incidenceId}`)}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Ver Incidencia
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem disabled>
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Ver Métricas
