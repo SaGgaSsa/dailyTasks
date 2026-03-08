@@ -481,3 +481,23 @@ export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
         return { success: false, error: t(locale, 'errors.fetchError') } as const
     }
 }
+
+export async function completeTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') } as const
+    }
+
+    try {
+        await db.ticketQA.update({
+            where: { id: ticketId },
+            data: { status: TicketQAStatus.COMPLETED },
+        })
+        revalidatePath('/tracklists')
+        revalidatePath(`/tracklists/${tracklistId}`)
+        return { success: true } as const
+    } catch (error) {
+        console.error('Error completing ticket:', error)
+        return { success: false, error: 'Error al completar el ticket' } as const
+    }
+}
