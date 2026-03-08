@@ -489,6 +489,13 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
     }
 
     try {
+        const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' } as const
+        }
+        if (ticket.status !== TicketQAStatus.TEST) {
+            return { success: false, error: 'Solo se pueden completar tickets en estado Test' } as const
+        }
         await db.ticketQA.update({
             where: { id: ticketId },
             data: { status: TicketQAStatus.COMPLETED },
@@ -498,6 +505,6 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
         return { success: true } as const
     } catch (error) {
         console.error('Error completing ticket:', error)
-        return { success: false, error: 'Error al completar el ticket' } as const
+        return { success: false, error: t(locale, 'errors.saveError') } as const
     }
 }
