@@ -1,10 +1,14 @@
-import { ClipboardList } from 'lucide-react'
+import { getAllTracklistsWithTickets } from '@/app/actions/tracklists'
+import { getCachedAssignableUsers } from '@/app/actions/user-actions'
+import { AllTracklistsView } from './_components/all-tracklists-view'
 
-export default function TracklistsPage() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-      <ClipboardList className="h-10 w-10 opacity-30" />
-      <p className="text-sm">Selecciona o crea un Tracklist desde el menú lateral</p>
-    </div>
-  )
+export default async function TracklistsPage() {
+  const [tracklistsResult, assignableUsers] = await Promise.all([
+    getAllTracklistsWithTickets(),
+    getCachedAssignableUsers(),
+  ])
+
+  const tracklists = tracklistsResult.success && tracklistsResult.data ? tracklistsResult.data : []
+
+  return <AllTracklistsView tracklists={tracklists} assignableUsers={assignableUsers} />
 }
