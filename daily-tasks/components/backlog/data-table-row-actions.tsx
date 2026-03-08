@@ -126,15 +126,18 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <Eye className="mr-2 h-4 w-4" />
             Ver Incidencia
           </DropdownMenuItem>
-          
+
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation()
+            router.push(`/dashboard/incidences/${task.id}#pages`)
+          }}>
+            <FileText className="mr-2 h-4 w-4" />
+            Ver Páginas
+          </DropdownMenuItem>
+
           <DropdownMenuItem disabled onClick={(e) => e.stopPropagation()}>
             <BarChart3 className="mr-2 h-4 w-4" />
             Ver Métricas
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem disabled onClick={(e) => e.stopPropagation()}>
-            <FileText className="mr-2 h-4 w-4" />
-            Ver Páginas
           </DropdownMenuItem>
           
           <DropdownMenuSeparator />
