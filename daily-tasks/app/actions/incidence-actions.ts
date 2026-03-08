@@ -3,11 +3,30 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority as PrismaPriority, TaskStatus, TaskType } from '@prisma/client'
+import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus } from '@prisma/client'
 import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
+
+async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
+    const targetTicketStatus =
+        newStatus === TaskStatus.REVIEW
+            ? TicketQAStatus.TEST
+            : newStatus === TaskStatus.TODO || newStatus === TaskStatus.IN_PROGRESS
+                ? TicketQAStatus.IN_DEVELOPMENT
+                : null
+
+    if (!targetTicketStatus) return
+
+    await db.ticketQA.updateMany({
+        where: {
+            incidenceId,
+            status: { notIn: [TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED] }
+        },
+        data: { status: targetTicketStatus }
+    })
+}
 
 const getIncidenceCached = cache(async (id: number) => {
     return db.incidence.findUnique({
@@ -432,7 +451,10 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             data: { hasUnreadUpdates: true },
         })
 
+        await syncLinkedTickets(incidenceId, newStatus)
+
         revalidatePath('/dashboard')
+        revalidatePath('/tracklists')
         return { success: true }
     } catch (error) {
         console.error('Error updating status:', error)
@@ -685,6 +707,9 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
                             status: isBacklogToTodo ? TaskStatus.TODO : TaskStatus.BACKLOG
                         }
                     })
+                    if (isBacklogToTodo) {
+                        await syncLinkedTickets(id, TaskStatus.TODO)
+                    }
                 }
             }
         }
@@ -707,6 +732,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
         })
 
         revalidatePath('/dashboard')
+        revalidatePath('/tracklists')
         return { success: true, data: finalIncidence as IncidenceWithDetails }
     } catch (error) {
         console.error('Error updating incidence:', error)
@@ -794,16 +820,28 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                     }
                 })
                 reopened = true
+            } else if (currentStatus === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: assignment.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS }
+                })
             }
 
             return { subTask, reopened }
         })
 
+        // Sync linked tickets for reopening (DONE → IN_PROGRESS) and TODO → IN_PROGRESS transitions
+        if (result.reopened) {
+            await syncLinkedTickets(assignment.incidenceId, TaskStatus.IN_PROGRESS)
+        } else if (currentStatus === TaskStatus.TODO) {
+            await syncLinkedTickets(assignment.incidenceId, TaskStatus.IN_PROGRESS)
+        }
+
         // Check if all tasks are completed and auto-transition to REVIEW
         let autoTransitionedToReview = false
         let message = result.reopened ? 'Incidencia reabierta automáticamente' : 'Tarea creada'
 
-        if (isCompleted && currentStatus === TaskStatus.IN_PROGRESS) {
+        if (isCompleted && (currentStatus === TaskStatus.IN_PROGRESS || currentStatus === TaskStatus.TODO)) {
             const allSubTasks = await db.subTask.findMany({
                 where: {
                     assignment: {
@@ -819,12 +857,14 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                     where: { id: assignment.incidenceId },
                     data: { status: TaskStatus.REVIEW }
                 })
+                await syncLinkedTickets(assignment.incidenceId, TaskStatus.REVIEW)
                 autoTransitionedToReview = true
                 message = '¡Todas las tareas completadas! La incidencia pasó a revisión'
             }
         }
 
         revalidatePath('/dashboard')
+        revalidatePath('/tracklists')
         return {
             success: true,
             data: result.subTask,
@@ -883,7 +923,15 @@ export async function toggleSubTask(subTaskId: number) {
         let autoTransitionedToInProgress = false
         let message = 'Tarea actualizada'
 
-        if (newCompletionStatus && currentStatus === TaskStatus.IN_PROGRESS) {
+        if (newCompletionStatus && (currentStatus === TaskStatus.IN_PROGRESS || currentStatus === TaskStatus.TODO)) {
+            // If coming from TODO, first transition to IN_PROGRESS
+            if (currentStatus === TaskStatus.TODO) {
+                await db.incidence.update({
+                    where: { id: subTask.assignment.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS }
+                })
+                await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.IN_PROGRESS)
+            }
             // Transition to REVIEW when all tasks are completed
             const allSubTasks = await db.subTask.findMany({
                 where: {
@@ -900,6 +948,7 @@ export async function toggleSubTask(subTaskId: number) {
                     where: { id: subTask.assignment.incidenceId },
                     data: { status: TaskStatus.REVIEW }
                 })
+                await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.REVIEW)
                 autoTransitionedToReview = true
                 message = '¡Todas las tareas completadas! La incidencia pasó a revisión'
             }
@@ -909,11 +958,13 @@ export async function toggleSubTask(subTaskId: number) {
                 where: { id: subTask.assignment.incidenceId },
                 data: { status: TaskStatus.IN_PROGRESS }
             })
+            await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.IN_PROGRESS)
             autoTransitionedToInProgress = true
             message = 'Incidencia regresada a progreso'
         }
 
         revalidatePath('/dashboard')
+        revalidatePath('/tracklists')
         return {
             success: true,
             message,
