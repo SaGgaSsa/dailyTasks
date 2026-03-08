@@ -21,6 +21,8 @@ import {
 import { DismissTicketDialog } from './DismissTicketDialog'
 import { TicketDetailModal } from './TicketDetailModal'
 
+
+
 interface TicketsGridProps {
   initialTickets: TicketQAWithDetails[]
   assignableUsers: AssignableUser[]
@@ -91,7 +93,7 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                     </div>
                   </TableCell>
                   <TableCell className="w-24 px-2 py-3 text-center">{getTicketTypeLabel(ticket.type)}</TableCell>
-                  <TableCell className="w-20 px-2 py-3">{ticket.module}</TableCell>
+                  <TableCell className="w-20 px-2 py-3">{ticket.module.name}</TableCell>
                   <TableCell className="w-auto min-w-0 px-2 py-3">
                     <div className="flex-1 min-w-0 truncate" title={ticket.description}>
                       {ticket.description}

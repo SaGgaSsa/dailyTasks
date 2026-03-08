@@ -8,7 +8,7 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TaskType } from '@/types/enums'
-import { TaskStatus } from '@prisma/client'
+import { TaskStatus, Priority as PrismaPriority } from '@prisma/client'
 
 interface CreateTracklistData {
     title: string
@@ -27,12 +27,19 @@ interface UpdateTracklistData {
 
 interface CreateTicketData {
     type: TicketType
-    module: string
+    moduleId: number
     description: string
     priority: Priority
     externalWorkItemId?: number
     observations?: string
     assignedToId?: number
+}
+
+const PRIORITY_MAP: Record<string, PrismaPriority> = {
+    LOW: 'LOW',
+    MEDIUM: 'MEDIUM',
+    HIGH: 'HIGH',
+    BLOCKER: 'BLOCKER',
 }
 
 const TICKET_TYPE_TO_TASK_TYPE: Record<TicketType, TaskType> = {
@@ -60,13 +67,13 @@ async function runAssignmentTransaction(
     tracklistId: number
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const ticket = await db.ticketQA.findUnique({ where: { id: ticketId } })
+        const ticket = await db.ticketQA.findUnique({
+            where: { id: ticketId },
+            include: { module: { select: { id: true, name: true, slug: true, technologyId: true } } },
+        })
         if (!ticket) return { success: false, error: 'Ticket no encontrado' }
 
-        const moduleRecord = await db.module.findUnique({ where: { slug: ticket.module.toLowerCase() } })
-        if (!moduleRecord) return { success: false, error: 'Módulo no encontrado' }
-
-        const incidencePriority = ticket.priority
+        const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
         const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
         const subTaskTitle = TICKET_TYPE_SUBTASK_TITLE[ticket.type as TicketType]
 
@@ -91,15 +98,23 @@ async function runAssignmentTransaction(
                 where: { externalWorkItemId: workItem!.id },
             })
 
-            const newIncidence = existingIncidence ?? await tx.incidence.create({
-                data: {
-                    externalWorkItemId: workItem!.id,
-                    title,
-                    technologyId: moduleRecord.technologyId,
-                    priority: incidencePriority,
-                    status: TaskStatus.TODO,
-                },
-            })
+            let newIncidence
+            if (existingIncidence) {
+                newIncidence = await tx.incidence.update({
+                    where: { id: existingIncidence.id },
+                    data: { technologyId: ticket.module.technologyId },
+                })
+            } else {
+                newIncidence = await tx.incidence.create({
+                    data: {
+                        externalWorkItemId: workItem!.id,
+                        title,
+                        technologyId: ticket.module.technologyId,
+                        priority: incidencePriority,
+                        status: TaskStatus.TODO,
+                    },
+                })
+            }
 
             const assignment = await tx.assignment.upsert({
                 where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
@@ -281,7 +296,8 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
                 reportedBy: { select: { id: true, name: true, username: true } },
                 assignedTo: { select: { id: true, name: true, username: true } },
                 externalWorkItem: { select: { id: true, type: true, externalId: true } },
-                dismissedBy: { select: { id: true, name: true, username: true } }
+                dismissedBy: { select: { id: true, name: true, username: true } },
+                module: { select: { id: true, name: true, slug: true } },
             }
         })
         const sorted = sortTicketsByPriorityAndNumber(tickets)
@@ -305,11 +321,6 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
     }
 
     try {
-        const moduleExists = await db.module.findUnique({ where: { slug: data.module.toLowerCase() } })
-        if (!moduleExists) {
-            return { success: false, error: 'Módulo no encontrado' }
-        }
-
         const sessionUserId = Number(session.user.id)
         const sessionUser = await db.user.findUnique({
             where: { id: sessionUserId }
@@ -330,7 +341,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                 tracklistId: tracklistId,
                 ticketNumber: nextTicketNumber,
                 type: data.type,
-                module: data.module,
+                moduleId: data.moduleId,
                 description: data.description,
                 priority: data.priority,
                 externalWorkItemId: data.externalWorkItemId,
@@ -391,6 +402,19 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
     } catch (error) {
         console.error('Error dismissing ticket:', error)
         return { success: false, error: t(locale, 'errors.saveError') }
+    }
+}
+
+export async function deleteTracklist(id: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    try {
+        await db.tracklist.delete({ where: { id } })
+        revalidatePath('/tracklists')
+        return { success: true }
+    } catch (error) {
+        console.error('Error deleting tracklist:', error)
+        return { success: false, error: 'Error al eliminar el tracklist' }
     }
 }
 

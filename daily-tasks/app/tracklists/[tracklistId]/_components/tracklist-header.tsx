@@ -1,91 +1,70 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
-} from '@/components/ui/select'
-import { PlusIcon, PencilIcon, ListTodo, LayoutDashboard } from 'lucide-react'
-import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
+import { ListTodo, LayoutDashboard, BrainCircuit, User } from 'lucide-react'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AssignableUser } from '@/app/actions/user-actions'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { TICKET_QA_STATUS_LABELS } from '@/types/enums'
 
-interface TracklistExternalWorkItem {
-  id: number
-  type: string
-  externalId: number
-  title: string | null
-}
-
-interface TracklistData {
-  id: number
-  title: string
-  description: string | null
-  dueDate: Date | null
-  externalWorkItems: TracklistExternalWorkItem[]
-}
+const TICKET_STATUS_OPTIONS = Object.entries(TICKET_QA_STATUS_LABELS).map(
+  ([value, label]) => ({ value, label })
+)
+const TECH_OPTIONS = [
+  { value: 'SISA', label: 'SISA' },
+  { value: 'WEB', label: 'WEB' },
+  { value: 'ANDROID', label: 'ANDROID' },
+  { value: 'ANGULAR', label: 'ANGULAR' },
+  { value: 'SPRING', label: 'SPRING' },
+]
 
 interface Props {
-  tracklists: { id: number; title: string }[]
   currentId: number
   assignableUsers: AssignableUser[]
-  currentTracklist?: TracklistData
-  externalWorkItems: TracklistExternalWorkItem[]
   view: 'list' | 'kanban'
   onViewChange: (v: 'list' | 'kanban') => void
+  selectedStatus: string[]
+  onStatusChange: (v: string[]) => void
+  selectedUser: string[]
+  onUserChange: (v: string[]) => void
+  selectedTech: string[]
+  onTechChange: (v: string[]) => void
 }
 
-export function TracklistHeader({ tracklists, currentId, assignableUsers, currentTracklist, externalWorkItems, view, onViewChange }: Props) {
-  const router = useRouter()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
+export function TracklistHeader({ currentId, assignableUsers, view, onViewChange, selectedStatus, onStatusChange, selectedUser, onUserChange, selectedTech, onTechChange }: Props) {
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false)
-
-  const handleValueChange = (value: string) => {
-    if (value === 'new') {
-      setIsEditMode(false)
-      setIsDialogOpen(true)
-    } else {
-      router.push(`/tracklists/${value}`)
-    }
-  }
-
-  const handleEdit = () => {
-    setIsEditMode(true)
-    setIsDialogOpen(true)
-  }
 
   return (
     <>
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
-          <Select
-            value={currentId.toString()}
-            onValueChange={handleValueChange}
-          >
-            <SelectTrigger className="w-[300px]">
-              <SelectValue placeholder="Seleccionar Tracklist" />
-            </SelectTrigger>
-            <SelectContent side="bottom">
-              {tracklists.map(tracklist => (
-                <SelectItem key={tracklist.id} value={tracklist.id.toString()}>
-                  {tracklist.title}
-                </SelectItem>
-              ))}
-              <SelectItem value="new" className="font-medium">
-                <PlusIcon className="w-4 h-4 mr-2 inline" />
-                Nuevo Tracklist
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {currentTracklist && (
-            <Button variant="ghost" size="icon" onClick={handleEdit}>
-              <PencilIcon className="w-4 h-4" />
-            </Button>
-          )}
+          <FilterDropdown
+            icon={<LayoutDashboard className="h-4 w-4" />}
+            label="Estado"
+            options={TICKET_STATUS_OPTIONS}
+            selectedValues={selectedStatus}
+            allValues={TICKET_STATUS_OPTIONS.map(o => o.value)}
+            onValuesChange={onStatusChange}
+          />
+          <FilterDropdown
+            icon={<User className="h-4 w-4" />}
+            label="Usuario"
+            options={assignableUsers.map(u => ({ value: String(u.id), label: u.name || u.username }))}
+            selectedValues={selectedUser}
+            allValues={assignableUsers.map(u => String(u.id))}
+            onValuesChange={onUserChange}
+          />
+          <FilterDropdown
+            icon={<BrainCircuit className="h-4 w-4" />}
+            label="Tecnología"
+            options={TECH_OPTIONS}
+            selectedValues={selectedTech}
+            allValues={TECH_OPTIONS.map(o => o.value)}
+            onValuesChange={onTechChange}
+          />
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -106,12 +85,6 @@ export function TracklistHeader({ tracklists, currentId, assignableUsers, curren
           </Tabs>
         </div>
       </div>
-      <CreateTracklistDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        tracklist={isEditMode && currentTracklist ? currentTracklist : undefined}
-        externalWorkItems={externalWorkItems}
-      />
       <CreateTicketDialog
         tracklistId={currentId}
         assignableUsers={assignableUsers}

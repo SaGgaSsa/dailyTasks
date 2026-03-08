@@ -75,7 +75,7 @@ export function TicketKanbanCard({ ticket, assignableUsers }: Props) {
       <Separator />
       <div className="flex items-center justify-between gap-2">
         <Badge variant="outline" className="text-xs font-normal">
-          {ticket.module}
+          {ticket.module.name}
         </Badge>
         {ticket.assignedTo && (
           <UserAvatar username={ticket.assignedTo.username} size="sm" />

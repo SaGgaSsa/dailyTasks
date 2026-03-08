@@ -16,7 +16,7 @@ export enum Priority {
     LOW = "LOW",
     MEDIUM = "MEDIUM",
     HIGH = "HIGH",
-    BLOQUEANTE = "BLOQUEANTE",
+    BLOCKER = "BLOCKER",
 }
 
 export enum TicketType {

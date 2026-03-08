@@ -1,15 +1,10 @@
-import { redirect } from 'next/navigation'
-import { db } from '@/lib/db'
-import { TracklistsEmptyState } from './_components/tracklists-empty-state'
+import { ClipboardList } from 'lucide-react'
 
-export default async function TracklistsPage() {
-  const tracklist = await db.tracklist.findFirst({
-    orderBy: { createdAt: 'desc' },
-  })
-
-  if (!tracklist) {
-    return <TracklistsEmptyState />
-  }
-
-  redirect(`/tracklists/${tracklist.id}`)
+export default function TracklistsPage() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+      <ClipboardList className="h-10 w-10 opacity-30" />
+      <p className="text-sm">Selecciona o crea un Tracklist desde el menú lateral</p>
+    </div>
+  )
 }

@@ -21,6 +21,7 @@ import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
 import { usePageTitle } from '@/components/providers/page-title-provider'
+import { useTracklistTitle } from '@/components/providers/tracklist-title-provider'
 
 const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
 
@@ -33,6 +34,7 @@ export function Navbar() {
   const { locale, setLocale, t } = useI18n()
   const { incidenceTitle } = useIncidenceTitle()
   const { pageTitle } = usePageTitle()
+  const { tracklistTitle } = useTracklistTitle()
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
@@ -67,6 +69,7 @@ export function Navbar() {
     if (pathname === '/dashboard') return t.incidences.title
     if (pathname === '/analytics') return 'Métricas'
     if (pathname === '/dashboard/users') return 'Usuarios'
+    if (pathname.startsWith('/tracklists')) return 'Tracklists'
     return ''
   }
 
@@ -121,6 +124,16 @@ export function Navbar() {
                 </span>
               </>
             )}
+          </div>
+        ) : tracklistTitle ? (
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/tracklists" className="text-muted-foreground hover:text-foreground transition-colors">
+              Tracklists
+            </Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="text-foreground font-medium truncate max-w-[300px]">
+              {tracklistTitle}
+            </span>
           </div>
         ) : (
           <span className="text-sm font-medium text-foreground">

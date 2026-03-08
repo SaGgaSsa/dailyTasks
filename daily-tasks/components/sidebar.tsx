@@ -12,9 +12,9 @@ import {
   Settings,
   Terminal,
   BarChart3,
-  ClipboardList
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
+import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
 
 interface SidebarProps {
   userId?: string
@@ -94,15 +94,7 @@ export function Sidebar({ userId }: SidebarProps) {
             </Button>
           </Link>
 
-          <Link href="/tracklists">
-            <Button
-              variant="ghost"
-              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/tracklists' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
-            >
-              <ClipboardList className="h-4 w-4" />
-              {isOpen && <span>Tracklists</span>}
-            </Button>
-          </Link>
+          <TracklistSidebarSection isOpen={isOpen} />
 
           {/* Wiki Técnica - temporalmente oculto
           <Button

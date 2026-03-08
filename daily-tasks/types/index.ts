@@ -35,6 +35,7 @@ export type IncidenceWithDetails = Omit<Incidence, 'status' | 'technology' | 'pr
   assignments: AssignmentWithDetails[]
   attachments: AttachmentWithDetails[]
   pages: IncidencePageWithAuthor[]
+  qaTickets: { id: number }[]
 }
 
 export type TracklistWithDetails = Tracklist & {
@@ -47,6 +48,7 @@ export type TicketQAWithDetails = TicketQA & {
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
   externalWorkItem: Pick<ExternalWorkItem, 'id' | 'type' | 'externalId'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
+  module: Pick<ModulePrisma, 'id' | 'name' | 'slug'>
   hasUnreadUpdates: boolean
 }
 
@@ -71,11 +73,9 @@ export const updateUserSchema = createUserSchema.omit({ password: true })
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 
-const MODULE_NAMES = ['Serv', 'Comun', 'WkFlow', 'OBase', 'MyTasksApp', 'MobileLibrary', 'FormLibrary', 'MyTasks', 'Mobile', 'MyTasksServer', 'MobileServer'] as const
-
 const ticketSchemaBase = z.object({
   type: z.nativeEnum(TicketType),
-  module: z.enum(MODULE_NAMES),
+  moduleId: z.number().int().positive(),
   description: z.string().min(1, 'Descripción requerida').max(500, 'Máximo 500 caracteres'),
   priority: z.nativeEnum(Priority),
   externalWorkItemId: z.number().optional(),

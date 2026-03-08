@@ -135,7 +135,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setIsPending(true)
     const result = await createTicket(tracklistId, {
       type,
-      module: selectedModule?.name || '',
+      moduleId: selectedModule?.id || 0,
       description: description.trim(),
       priority,
       observations: observations.trim() || undefined,

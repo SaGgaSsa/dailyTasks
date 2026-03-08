@@ -1,55 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TracklistHeader } from './tracklist-header'
 import { TicketsGrid } from './tickets-grid'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
-
-interface TracklistExternalWorkItem {
-  id: number
-  type: string
-  externalId: number
-  title: string | null
-}
-
-interface TracklistData {
-  id: number
-  title: string
-  description: string | null
-  dueDate: Date | null
-  externalWorkItems: TracklistExternalWorkItem[]
-}
+import { useTracklistTitle } from '@/components/providers/tracklist-title-provider'
 
 interface Props {
-  tracklists: { id: number; title: string }[]
   currentId: number
+  title: string
   assignableUsers: AssignableUser[]
-  currentTracklist: TracklistData
-  externalWorkItems: TracklistExternalWorkItem[]
   initialTickets: TicketQAWithDetails[]
 }
 
 export function TracklistViewClient({
-  tracklists,
   currentId,
+  title,
   assignableUsers,
-  currentTracklist,
-  externalWorkItems,
   initialTickets,
 }: Props) {
+  const { setTracklistTitle } = useTracklistTitle()
+
+  useEffect(() => {
+    setTracklistTitle(title)
+    return () => setTracklistTitle(null)
+  }, [title])
+
   const [view, setView] = useState<'list' | 'kanban'>('list')
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([])
+  const [selectedUser, setSelectedUser] = useState<string[]>([])
+  const [selectedTech, setSelectedTech] = useState<string[]>([])
 
   return (
     <>
       <TracklistHeader
-        tracklists={tracklists}
         currentId={currentId}
         assignableUsers={assignableUsers}
-        currentTracklist={currentTracklist}
-        externalWorkItems={externalWorkItems}
         view={view}
         onViewChange={setView}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
+        selectedUser={selectedUser}
+        onUserChange={setSelectedUser}
+        selectedTech={selectedTech}
+        onTechChange={setSelectedTech}
       />
       <TicketsGrid
         initialTickets={initialTickets}

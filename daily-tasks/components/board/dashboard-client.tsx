@@ -249,15 +249,6 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         className="w-48"
                     />
 
-                    <FilterDropdown
-                        icon={<BrainCircuit className="h-4 w-4" />}
-                        label="Tecnología"
-                        options={TECH_OPTIONS}
-                        selectedValues={params.tech || []}
-                        allValues={TECH_OPTIONS.map(o => o.value)}
-                        onValuesChange={updateTech}
-                    />
-
                     {view === 'BACKLOG' && (
                         <FilterDropdown
                             icon={<LayoutDashboard className="h-4 w-4" />}
@@ -277,6 +268,15 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         selectedValues={params.assignee || []}
                         allValues={userOptions.map(opt => opt.value)}
                         onValuesChange={updateAssignee}
+                    />
+
+                    <FilterDropdown
+                        icon={<BrainCircuit className="h-4 w-4" />}
+                        label="Tecnología"
+                        options={TECH_OPTIONS}
+                        selectedValues={params.tech || []}
+                        allValues={TECH_OPTIONS.map(o => o.value)}
+                        onValuesChange={updateTech}
                     />
                 </div>
 

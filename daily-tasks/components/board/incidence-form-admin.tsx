@@ -26,14 +26,8 @@ import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@pri
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 
-const TECH_OPTIONS = [
-    { value: 'SISA', label: 'SISA' },
-    { value: 'WEB', label: 'WEB' },
-    { value: 'ANDROID', label: 'ANDROID' },
-    { value: 'ANGULAR', label: 'ANGULAR' },
-    { value: 'SPRING', label: 'SPRING' },
-]
 import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask, updateSubTaskTitle } from '@/app/actions/incidence-actions'
+import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
 
@@ -101,6 +95,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     })
 
     const [users, setUsers] = useState<User[]>([])
+    const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [newSubTask, setNewSubTask] = useState('')
@@ -125,6 +120,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
     const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
     const hasRequirements = isEditMode && hasHours && hasAssignees
+    const hasTicketRelation = isEditMode && (fullIncidenceData?.qaTickets?.length ?? 0) > 0
 
     const sortUsers = (userList: User[], assignedUserIds: Set<number>) => {
         const sortByRoleAndName = (a: User, b: User) => {
@@ -144,6 +140,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
     useEffect(() => {
         const fetchData = async () => {
+            if (open && techOptions.length === 0) {
+                const result = await getCachedTechsWithModules()
+                setTechOptions(result.techs.map(t => ({ value: t.name, label: t.name })))
+            }
             if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
                 setFormData({
@@ -782,6 +782,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     value={formData.priority}
                     onValueChange={(value) => updateFormData({ priority: value as Priority })}
                     options={PRIORITY_OPTIONS}
+                    disabled={hasTicketRelation}
                 />
 
                 <FormSelect
@@ -789,8 +790,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     label="Tecnología"
                     value={formData.technology}
                     onValueChange={(value) => updateFormData({ technology: value })}
-                    options={TECH_OPTIONS}
-                    disabled={hasRequirements}
+                    options={techOptions}
+                    disabled={hasTicketRelation}
                 />
 
                 <div className="space-y-2">

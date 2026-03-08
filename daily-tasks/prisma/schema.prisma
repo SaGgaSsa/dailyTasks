@@ -69,6 +69,8 @@ model Module {
   technology    Technology    @relation(fields: [technologyId], references: [id], onDelete: Cascade)
   isDefault     Boolean       @default(false)
 
+  ticketsQA     TicketQA[]
+
   @@map("modules")
 }
 
@@ -76,7 +78,7 @@ enum Priority {
   LOW
   MEDIUM
   HIGH
-  BLOQUEANTE
+  BLOCKER
 }
 
 enum AttachmentType {
@@ -229,9 +231,10 @@ model TicketQA {
   tracklistId         Int
   tracklist           Tracklist @relation(fields: [tracklistId], references: [id], onDelete: Cascade)
   type                TicketType
-  module              String
+  moduleId            Int
+  module              Module    @relation(fields: [moduleId], references: [id])
   description         String
-  priority            Priority   @default(MEDIUM)
+  priority            Priority
   externalWorkItemId  Int?
   externalWorkItem    ExternalWorkItem? @relation(fields: [externalWorkItemId], references: [id])
   reportedById        Int

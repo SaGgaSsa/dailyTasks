@@ -418,9 +418,13 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
     TicketQAStatus.COMPLETED,
     TicketQAStatus.DISMISSED,
   ]
-  const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH]
-  const modules = ['Serv', 'Comun', 'WkFlow', 'OBase']
+  const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH, Priority.BLOCKER]
+  const moduleSlugs = ['serv', 'comun', 'wkflow', 'obase']
   const types = [TicketType.BUG, TicketType.CAMBIO, TicketType.CONSULTA]
+
+  const moduleRecords = await Promise.all(
+    moduleSlugs.map(slug => prisma.module.findUnique({ where: { slug } }))
+  )
 
   const lastTicket = await prisma.ticketQA.findFirst({
     where: { tracklistId },
@@ -430,6 +434,11 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
 
   for (let i = 0; i < additionalTitles.length; i++) {
     ticketNumber++
+    const moduleRecord = moduleRecords[i % moduleRecords.length]
+    if (!moduleRecord) {
+      console.warn(`Module not found for slug ${moduleSlugs[i % moduleSlugs.length]}, skipping ticket`)
+      continue
+    }
     await prisma.ticketQA.upsert({
       where: { tracklistId_ticketNumber: { tracklistId, ticketNumber } },
       update: { priority: priorities[i % priorities.length] },
@@ -437,7 +446,7 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
         tracklistId,
         ticketNumber,
         type: types[i % types.length],
-        module: modules[i % modules.length],
+        moduleId: moduleRecord.id,
         description: additionalTitles[i],
         priority: priorities[i % priorities.length],
         reportedById: adminId,

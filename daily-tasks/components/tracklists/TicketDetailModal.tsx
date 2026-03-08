@@ -67,7 +67,7 @@ export function TicketDetailModal({ ticket, tracklistId, assignableUsers, open, 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Módulo</p>
-              <p className="text-sm">{ticket.module}</p>
+              <p className="text-sm">{ticket.module.name}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Prioridad</p>

@@ -12,18 +12,10 @@ export default async function TracklistDetailPage({ params }: Props) {
   const { tracklistId } = await params
   const numericId = Number(tracklistId)
 
-  const [currentTracklist, tickets, allTracklists, assignableUsers] = await Promise.all([
+  const [currentTracklist, tickets, assignableUsers] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        dueDate: true,
-        externalWorkItems: {
-          select: { id: true, externalId: true, type: true, title: true }
-        }
-      }
+      select: { id: true, title: true }
     }),
     db.ticketQA.findMany({
       where: { tracklistId: numericId },
@@ -31,17 +23,10 @@ export default async function TracklistDetailPage({ params }: Props) {
         reportedBy: { select: { id: true, name: true, username: true } },
         assignedTo: { select: { id: true, name: true, username: true } },
         externalWorkItem: { select: { id: true, type: true, externalId: true } },
-        dismissedBy: { select: { id: true, name: true, username: true } }
+        dismissedBy: { select: { id: true, name: true, username: true } },
+        module: { select: { id: true, name: true, slug: true } },
       }
     }).then(sortTicketsByPriorityAndNumber),
-    db.tracklist.findMany({
-      select: { id: true, title: true, createdAt: true },
-      orderBy: { createdAt: 'desc' }
-    }).then((tracklists) => {
-      const current = tracklists.find(t => t.id === numericId)
-      const others = tracklists.filter(t => t.id !== numericId)
-      return current ? [current, ...others] : tracklists
-    }),
     getCachedAssignableUsers()
   ])
 
@@ -52,11 +37,9 @@ export default async function TracklistDetailPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <TracklistViewClient
-        tracklists={allTracklists}
         currentId={numericId}
+        title={currentTracklist.title}
         assignableUsers={assignableUsers}
-        currentTracklist={currentTracklist}
-        externalWorkItems={currentTracklist.externalWorkItems}
         initialTickets={tickets}
       />
     </div>

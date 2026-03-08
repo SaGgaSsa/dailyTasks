@@ -42,7 +42,8 @@ const getIncidenceCached = cache(async (id: number) => {
                 orderBy: {
                     createdAt: 'desc'
                 }
-            }
+            },
+            qaTickets: { select: { id: true } }
         }
     })
 })
@@ -326,6 +327,7 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                 },
                 include: {
                     externalWorkItem: true,
+                    technology: true,
                     assignments: {
                         where: { isAssigned: true },
                         include: {
@@ -344,7 +346,8 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                         orderBy: {
                             createdAt: 'desc'
                         }
-                    }
+                    },
+                    qaTickets: { select: { id: true } }
                 }
             }),
             getUsersCached()
