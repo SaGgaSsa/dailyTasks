@@ -445,3 +445,39 @@ export async function getTicketFormData(tracklistId: number) {
         return { success: false, error: 'Error al obtener datos del formulario' }
     }
 }
+
+export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') } as const
+    }
+
+    try {
+        const tracklists = await db.tracklist.findMany({
+            orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }],
+            include: {
+                _count: { select: { tickets: true } },
+                createdBy: { select: { id: true, name: true, username: true } },
+                tickets: {
+                    include: {
+                        module: { select: { id: true, name: true, slug: true } },
+                        assignedTo: { select: { id: true, name: true, username: true } },
+                        reportedBy: { select: { id: true, name: true, username: true } },
+                        externalWorkItem: { select: { id: true, type: true, externalId: true } },
+                        dismissedBy: { select: { id: true, name: true, username: true } },
+                    },
+                },
+            },
+        })
+
+        const sorted = tracklists.map((tl) => ({
+            ...tl,
+            tickets: sortTicketsByPriorityAndNumber(tl.tickets),
+        }))
+
+        return { success: true, data: sorted } as const
+    } catch (error) {
+        console.error('Error fetching all tracklists with tickets:', error)
+        return { success: false, error: t(locale, 'errors.fetchError') } as const
+    }
+}
