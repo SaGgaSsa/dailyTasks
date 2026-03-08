@@ -47,12 +47,15 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
   const handleComplete = async (ticket: TicketQAWithDetails) => {
     if (ticket.status !== TicketQAStatus.TEST) return
     setCompleting(ticket.id)
-    const result = await completeTicket(ticket.id, ticket.tracklistId)
-    setCompleting(null)
-    if (result.success) {
-      toast.success('Ticket completado')
-    } else {
-      toast.error(result.error || 'Error al completar')
+    try {
+      const result = await completeTicket(ticket.id, ticket.tracklistId)
+      if (result.success) {
+        toast.success('Ticket completado')
+      } else {
+        toast.error(result.error || 'Error al completar')
+      }
+    } finally {
+      setCompleting(null)
     }
   }
 
