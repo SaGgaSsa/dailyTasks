@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { DismissTicketDialog } from '@/components/tracklists/DismissTicketDialog'
 import { TicketDetailModal } from '@/components/tracklists/TicketDetailModal'
-import { completeTicket } from '@/app/actions/tracklists'
+import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { toast } from 'sonner'
 
 interface Props {
@@ -53,6 +53,21 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
         toast.success('Ticket completado')
       } else {
         toast.error(result.error || 'Error al completar')
+      }
+    } finally {
+      setCompleting(null)
+    }
+  }
+
+  const handleUncomplete = async (ticket: TicketQAWithDetails) => {
+    if (ticket.status !== TicketQAStatus.COMPLETED) return
+    setCompleting(ticket.id)
+    try {
+      const result = await uncompleteTicket(ticket.id, ticket.tracklistId)
+      if (result.success) {
+        toast.success('Ticket vuelto a Test')
+      } else {
+        toast.error(result.error || 'Error al descompletar')
       }
     } finally {
       setCompleting(null)
@@ -107,8 +122,8 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                     <TableCell className="w-8 px-2 py-3 text-center">
                       <Checkbox
                         checked={isCompleted}
-                        disabled={!isTest || completing === ticket.id}
-                        onCheckedChange={() => handleComplete(ticket)}
+                        disabled={(!isTest && !isCompleted) || completing === ticket.id}
+                        onCheckedChange={() => isCompleted ? handleUncomplete(ticket) : handleComplete(ticket)}
                         aria-label="Completar ticket"
                       />
                     </TableCell>

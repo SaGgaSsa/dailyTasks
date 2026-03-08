@@ -508,3 +508,29 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
         return { success: false, error: t(locale, 'errors.saveError') } as const
     }
 }
+export async function uncompleteTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') } as const
+    }
+
+    try {
+        const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' } as const
+        }
+        if (ticket.status !== TicketQAStatus.COMPLETED) {
+            return { success: false, error: 'Solo se pueden descompletar tickets en estado Completado' } as const
+        }
+        await db.ticketQA.update({
+            where: { id: ticketId },
+            data: { status: TicketQAStatus.TEST },
+        })
+        revalidatePath('/tracklists')
+        revalidatePath(`/tracklists/${tracklistId}`)
+        return { success: true } as const
+    } catch (error) {
+        console.error('Error uncompleting ticket:', error)
+        return { success: false, error: t(locale, 'errors.saveError') } as const
+    }
+}
