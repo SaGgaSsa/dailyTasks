@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import {
     DndContext,
     DragOverlay,
@@ -29,11 +28,6 @@ import { TaskStatus } from '@/types/enums'
 import { toast } from 'sonner'
 import { useI18n } from '@/components/providers/i18n-provider'
 
-const IncidenceForm = dynamic(() => import('./incidence-form').then(mod => mod.IncidenceForm), {
-    ssr: false,
-    loading: () => <div className="h-0 w-0" />
-})
-
 interface KanbanBoardProps {
     initialTasks: IncidenceWithDetails[]
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
@@ -44,15 +38,14 @@ interface KanbanBoardProps {
     kanbanOnlyMyAssignments?: boolean
     onResetFilters?: () => void
     isDev?: boolean
+    onCardClick?: (task: IncidenceWithDetails) => void
 }
 
-export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters, isDev = false }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', techFilter = [], userId, userFilter = [], kanbanOnlyMyAssignments = false, onResetFilters, isDev = false, onCardClick }: KanbanBoardProps) {
     const { t, locale } = useI18n()
     const router = useRouter()
     const [tasks, setTasks] = useState<IncidenceWithDetails[]>(initialTasks)
     const [activeTask, setActiveTask] = useState<IncidenceWithDetails | null>(null)
-    const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
-    const [isSheetOpen, setIsSheetOpen] = useState(false)
     const initialTasksRef = useRef(initialTasks)
 
     const COLUMNS = useMemo(() => [
@@ -216,7 +209,11 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     }
 
     function handleCardClick(task: IncidenceWithDetails) {
-        router.push(`/dashboard/incidences/${task.id}`)
+        if (onCardClick) {
+            onCardClick(task)
+        } else {
+            router.push(`/dashboard/incidences/${task.id}`)
+        }
     }
 
     function handleTaskUpdate(updatedTask: IncidenceWithDetails) {
@@ -271,20 +268,6 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                         />
                     ))}
             </div>
-
-            <IncidenceForm
-                open={isSheetOpen}
-                onOpenChange={(open) => {
-                    setIsSheetOpen(open)
-                    if (!open) setSelectedTask(null)
-                }}
-                initialData={selectedTask}
-                type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
-                externalId={selectedTask?.externalWorkItem?.externalId}
-                onTaskUpdate={handleTaskUpdate}
-                isDev={isDev}
-                isKanban={true}
-            />
 
             <DragOverlay dropAnimation={{
                 sideEffects: defaultDropAnimationSideEffects({
