@@ -5,9 +5,6 @@ import { Navbar } from "@/components/navbar"
 import { useSession } from "next-auth/react"
 import { redirect } from "next/navigation"
 import { useEffect } from "react"
-import { IncidenceTitleProvider } from "@/components/providers/incidence-title-provider"
-import { PageTitleProvider } from "@/components/providers/page-title-provider"
-
 export default function AnalyticsLayout({
   children,
 }: {
@@ -26,18 +23,14 @@ export default function AnalyticsLayout({
   }
 
   return (
-    <IncidenceTitleProvider>
-      <PageTitleProvider>
-        <div className="flex h-screen overflow-hidden bg-background text-foreground">
-          <Sidebar userId={undefined} />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <Navbar />
-            <main className="flex-1 overflow-y-auto p-2 relative">
-              {children}
-            </main>
-          </div>
-        </div>
-      </PageTitleProvider>
-    </IncidenceTitleProvider>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <Sidebar userId={undefined} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto p-2 relative">
+          {children}
+        </main>
+      </div>
+    </div>
   )
 }

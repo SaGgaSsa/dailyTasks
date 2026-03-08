@@ -8,6 +8,7 @@ import { ThemeSync } from "@/components/theme-sync";
 import { PerformanceErrorBoundary } from "@/components/performance-error-boundary";
 import { auth } from "@/auth";
 import { I18nProvider } from "@/components/providers/i18n-provider";
+import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -106,11 +107,13 @@ export default async function RootLayout({
               storageKey="dailytasks-theme"
               disableTransitionOnChange={false}
             >
+              <NavbarBreadcrumbProvider>
               <PerformanceErrorBoundary>
                 <ThemeSync />
                 {children}
                 <Toaster />
               </PerformanceErrorBoundary>
+            </NavbarBreadcrumbProvider>
             </ThemeProvider>
           </I18nProvider>
         </Providers>

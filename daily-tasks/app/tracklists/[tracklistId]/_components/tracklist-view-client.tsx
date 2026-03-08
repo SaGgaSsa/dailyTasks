@@ -5,7 +5,7 @@ import { TracklistHeader } from './tracklist-header'
 import { TicketsGrid } from './tickets-grid'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
-import { useTracklistTitle } from '@/components/providers/tracklist-title-provider'
+import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 
 interface Props {
   currentId: number
@@ -20,12 +20,15 @@ export function TracklistViewClient({
   assignableUsers,
   initialTickets,
 }: Props) {
-  const { setTracklistTitle } = useTracklistTitle()
+  const { setBreadcrumbs } = useNavbarBreadcrumbs()
 
   useEffect(() => {
-    setTracklistTitle(title)
-    return () => setTracklistTitle(null)
-  }, [title])
+    setBreadcrumbs([
+      { label: 'Tracklists', href: '/tracklists' },
+      { label: title },
+    ])
+    return () => setBreadcrumbs([])
+  }, [title, setBreadcrumbs])
 
   const [view, setView] = useState<'list' | 'kanban'>('list')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])

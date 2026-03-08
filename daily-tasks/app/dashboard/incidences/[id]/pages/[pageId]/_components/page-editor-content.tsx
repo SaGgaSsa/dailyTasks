@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
-import { usePageTitle } from '@/components/providers/page-title-provider'
+import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { EditorWrapper } from '../editor-wrapper'
 
 interface PageEditorContentProps {
@@ -20,20 +19,21 @@ export function PageEditorContent({
     incidenceId,
     incidenceTitle 
 }: PageEditorContentProps) {
-    const { setIncidenceTitle } = useIncidenceTitle()
-    const { setPageTitle } = usePageTitle()
+    const { setBreadcrumbs } = useNavbarBreadcrumbs()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        setIncidenceTitle(incidenceTitle)
-        setPageTitle(initialTitle)
+        setBreadcrumbs([
+            { label: 'Incidencias', href: '/dashboard' },
+            { label: incidenceTitle, href: `/dashboard/incidences/${incidenceId}` },
+            { label: initialTitle },
+        ])
         setMounted(true)
 
         return () => {
-            setIncidenceTitle(null)
-            setPageTitle(null)
+            setBreadcrumbs([])
         }
-    }, [incidenceTitle, initialTitle, setIncidenceTitle, setPageTitle])
+    }, [incidenceTitle, initialTitle, incidenceId, setBreadcrumbs])
 
     if (!mounted) {
         return null

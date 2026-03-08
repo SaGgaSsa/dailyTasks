@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { useCreateBlockNote } from '@blocknote/react'
 import { PartialBlock } from '@blocknote/core'
 import { BlockNoteView } from '@blocknote/mantine'
@@ -9,7 +10,6 @@ import "@blocknote/mantine/style.css"
 import { updatePageContent } from '@/app/actions/pages'
 import { toast } from 'sonner'
 import { Prisma } from '@prisma/client'
-import { usePageTitle } from '@/components/providers/page-title-provider'
 
 interface BlockNoteEditorProps {
     initialContent: object | undefined
@@ -39,7 +39,9 @@ export function BlockNoteEditor({
 }: BlockNoteEditorProps) {
     const [theme, setTheme] = useState<'light' | 'dark'>(propTheme || 'dark')
     const [title, setTitle] = useState(initialTitle)
-    const { setPageTitle } = usePageTitle()
+    const { breadcrumbs, setBreadcrumbs } = useNavbarBreadcrumbs()
+    const breadcrumbsRef = useRef(breadcrumbs)
+    useEffect(() => { breadcrumbsRef.current = breadcrumbs }, [breadcrumbs])
     
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -91,7 +93,10 @@ export function BlockNoteEditor({
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value
         setTitle(newTitle)
-        setPageTitle(newTitle || '')
+        const current = breadcrumbsRef.current
+        if (current.length > 0) {
+            setBreadcrumbs([...current.slice(0, -1), { ...current[current.length - 1], label: newTitle || 'Nueva Página' }])
+        }
 
         if (titleTimeoutRef.current) {
             clearTimeout(titleTimeoutRef.current)

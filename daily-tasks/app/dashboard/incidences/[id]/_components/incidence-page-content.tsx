@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
-import { useIncidenceTitle } from '@/components/providers/incidence-title-provider'
+import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import {
     Dialog,
     DialogContent,
@@ -24,7 +24,7 @@ interface IncidencePageContentProps {
 
 export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdmin }: IncidencePageContentProps) {
     const pathname = usePathname()
-    const { setIncidenceTitle } = useIncidenceTitle()
+    const { setBreadcrumbs } = useNavbarBreadcrumbs()
     const [hasChanges, setHasChanges] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [showExitDialog, setShowExitDialog] = useState(false)
@@ -32,9 +32,12 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
     const saveFnRef = useRef<(() => Promise<void>) | null>(null)
 
     useEffect(() => {
-        setIncidenceTitle(incidence.title)
-        return () => setIncidenceTitle(null)
-    }, [incidence.title, setIncidenceTitle])
+        setBreadcrumbs([
+            { label: 'Incidencias', href: '/dashboard' },
+            { label: incidence.title },
+        ])
+        return () => setBreadcrumbs([])
+    }, [incidence.title, setBreadcrumbs])
 
     const handleSave = useCallback(async () => {
         if (saveFnRef.current) {
