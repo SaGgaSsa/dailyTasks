@@ -33,6 +33,12 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
     <div className="flex flex-col gap-6 p-4 h-full overflow-auto">
       {/* Toolbar */}
       <div className="flex justify-end items-center gap-2">
+        <Button
+          className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
+          onClick={() => setCreateTracklistOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
         <Tabs value="list">
           <TabsList className="bg-muted border border-border h-8">
             <TabsTrigger value="list" className="data-[state=active]:bg-accent px-3">
@@ -43,13 +49,6 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 gap-1 px-3"
-          onClick={() => setCreateTracklistOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Agregar Tracklist
-        </Button>
       </div>
 
       {/* Tracklists */}
