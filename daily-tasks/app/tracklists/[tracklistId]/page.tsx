@@ -24,7 +24,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         assignedTo: { select: { id: true, name: true, username: true } },
         externalWorkItem: { select: { id: true, type: true, externalId: true } },
         dismissedBy: { select: { id: true, name: true, username: true } },
-        module: { select: { id: true, name: true, slug: true } },
+        module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
       }
     }).then(sortTicketsByPriorityAndNumber),
     getCachedAssignableUsers()

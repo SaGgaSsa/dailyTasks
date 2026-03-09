@@ -53,6 +53,9 @@ export function TracklistViewClient({
         initialTickets={initialTickets}
         assignableUsers={assignableUsers}
         view={view}
+        selectedStatus={selectedStatus}
+        selectedUser={selectedUser}
+        selectedTech={selectedTech}
       />
     </>
   )

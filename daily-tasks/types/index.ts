@@ -48,7 +48,7 @@ export type TicketQAWithDetails = TicketQA & {
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
   externalWorkItem: Pick<ExternalWorkItem, 'id' | 'type' | 'externalId'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
-  module: Pick<ModulePrisma, 'id' | 'name' | 'slug'>
+  module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean
 }
 
