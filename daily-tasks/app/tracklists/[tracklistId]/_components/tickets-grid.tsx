@@ -12,13 +12,15 @@ interface Props {
   selectedStatus: string[]
   selectedUser: string[]
   selectedTech: string[]
+  search?: string
 }
 
-export function TicketsGrid({ initialTickets, assignableUsers, view, selectedStatus, selectedUser, selectedTech }: Props) {
+export function TicketsGrid({ initialTickets, assignableUsers, view, selectedStatus, selectedUser, selectedTech, search }: Props) {
   const filteredTickets = initialTickets.filter((t) => {
     if (selectedStatus.length > 0 && !selectedStatus.includes(t.status)) return false
     if (selectedUser.length > 0 && !selectedUser.includes(String(t.assignedToId ?? ''))) return false
     if (selectedTech.length > 0 && !selectedTech.includes(t.module.technology.name)) return false
+    if (search && !t.description.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
