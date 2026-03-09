@@ -1,7 +1,7 @@
 'use client'
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState } from 'react'
 
-const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
+const SIDEBAR_COOKIE_KEY = 'dailytasks-sidebar-open'
 
 interface SidebarContextValue {
   isOpen: boolean
@@ -13,19 +13,18 @@ const SidebarContext = createContext<SidebarContextValue>({
   toggle: () => {},
 })
 
-export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  // Always start with true to match SSR — corrected after hydration
-  const [isOpen, setIsOpen] = useState<boolean>(true)
+interface SidebarProviderProps {
+  children: React.ReactNode
+  defaultOpen?: boolean
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored !== null) setIsOpen(stored === 'true')
-  }, [])
+export function SidebarProvider({ children, defaultOpen = true }: SidebarProviderProps) {
+  const [isOpen, setIsOpen] = useState<boolean>(defaultOpen)
 
   const toggle = () => {
     setIsOpen(prev => {
       const next = !prev
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
+      document.cookie = `${SIDEBAR_COOKIE_KEY}=${next};path=/;max-age=31536000;SameSite=Lax`
       return next
     })
   }

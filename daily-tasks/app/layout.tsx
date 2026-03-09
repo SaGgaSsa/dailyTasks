@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeSync } from "@/components/theme-sync";
 import { PerformanceErrorBoundary } from "@/components/performance-error-boundary";
 import { auth } from "@/auth";
+import { cookies } from "next/headers";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider"
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
@@ -89,6 +90,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  const cookieStore = await cookies();
+  const sidebarCookie = cookieStore.get('dailytasks-sidebar-open')?.value;
+  const defaultSidebarOpen = sidebarCookie !== undefined ? sidebarCookie === 'true' : true;
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -109,7 +113,7 @@ export default async function RootLayout({
               disableTransitionOnChange={false}
             >
               <NavbarBreadcrumbProvider>
-                <SidebarProvider>
+                <SidebarProvider defaultOpen={defaultSidebarOpen}>
                   <PerformanceErrorBoundary>
                     <ThemeSync />
                     {children}
