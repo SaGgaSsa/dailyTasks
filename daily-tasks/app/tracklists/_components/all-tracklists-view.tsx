@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, ListTodo, LayoutDashboard, Eye, Pencil, ClipboardList } from 'lucide-react'
+import { Eye, Pencil, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
-import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
+import { FilterChips } from '@/components/ui/filter-chips'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
 import { getTracklistForEdit } from '@/app/actions/tracklists'
@@ -41,8 +41,11 @@ interface Props {
 }
 
 export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
+  const [search, setSearch] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([])
+  const [selectedUser, setSelectedUser] = useState<string[]>([])
+  const [selectedTech, setSelectedTech] = useState<string[]>([])
   const [createTracklistOpen, setCreateTracklistOpen] = useState(false)
-  const [addTicketTracklistId, setAddTicketTracklistId] = useState<number | null>(null)
   const [editingTracklist, setEditingTracklist] = useState<TracklistForEdit | null>(null)
   const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])
   const [lockedWorkItemIds, setLockedWorkItemIds] = useState<number[]>([])
@@ -61,23 +64,35 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
   return (
     <div className="flex flex-col gap-6 p-4 h-full overflow-auto">
       {/* Toolbar */}
-      <div className="flex justify-end items-center gap-2">
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
-          onClick={() => setCreateTracklistOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-        <Tabs value="list">
-          <TabsList className="bg-muted border border-border h-8">
-            <TabsTrigger value="list" className="data-[state=active]:bg-accent px-3">
-              <ListTodo className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="data-[state=active]:bg-accent px-3">
-              <LayoutDashboard className="h-4 w-4" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex flex-col gap-2">
+        <TracklistToolbar
+          search={search}
+          onSearchChange={setSearch}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          selectedUser={selectedUser}
+          onUserChange={setSelectedUser}
+          selectedTech={selectedTech}
+          onTechChange={setSelectedTech}
+          assignableUsers={assignableUsers}
+          view="list"
+          onViewChange={() => {}}
+          onAdd={() => setCreateTracklistOpen(true)}
+        />
+        <FilterChips
+          searchQuery={search}
+          selectedStatus={selectedStatus}
+          selectedAssignee={selectedUser}
+          selectedTech={selectedTech}
+          statusOptions={TICKET_STATUS_OPTIONS}
+          assigneeOptions={assignableUsers.map(u => ({ value: String(u.id), label: u.name || u.username }))}
+          techOptions={TECH_OPTIONS}
+          onSearchChange={setSearch}
+          onStatusChange={setSelectedStatus}
+          onAssigneeChange={setSelectedUser}
+          onTechChange={setSelectedTech}
+          onResetFilters={() => { setSearch(''); setSelectedStatus([]); setSelectedUser([]); setSelectedTech([]) }}
+        />
       </div>
 
       {/* Tracklists */}
@@ -107,18 +122,20 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
                   onClick={() => handleEditTracklist(tl)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
-                  onClick={() => setAddTicketTracklistId(tl.id)}
-                  title="Agregar ticket"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
             {/* Tickets table */}
-            <AllTracklistsTicketsTable tickets={tl.tickets} assignableUsers={assignableUsers} />
+            <AllTracklistsTicketsTable
+              tickets={tl.tickets.filter(t => {
+                if (search && !t.description.toLowerCase().includes(search.toLowerCase())) return false
+                if (selectedStatus.length > 0 && !selectedStatus.includes(t.status)) return false
+                if (selectedUser.length > 0 && !selectedUser.includes(String(t.assignedToId ?? ''))) return false
+                if (selectedTech.length > 0 && !selectedTech.includes(t.module.technology.name)) return false
+                return true
+              })}
+              assignableUsers={assignableUsers}
+            />
           </div>
         ))
       )}
@@ -142,14 +159,6 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
         />
       )}
 
-      {addTicketTracklistId !== null && (
-        <CreateTicketDialog
-          tracklistId={addTicketTracklistId}
-          assignableUsers={assignableUsers}
-          open={true}
-          onOpenChange={(open) => { if (!open) setAddTicketTracklistId(null) }}
-        />
-      )}
     </div>
   )
 }
