@@ -69,11 +69,6 @@ export function Sidebar({ userId }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-1 px-2">
-          {isOpen && (
-            <div className="px-3 py-2 text-[10px] font-bold text-sidebar-foreground/50 uppercase tracking-widest">
-              {t.navigation.dashboard}
-            </div>
-          )}
           <Link href="/dashboard">
             <Button
               variant="ghost"
@@ -84,6 +79,10 @@ export function Sidebar({ userId }: SidebarProps) {
             </Button>
           </Link>
 
+          <TracklistSidebarSection isOpen={isOpen} />
+
+          <hr className="border-sidebar-border my-2" />
+
           <Link href="/analytics">
             <Button
               variant="ghost"
@@ -93,8 +92,6 @@ export function Sidebar({ userId }: SidebarProps) {
               {isOpen && <span>Métricas</span>}
             </Button>
           </Link>
-
-          <TracklistSidebarSection isOpen={isOpen} />
 
           {/* Wiki Técnica - temporalmente oculto
           <Button

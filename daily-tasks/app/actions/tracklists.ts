@@ -255,6 +255,17 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
         const toDisconnect = currentWorkItemIds.filter(id => !newWorkItemIds.includes(id))
         const toConnect = newWorkItemIds.filter(id => !currentWorkItemIds.includes(id))
 
+        if (toDisconnect.length > 0) {
+            const ticketedItems = await db.ticketQA.findMany({
+                where: { tracklistId: data.id, externalWorkItemId: { in: toDisconnect } },
+                select: { externalWorkItemId: true },
+                distinct: ['externalWorkItemId']
+            })
+            if (ticketedItems.length > 0) {
+                return { success: false, error: 'No se pueden eliminar trámites que tienen tickets creados' }
+            }
+        }
+
         const tracklist = await db.tracklist.update({
             where: { id: data.id },
             data: {
@@ -273,6 +284,38 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
     } catch (error) {
         console.error('Error updating tracklist:', error)
         return { success: false, error: t(locale, 'errors.saveError') }
+    }
+}
+
+export async function getTracklistForEdit(tracklistId: number) {
+    try {
+        const tracklist = await db.tracklist.findUnique({
+            where: { id: tracklistId },
+            select: {
+                id: true, title: true, description: true, dueDate: true,
+                externalWorkItems: { select: { id: true, type: true, externalId: true } }
+            }
+        })
+        if (!tracklist) return { success: false, error: 'Tracklist no encontrado' }
+
+        const ticketedItems = await db.ticketQA.findMany({
+            where: { tracklistId, externalWorkItemId: { not: null } },
+            select: { externalWorkItemId: true },
+            distinct: ['externalWorkItemId']
+        })
+        const lockedWorkItemIds = ticketedItems.map(t => t.externalWorkItemId!)
+
+        return {
+            success: true,
+            data: {
+                ...tracklist,
+                externalWorkItems: tracklist.externalWorkItems.map(w => ({ ...w, title: null as string | null })),
+                lockedWorkItemIds
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching tracklist for edit:', error)
+        return { success: false, error: 'Error al obtener el tracklist' }
     }
 }
 

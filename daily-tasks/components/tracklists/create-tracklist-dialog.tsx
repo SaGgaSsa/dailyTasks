@@ -26,9 +26,10 @@ interface Props {
   onOpenChange: (open: boolean) => void
   tracklist?: TracklistData
   externalWorkItems?: TracklistExternalWorkItem[]
+  lockedWorkItemIds?: number[]
 }
 
-export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalWorkItems = [] }: Props) {
+export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalWorkItems = [], lockedWorkItemIds }: Props) {
   const router = useRouter()
   const [isPending, setIsPending] = useState(false)
   const [title, setTitle] = useState('')
@@ -142,6 +143,7 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalW
             <IncidenceQuery
               selectedIncidences={selectedWorkItems}
               onChange={setSelectedWorkItems}
+              lockedIds={lockedWorkItemIds}
             />
           </div>
         </div>

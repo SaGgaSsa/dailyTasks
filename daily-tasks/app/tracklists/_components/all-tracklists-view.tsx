@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, ListTodo, LayoutDashboard, ExternalLink, ClipboardList } from 'lucide-react'
+import { Plus, ListTodo, LayoutDashboard, Eye, Pencil, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
@@ -10,6 +10,7 @@ import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
+import { getTracklistForEdit } from '@/app/actions/tracklists'
 
 // The shape returned by getAllTracklistsWithTickets
 interface TracklistWithTickets {
@@ -20,6 +21,20 @@ interface TracklistWithTickets {
   tickets: TicketQAWithDetails[]
 }
 
+interface TracklistForEdit {
+  id: number
+  title: string
+  description: string | null
+  dueDate: Date | null
+}
+
+interface TracklistExternalWorkItem {
+  id: number
+  type: string
+  externalId: number
+  title: string | null
+}
+
 interface Props {
   tracklists: TracklistWithTickets[]
   assignableUsers: AssignableUser[]
@@ -28,6 +43,20 @@ interface Props {
 export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
   const [createTracklistOpen, setCreateTracklistOpen] = useState(false)
   const [addTicketTracklistId, setAddTicketTracklistId] = useState<number | null>(null)
+  const [editingTracklist, setEditingTracklist] = useState<TracklistForEdit | null>(null)
+  const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])
+  const [lockedWorkItemIds, setLockedWorkItemIds] = useState<number[]>([])
+  const [editOpen, setEditOpen] = useState(false)
+
+  const handleEditTracklist = async (tl: TracklistWithTickets) => {
+    const result = await getTracklistForEdit(tl.id)
+    if (result.success && result.data) {
+      setEditingTracklist({ id: result.data.id, title: result.data.title, description: result.data.description, dueDate: result.data.dueDate })
+      setEditWorkItems(result.data.externalWorkItems)
+      setLockedWorkItemIds(result.data.lockedWorkItemIds)
+      setEditOpen(true)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 p-4 h-full overflow-auto">
@@ -62,7 +91,7 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
           <div key={tl.id} className="flex flex-col gap-3">
             {/* Section header */}
             <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-0.5">
+              <div className="flex items-baseline gap-2">
                 <h2 className="text-base font-semibold">{tl.title}</h2>
                 {tl.description && (
                   <p className="text-sm text-muted-foreground">{tl.description}</p>
@@ -71,9 +100,13 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
               <div className="flex items-center gap-2">
                 <Link href={`/tracklists/${tl.id}`}>
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver tracklist">
-                    <ExternalLink className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </Link>
+                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar tracklist"
+                  onClick={() => handleEditTracklist(tl)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
                   onClick={() => setAddTicketTracklistId(tl.id)}
@@ -95,6 +128,19 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
         open={createTracklistOpen}
         onOpenChange={setCreateTracklistOpen}
       />
+
+      {editingTracklist && (
+        <CreateTracklistDialog
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open)
+            if (!open) { setEditingTracklist(null); setEditWorkItems([]); setLockedWorkItemIds([]) }
+          }}
+          tracklist={editingTracklist}
+          externalWorkItems={editWorkItems}
+          lockedWorkItemIds={lockedWorkItemIds}
+        />
+      )}
 
       {addTicketTracklistId !== null && (
         <CreateTicketDialog

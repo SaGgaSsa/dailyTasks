@@ -17,9 +17,10 @@ interface IncidenceQueryResult {
 interface IncidenceQueryProps {
     selectedIncidences: IncidenceQueryResult[]
     onChange: (incidences: IncidenceQueryResult[]) => void
+    lockedIds?: number[]
 }
 
-export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryProps) {
+export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: IncidenceQueryProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<IncidenceQueryResult[]>([])
     const [isOpen, setIsOpen] = useState(false)
@@ -157,12 +158,14 @@ export function IncidenceQuery({ selectedIncidences, onChange }: IncidenceQueryP
                                 <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs shrink-0" />
                                 <span className="text-muted-foreground truncate">{incidence.title}</span>
                             </span>
-                            <button
-                                onClick={() => handleRemove(incidence.id)}
-                                className="text-muted-foreground hover:text-foreground cursor-pointer ml-2"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                            {!lockedIds?.includes(incidence.id) && (
+                                <button
+                                    onClick={() => handleRemove(incidence.id)}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer ml-2"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>
