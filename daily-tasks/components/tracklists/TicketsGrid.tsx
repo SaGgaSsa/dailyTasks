@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, User, MoreVertical, Eye, BarChart3, Ban, ExternalLink } from 'lucide-react'
+import { CheckCircle2, Inbox, User, MoreVertical, Eye, BarChart3, Ban, Layers, XCircle, Pencil, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -10,7 +11,7 @@ import { AssignableUser } from '@/app/actions/user-actions'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
-import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS } from '@/types/enums'
+import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS, TicketQAStatus } from '@/types/enums'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,8 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { DismissTicketDialog } from './DismissTicketDialog'
-import { TicketDetailModal } from './TicketDetailModal'
+import { CreateTicketDialog } from './create-ticket-dialog'
 
 
 
@@ -40,9 +42,27 @@ function getTicketStatusLabel(status: keyof typeof TICKET_QA_STATUS_LABELS | str
 export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProps) {
   const router = useRouter()
   const [dismissTarget, setDismissTarget] = useState<{ ticketId: number; tracklistId: number } | null>(null)
-  const [openTicketId, setOpenTicketId] = useState<number | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<TicketQAWithDetails | null>(null)
+  const [editTarget, setEditTarget] = useState<TicketQAWithDetails | null>(null)
+  const [viewTarget, setViewTarget] = useState<TicketQAWithDetails | null>(null)
 
-  const openTicket = openTicketId !== null ? initialTickets.find((t) => t.id === openTicketId) ?? null : null
+  const handleCompleteTicket = async (ticket: TicketQAWithDetails) => {
+    const result = await completeTicket(ticket.id, ticket.tracklistId)
+    if (result.success) {
+      toast.success('Ticket completado')
+    } else {
+      toast.error(result.error || 'Error al completar el ticket')
+    }
+  }
+
+  const handleUncompleteTicket = async (ticket: TicketQAWithDetails) => {
+    const result = await uncompleteTicket(ticket.id, ticket.tracklistId)
+    if (result.success) {
+      toast.success('Ticket vuelto a Test')
+    } else {
+      toast.error(result.error || 'Error al volver el ticket a Test')
+    }
+  }
 
   return (
     <div className="border border-border rounded-2xl bg-card shadow-inner flex flex-col h-full overflow-hidden min-w-0">
@@ -134,14 +154,44 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-[180px]" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem onClick={() => setOpenTicketId(ticket.id)}>
+                        {ticket.status === TicketQAStatus.TEST && (
+                          <DropdownMenuItem
+                            className="text-green-500 focus:text-green-500"
+                            onClick={() => handleCompleteTicket(ticket)}
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Completar
+                          </DropdownMenuItem>
+                        )}
+                        {ticket.status === TicketQAStatus.TEST && (
+                          <DropdownMenuItem
+                            className="text-orange-500 focus:text-orange-500"
+                            onClick={() => setRejectTarget(ticket)}
+                          >
+                            <XCircle className="mr-2 h-4 w-4 text-orange-500" />
+                            Rechazar
+                          </DropdownMenuItem>
+                        )}
+                        {ticket.status === TicketQAStatus.COMPLETED && (
+                          <DropdownMenuItem onClick={() => handleUncompleteTicket(ticket)}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Volver a Test
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => setViewTarget(ticket)}>
                           <Eye className="mr-2 h-4 w-4" />
                           Ver ticket
                         </DropdownMenuItem>
                         {ticket.incidenceId && (
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/incidences/${ticket.incidenceId}`)}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
+                            <Layers className="mr-2 h-4 w-4" />
                             Ver Incidencia
+                          </DropdownMenuItem>
+                        )}
+                        {ticket.status === TicketQAStatus.NEW && (
+                          <DropdownMenuItem onClick={() => setEditTarget(ticket)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem disabled>
@@ -175,13 +225,33 @@ export function TicketsGrid({ initialTickets, assignableUsers }: TicketsGridProp
         />
       )}
 
-      {openTicket && (
-        <TicketDetailModal
-          ticket={openTicket}
-          tracklistId={openTicket.tracklistId}
+      {rejectTarget && (
+        <CreateTicketDialog
+          open={!!rejectTarget}
+          onOpenChange={(open) => { if (!open) setRejectTarget(null) }}
+          tracklistId={rejectTarget.tracklistId}
           assignableUsers={assignableUsers}
-          open={openTicketId !== null}
-          onOpenChange={(open) => { if (!open) setOpenTicketId(null) }}
+          rejectMode={rejectTarget}
+        />
+      )}
+
+      {editTarget && (
+        <CreateTicketDialog
+          open={!!editTarget}
+          onOpenChange={(open) => { if (!open) setEditTarget(null) }}
+          tracklistId={editTarget.tracklistId}
+          assignableUsers={assignableUsers}
+          editMode={editTarget}
+        />
+      )}
+
+      {viewTarget && (
+        <CreateTicketDialog
+          open={!!viewTarget}
+          onOpenChange={(open) => { if (!open) setViewTarget(null) }}
+          tracklistId={viewTarget.tracklistId}
+          assignableUsers={assignableUsers}
+          viewMode={viewTarget}
         />
       )}
     </div>

@@ -1160,6 +1160,53 @@ export async function deleteIncidence(incidenceId: number) {
     }
 }
 
+export async function rejectTicket(ticketId: number, description: string, tracklistId: number) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' }
+
+    if (!description || description.trim().length < 3) {
+        return { success: false, error: 'La descripción debe tener al menos 3 caracteres' }
+    }
+
+    try {
+        const ticket = await db.ticketQA.findUnique({
+            where: { id: ticketId },
+            include: { incidence: { include: { assignments: true } } }
+        })
+
+        if (!ticket) return { success: false, error: 'Ticket no encontrado' }
+        if (ticket.status !== TicketQAStatus.TEST)
+            return { success: false, error: 'Solo se pueden rechazar tickets en estado Test' }
+        if (!ticket.incidenceId || !ticket.incidence)
+            return { success: false, error: 'El ticket no tiene incidencia asociada' }
+        if (!ticket.assignedToId)
+            return { success: false, error: 'El ticket no tiene DEV asignado' }
+
+        const assignment = ticket.incidence.assignments.find(a => a.userId === ticket.assignedToId)
+        if (!assignment)
+            return { success: false, error: 'No se encontró la asignación del DEV responsable' }
+
+        await db.$transaction(async (tx) => {
+            await tx.subTask.create({
+                data: { title: description.trim(), assignmentId: assignment.id, isCompleted: false }
+            })
+            await tx.incidence.update({
+                where: { id: ticket.incidenceId! },
+                data: { status: TaskStatus.IN_PROGRESS }
+            })
+        })
+
+        await syncLinkedTickets(ticket.incidenceId, TaskStatus.IN_PROGRESS)
+
+        revalidatePath(`/tracklists/${tracklistId}`)
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Error rejecting ticket:', error)
+        return { success: false, error: 'Error al rechazar el ticket' }
+    }
+}
+
 export async function searchActiveIncidences(query: string, selectedIncidences: number[] = []) {
     const session = await auth()
     if (!session?.user) {

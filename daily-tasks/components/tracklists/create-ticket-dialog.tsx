@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createTicket, getTicketFormData } from '@/app/actions/tracklists'
+import { createTicket, updateTicket, getTicketFormData } from '@/app/actions/tracklists'
+import { rejectTicket } from '@/app/actions/incidence-actions'
 import { AssignableUser } from '@/app/actions/user-actions'
+import { TicketQAWithDetails } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -57,9 +59,12 @@ interface Props {
   assignableUsers: AssignableUser[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  rejectMode?: TicketQAWithDetails
+  editMode?: TicketQAWithDetails
+  viewMode?: TicketQAWithDetails
 }
 
-export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange }: Props) {
+export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange, rejectMode, editMode, viewMode }: Props) {
   const [isPending, setIsPending] = useState(false)
   const [type, setType] = useState<TicketType>(TicketType.BUG)
   const [description, setDescription] = useState('')
@@ -98,7 +103,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
       setWorkItemsList(formData.externalWorkItems ?? [])
 
-      if (!selectedTech && formData.defaultTech) {
+      if (editMode) {
+        const matchingTech = formData.techs.find(t => t.modules.some(m => m.id === editMode.module.id)) || null
+        setSelectedTech(matchingTech)
+        setSelectedModule({ id: editMode.module.id, name: editMode.module.name })
+      } else if (!selectedTech && formData.defaultTech) {
         const defaultTechWithModules = formData.techs.find(t => t.id === formData.defaultTech!.id) || null
         setSelectedTech(defaultTechWithModules)
         const defaultForTech = formData.defaultModules.find(dm => dm.techId === formData.defaultTech!.id)
@@ -107,48 +116,113 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         }
       }
     }
-    if (open) {
+    if (open && !rejectMode && !viewMode) {
       loadData()
     }
-  }, [open])
+  }, [open, rejectMode, editMode, viewMode])
 
   useEffect(() => {
-    if (selectedTech) {
-      const defaultForTech = defaultModules.find(dm => dm.techId === selectedTech.id)
-      if (defaultForTech) {
-        setSelectedModule(defaultForTech.module)
-      } else {
-        setSelectedModule(null)
-      }
+    if (!rejectMode) return
+    setType(rejectMode.type as TicketType)
+    setSelectedTech({ id: -1, name: rejectMode.module.technology.name, modules: [] })
+    setSelectedModule({ id: rejectMode.module.id, name: rejectMode.module.name })
+    setSelectedPriority(rejectMode.priority as Priority)
+    setSelectedAssignee(rejectMode.assignedTo
+      ? assignableUsers.find(u => u.id === rejectMode.assignedTo!.id) ?? null
+      : null)
+    setSelectedWorkItem(rejectMode.externalWorkItem ?? null)
+  }, [rejectMode])
+
+  useEffect(() => {
+    if (!viewMode) return
+    setType(viewMode.type as TicketType)
+    setSelectedTech({ id: -1, name: viewMode.module.technology.name, modules: [] })
+    setSelectedModule({ id: viewMode.module.id, name: viewMode.module.name })
+    setSelectedPriority(viewMode.priority as Priority)
+    setSelectedAssignee(viewMode.assignedTo
+      ? assignableUsers.find(u => u.id === viewMode.assignedTo!.id) ?? null
+      : null)
+    setSelectedWorkItem(viewMode.externalWorkItem ?? null)
+    setDescription(viewMode.description)
+    setObservations(viewMode.observations ?? '')
+  }, [viewMode])
+
+  useEffect(() => {
+    if (!editMode) return
+    setType(editMode.type as TicketType)
+    setSelectedPriority(editMode.priority as Priority)
+    setSelectedAssignee(editMode.assignedTo
+      ? assignableUsers.find(u => u.id === editMode.assignedTo!.id) ?? null
+      : null)
+    setSelectedWorkItem(editMode.externalWorkItem ?? null)
+    setDescription(editMode.description)
+    setObservations(editMode.observations ?? '')
+  }, [editMode])
+
+  useEffect(() => {
+    if (rejectMode) return
+    if (!selectedTech) return
+    // Don't override the module if it already belongs to the selected tech
+    if (selectedModule && selectedTech.modules.some(m => m.id === selectedModule.id)) return
+    const defaultForTech = defaultModules.find(dm => dm.techId === selectedTech.id)
+    if (defaultForTech) {
+      setSelectedModule(defaultForTech.module)
+    } else {
+      setSelectedModule(null)
     }
-  }, [selectedTech, defaultModules])
+  }, [selectedTech, defaultModules, rejectMode])
 
   const filteredModules = selectedTech
     ? selectedTech.modules
     : []
 
   const handleSubmit = async () => {
-    if (!description.trim()) return
-
-    const priority = selectedPriority
+    if (!description.trim() || description.trim().length < 3) return
 
     setIsPending(true)
-    const result = await createTicket(tracklistId, {
-      type,
-      moduleId: selectedModule?.id || 0,
-      description: description.trim(),
-      priority,
-      observations: observations.trim() || undefined,
-      assignedToId: selectedAssignee?.id,
-      externalWorkItemId: selectedWorkItem?.id
-    })
-    setIsPending(false)
-
-    if (result.success) {
-      toast.success('Ticket creado correctamente')
-      handleClose()
+    if (rejectMode) {
+      const result = await rejectTicket(rejectMode.id, description.trim(), tracklistId)
+      setIsPending(false)
+      if (result.success) {
+        toast.success('Ticket rechazado. Se creó una tarea para el DEV.')
+        handleClose()
+      } else {
+        toast.error(result.error || 'Error al rechazar el ticket')
+      }
+    } else if (editMode) {
+      const result = await updateTicket(editMode.id, tracklistId, {
+        type,
+        moduleId: selectedModule?.id || 0,
+        description: description.trim(),
+        priority: selectedPriority,
+        observations: observations.trim() || undefined,
+        assignedToId: selectedAssignee?.id,
+        externalWorkItemId: selectedWorkItem?.id
+      })
+      setIsPending(false)
+      if (result.success) {
+        toast.success('Ticket actualizado correctamente')
+        handleClose()
+      } else {
+        toast.error(result.error || 'Error al actualizar el ticket')
+      }
     } else {
-      toast.error(result.error || 'Error al crear ticket')
+      const result = await createTicket(tracklistId, {
+        type,
+        moduleId: selectedModule?.id || 0,
+        description: description.trim(),
+        priority: selectedPriority,
+        observations: observations.trim() || undefined,
+        assignedToId: selectedAssignee?.id,
+        externalWorkItemId: selectedWorkItem?.id
+      })
+      setIsPending(false)
+      if (result.success) {
+        toast.success('Ticket creado correctamente')
+        handleClose()
+      } else {
+        toast.error(result.error || 'Error al crear ticket')
+      }
     }
   }
 
@@ -180,27 +254,33 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="sm:max-w-[900px]"
-        onInteractOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => { if (!viewMode) e.preventDefault() }}
       >
         <DialogHeader>
-          <DialogTitle>Nuevo Ticket</DialogTitle>
+          <DialogTitle>
+            {viewMode ? `Ticket #${viewMode.ticketNumber}` : rejectMode ? rejectMode.description : editMode ? `Editar Ticket #${editMode.ticketNumber}` : 'Nuevo Ticket'}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Input
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Descripción"
+              placeholder={rejectMode ? 'Descripción del problema' : 'Descripción'}
+              disabled={!!viewMode}
             />
           </div>
-          <div className="space-y-2">
-            <Textarea
-              value={observations}
-              onChange={e => setObservations(e.target.value)}
-              placeholder="Observación"
-              rows={4}
-            />
-          </div>
+          {!rejectMode && (
+            <div className="space-y-2">
+              <Textarea
+                value={observations}
+                onChange={e => setObservations(e.target.value)}
+                placeholder="Observación"
+                rows={4}
+                disabled={!!viewMode}
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Popover open={typeOpen} onOpenChange={setTypeOpen}>
               <PopoverTrigger asChild>
@@ -208,9 +288,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed w-[100px]"
+                  disabled={!!rejectMode || !!viewMode}
                 >
                   <span className="text-xs">{type}</span>
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[140px] p-0" align="start">
@@ -245,13 +326,14 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed"
+                  disabled={!!rejectMode || !!viewMode}
                 >
                   {selectedTech ? (
                     <span className="text-xs">{selectedTech.name}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground">+ Tecnología</span>
                   )}
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0" align="start">
@@ -288,14 +370,14 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed"
-                  disabled={!selectedTech}
+                  disabled={!selectedTech || !!rejectMode || !!viewMode}
                 >
                   {selectedModule ? (
                     <span className="text-xs">{selectedModule.name}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground">+ Módulo</span>
                   )}
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0" align="start">
@@ -332,9 +414,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed"
+                  disabled={!!rejectMode || !!viewMode}
                 >
                   <PriorityBadge priority={selectedPriority} className="text-xs" />
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0" align="start">
@@ -369,6 +452,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed"
+                  disabled={!!rejectMode || !!viewMode}
                 >
                   {selectedAssignee ? (
                     <>
@@ -378,7 +462,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   ) : (
                     <User className="mr-1 h-3 w-3 text-muted-foreground" />
                   )}
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[220px] p-0" align="start">
@@ -424,13 +508,14 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   variant="outline"
                   size="sm"
                   className="h-8 rounded-full border-dashed"
+                  disabled={!!rejectMode || !!viewMode}
                 >
                   {selectedWorkItem ? (
                     <IncidenceBadge type={selectedWorkItem.type} externalId={selectedWorkItem.externalId} className="text-xs" />
                   ) : (
                     <span className="text-xs text-muted-foreground">+ Trámite</span>
                   )}
-                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                  {!rejectMode && !viewMode && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[250px] p-0" align="start">
@@ -475,12 +560,22 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={!description.trim() || isPending}>
-            {isPending ? 'Guardando...' : 'Agregar'}
-          </Button>
+          {viewMode ? (
+            <Button variant="outline" onClick={handleClose}>Cerrar</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+              <Button
+                variant={rejectMode ? 'destructive' : 'default'}
+                onClick={handleSubmit}
+                disabled={!description.trim() || description.trim().length < 3 || isPending}
+              >
+                {isPending
+                  ? (rejectMode ? 'Rechazando...' : 'Guardando...')
+                  : (rejectMode ? 'Rechazar' : editMode ? 'Guardar' : 'Agregar')}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

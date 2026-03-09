@@ -434,6 +434,44 @@ export async function getTicketFormData(tracklistId: number) {
     }
 }
 
+export async function updateTicket(ticketId: number, tracklistId: number, data: CreateTicketData, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+
+    const parsed = createTicketSchema.safeParse(data)
+    if (!parsed.success) {
+        const errors = parsed.error.issues.map(i => i.message).join(', ')
+        return { success: false, error: errors }
+    }
+
+    try {
+        const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
+        if (!ticket) return { success: false, error: 'Ticket no encontrado' }
+        if (ticket.status !== TicketQAStatus.NEW) {
+            return { success: false, error: 'Solo se pueden editar tickets en estado Nuevo' }
+        }
+
+        await db.ticketQA.update({
+            where: { id: ticketId },
+            data: {
+                type: data.type,
+                moduleId: data.moduleId,
+                description: data.description,
+                priority: data.priority,
+                externalWorkItemId: data.externalWorkItemId ?? null,
+                observations: data.observations ?? null,
+                assignedToId: data.assignedToId ?? null,
+            }
+        })
+
+        revalidatePath(`/tracklists/${tracklistId}`)
+        return { success: true }
+    } catch (error) {
+        console.error('Error updating ticket:', error)
+        return { success: false, error: t(locale, 'errors.saveError') }
+    }
+}
+
 export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) {
@@ -448,7 +486,7 @@ export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
                 createdBy: { select: { id: true, name: true, username: true } },
                 tickets: {
                     include: {
-                        module: { select: { id: true, name: true, slug: true } },
+                        module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
                         assignedTo: { select: { id: true, name: true, username: true } },
                         reportedBy: { select: { id: true, name: true, username: true } },
                         externalWorkItem: { select: { id: true, type: true, externalId: true } },
