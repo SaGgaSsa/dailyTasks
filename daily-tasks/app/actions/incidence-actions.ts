@@ -262,7 +262,8 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                             ]
                         }
                     }
-                }
+                },
+                qaTickets: { select: { id: true } }
             },
             orderBy: viewType === 'BACKLOG' ? [
                 {

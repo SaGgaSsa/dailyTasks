@@ -60,7 +60,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
     const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    const canComplete = task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS
+    const canComplete = (task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS) && (task.qaTickets?.length ?? 0) === 0
     const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
 
     const style = {

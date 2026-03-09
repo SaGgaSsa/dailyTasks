@@ -32,7 +32,7 @@ interface DataTableRowActionsProps {
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const router = useRouter()
   const task = row.original
-  const canComplete = task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS
+  const canComplete = (task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS) && (task.qaTickets?.length ?? 0) === 0
   const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
