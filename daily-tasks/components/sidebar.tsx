@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -15,41 +14,17 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
+import { useSidebar } from '@/components/providers/sidebar-provider'
 
 interface SidebarProps {
   userId?: string
 }
 
-const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
-
 export function Sidebar({ userId }: SidebarProps) {
   const { data: session } = useSession()
-  const [isOpen, setIsOpen] = useState<boolean>(true)
+  const { isOpen } = useSidebar()
   const pathname = usePathname()
   const { t } = useI18n()
-
-  useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored !== null) {
-      setIsOpen(stored === 'true')
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isOpen))
-    window.dispatchEvent(new Event('sidebar-toggle'))
-  }, [isOpen])
-
-  useEffect(() => {
-    const handleSidebarToggle = () => {
-      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-      if (stored !== null) {
-        setIsOpen(stored === 'true')
-      }
-    }
-    window.addEventListener('sidebar-toggle', handleSidebarToggle)
-    return () => window.removeEventListener('sidebar-toggle', handleSidebarToggle)
-  }, [])
 
   const isAdmin = session?.user?.role === 'ADMIN'
 

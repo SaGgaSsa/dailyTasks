@@ -8,7 +8,8 @@ import { ThemeSync } from "@/components/theme-sync";
 import { PerformanceErrorBoundary } from "@/components/performance-error-boundary";
 import { auth } from "@/auth";
 import { I18nProvider } from "@/components/providers/i18n-provider";
-import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider";
+import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider"
+import { SidebarProvider } from "@/components/providers/sidebar-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -108,12 +109,14 @@ export default async function RootLayout({
               disableTransitionOnChange={false}
             >
               <NavbarBreadcrumbProvider>
-              <PerformanceErrorBoundary>
-                <ThemeSync />
-                {children}
-                <Toaster />
-              </PerformanceErrorBoundary>
-            </NavbarBreadcrumbProvider>
+                <SidebarProvider>
+                  <PerformanceErrorBoundary>
+                    <ThemeSync />
+                    {children}
+                    <Toaster />
+                  </PerformanceErrorBoundary>
+                </SidebarProvider>
+              </NavbarBreadcrumbProvider>
             </ThemeProvider>
           </I18nProvider>
         </Providers>

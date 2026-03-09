@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -20,45 +20,19 @@ import { signOut } from 'next-auth/react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
-
-const SIDEBAR_STORAGE_KEY = 'dailytasks-sidebar-collapsed'
+import { useSidebar } from '@/components/providers/sidebar-provider'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
   const pathname = usePathname()
   const { mounted, toggleTheme, isDark } = useTheme()
   const { data: session } = useSession()
   const { locale, setLocale, t } = useI18n()
   const { breadcrumbs } = useNavbarBreadcrumbs()
-
-  useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored !== null) {
-      setIsSidebarOpen(stored === 'true')
-    }
-  }, [])
-
-  useEffect(() => {
-    const handleSidebarToggle = () => {
-      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-      if (stored !== null) {
-        setIsSidebarOpen(stored === 'true')
-      }
-    }
-    window.addEventListener('sidebar-toggle', handleSidebarToggle)
-    return () => window.removeEventListener('sidebar-toggle', handleSidebarToggle)
-  }, [])
+  const { toggle } = useSidebar()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
-  }
-
-  const toggleSidebar = () => {
-    const newValue = !isSidebarOpen
-    setIsSidebarOpen(newValue)
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(newValue))
-    window.dispatchEvent(new Event('sidebar-toggle'))
   }
 
   const getPageTitle = () => {
@@ -91,7 +65,7 @@ export function Navbar() {
           variant="ghost"
           size="icon"
           className="mr-2 hidden md:flex"
-          onClick={toggleSidebar}
+          onClick={toggle}
         >
           <PanelLeft className="h-4 w-4" />
         </Button>
