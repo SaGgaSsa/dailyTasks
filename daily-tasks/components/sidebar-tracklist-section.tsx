@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ClipboardList, Plus, EllipsisVertical } from 'lucide-react'
@@ -46,12 +46,13 @@ interface TracklistForEdit {
 
 interface Props {
   isOpen: boolean
+  initialTracklists?: { id: number; title: string }[]
 }
 
-export function TracklistSidebarSection({ isOpen }: Props) {
+export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const [tracklists, setTracklists] = useState<Tracklist[]>([])
+  const [tracklists, setTracklists] = useState<Tracklist[]>(initialTracklists)
   const [createOpen, setCreateOpen] = useState(false)
   const [editingTracklist, setEditingTracklist] = useState<TracklistForEdit | undefined>(undefined)
   const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])
@@ -59,14 +60,6 @@ export function TracklistSidebarSection({ isOpen }: Props) {
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  useEffect(() => {
-    getTracklists().then((result) => {
-      if (result.success && result.data) {
-        setTracklists(result.data.map((tl) => ({ id: tl.id, title: tl.title })))
-      }
-    })
-  }, [])
 
   const refreshTracklists = () => {
     getTracklists().then((result) => {

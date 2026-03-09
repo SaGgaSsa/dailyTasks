@@ -18,9 +18,10 @@ import { useSidebar } from '@/components/providers/sidebar-provider'
 
 interface SidebarProps {
   userId?: string
+  initialTracklists?: { id: number; title: string }[]
 }
 
-export function Sidebar({ userId }: SidebarProps) {
+export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
   const { data: session } = useSession()
   const { isOpen } = useSidebar()
   const pathname = usePathname()
@@ -54,7 +55,7 @@ export function Sidebar({ userId }: SidebarProps) {
             </Button>
           </Link>
 
-          <TracklistSidebarSection isOpen={isOpen} />
+          <TracklistSidebarSection isOpen={isOpen} initialTracklists={initialTracklists} />
 
           <hr className="border-sidebar-border my-2" />
 
