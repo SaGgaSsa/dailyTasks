@@ -13,20 +13,22 @@ const SidebarContext = createContext<SidebarContextValue>({
   toggle: () => {},
 })
 
-function readFromStorage(): boolean {
-  if (typeof window === 'undefined') return true
-  const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-  return stored !== null ? stored === 'true' : true
-}
-
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState<boolean>(readFromStorage)
+  // Always start with true to match SSR — corrected after hydration
+  const [isOpen, setIsOpen] = useState<boolean>(true)
 
   useEffect(() => {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isOpen))
-  }, [isOpen])
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (stored !== null) setIsOpen(stored === 'true')
+  }, [])
 
-  const toggle = () => setIsOpen(prev => !prev)
+  const toggle = () => {
+    setIsOpen(prev => {
+      const next = !prev
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
+      return next
+    })
+  }
 
   return (
     <SidebarContext.Provider value={{ isOpen, toggle }}>
