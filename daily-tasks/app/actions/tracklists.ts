@@ -97,7 +97,7 @@ async function runAssignmentTransaction(
             const newIncidence = await tx.incidence.create({
                 data: {
                     externalWorkItemId: workItem!.id,
-                    title: ticket.description || title,
+                    description: ticket.description || title,
                     technologyId: ticket.module.technologyId,
                     priority: incidencePriority,
                     status: TaskStatus.BACKLOG,

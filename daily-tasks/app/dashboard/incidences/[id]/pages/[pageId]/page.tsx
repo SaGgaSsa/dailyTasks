@@ -37,7 +37,7 @@ export default async function PageEditorPage({ params }: PageProps) {
             initialTitle={page.title}
             pageId={page.id}
             incidenceId={incidenceNumberId}
-            incidenceTitle={page.incidence.title}
+            incidenceTitle={page.incidence.description}
         />
     )
 }

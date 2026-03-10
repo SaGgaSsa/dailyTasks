@@ -50,7 +50,7 @@ interface UserDetails {
   }
   recentIncidences: Array<{
     id: number
-    title: string
+    description: string
     status: string
     priority: string
     externalWorkItem: { type: string; externalId: number } | null
@@ -301,7 +301,7 @@ export function UserDetailSheet({
                               </span>
                               <StatusBadge status={incidence.status as TaskStatus} />
                             </div>
-                            <p className="text-sm text-zinc-300 truncate">{incidence.title}</p>
+                            <p className="text-sm text-zinc-300 truncate">{incidence.description}</p>
                           </div>
                         </div>
                       </div>

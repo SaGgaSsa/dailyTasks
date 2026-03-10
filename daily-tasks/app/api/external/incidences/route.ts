@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const incidence = await db.incidence.create({
       data: {
         externalWorkItemId: workItem.id,
-        title,
+        description: title,
         technologyId: tech.id,
         status: TaskStatus.BACKLOG,
         priority: Priority.MEDIUM,

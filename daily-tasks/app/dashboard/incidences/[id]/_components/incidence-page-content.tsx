@@ -34,10 +34,10 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
     useEffect(() => {
         setBreadcrumbs([
             { label: 'Incidencias', href: '/dashboard' },
-            { label: incidence.title },
+            { label: incidence.description },
         ])
         return () => setBreadcrumbs([])
-    }, [incidence.title, setBreadcrumbs])
+    }, [incidence.description, setBreadcrumbs])
 
     const handleSave = useCallback(async () => {
         if (saveFnRef.current) {

@@ -65,7 +65,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
-                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.externalWorkItem?.type ?? ''} ${task.externalWorkItem?.externalId ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
 

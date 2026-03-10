@@ -85,8 +85,8 @@ const getUsersCached = cache(async () => {
 interface CreateIncidenceData {
     type: TaskType
     externalId: number
-    title: string
-    description?: string
+    description: string
+    comment?: string
     tech: string
     priority: Priority
     estimatedTime?: number | null
@@ -97,10 +97,9 @@ interface CreateIncidenceData {
 interface UpdateIncidenceData {
     status?: TaskStatus
     priority?: Priority
-    description?: string
     comment?: string
     estimatedTime?: number | null
-    title?: string
+    description?: string
     technology?: string
     assignees?: AssigneeWithHours[]
     subTasks?: { title: string; isCompleted: boolean }[]
@@ -120,8 +119,8 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
 
         const workItem = await db.externalWorkItem.upsert({
             where: { type_externalId: { type: data.type, externalId: data.externalId } },
-            create: { type: data.type, externalId: data.externalId, title: data.title },
-            update: { title: data.title },
+            create: { type: data.type, externalId: data.externalId, title: data.description },
+            update: { title: data.description },
         })
 
         const existingIncidence = await db.incidence.findFirst({
@@ -134,8 +133,8 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
         await db.incidence.create({
             data: {
                 externalWorkItemId: workItem.id,
-                title: data.title,
-                comment: data.description,
+                description: data.description,
+                comment: data.comment,
                 technologyId: tech.id,
                 priority: data.priority as PrismaPriority,
                 estimatedTime: data.estimatedTime,
@@ -192,7 +191,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
             const isValidNumber = !isNaN(searchNumber)
             
             const orConditions = [
-                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
                 { comment: { contains: search, mode: 'insensitive' } }
             ] as unknown[]
 
@@ -613,9 +612,9 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
         const updateData: Record<string, unknown> = {
             status: data.status,
             priority: data.priority,
-            comment: data.description,
+            comment: data.comment,
             estimatedTime: data.estimatedTime,
-            title: data.title,
+            description: data.description,
             technology: techConnect,
         }
 

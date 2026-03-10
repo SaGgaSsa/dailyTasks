@@ -164,7 +164,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               Completar Incidencia {task.externalWorkItem?.type ?? ''} {task.externalWorkItem?.externalId ?? ''}
             </DialogTitle>
             <DialogDescription>
-              {task.title}
+              {task.description}
             </DialogDescription>
           </DialogHeader>
 

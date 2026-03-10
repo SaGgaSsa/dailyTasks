@@ -65,8 +65,8 @@ interface DraftTask {
 interface FormData {
     type: TaskType
     externalId: string
-    title: string
     description: string
+    comment: string
     priority: Priority
     technology: string
     estimatedTime: string
@@ -85,8 +85,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [formData, setFormData] = useState<FormData>({
         type: TaskType.I_MODAPL,
         externalId: '',
-        title: '',
         description: '',
+        comment: '',
         priority: Priority.MEDIUM,
         technology: 'SISA',
         estimatedTime: '',
@@ -149,8 +149,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 setFormData({
                     type: TaskType.I_MODAPL,
                     externalId: '',
-                    title: '',
                     description: '',
+                    comment: '',
                     priority: Priority.MEDIUM,
                     technology: 'SISA',
                     estimatedTime: '',
@@ -184,8 +184,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         const data = {
                             type: (incidence.externalWorkItem?.type as TaskType) || TaskType.I_MODAPL,
                             externalId: incidence.externalWorkItem?.externalId?.toString() || '',
-                            title: incidence.title || '',
-                            description: incidence.comment || '',
+                            description: incidence.description || '',
+                            comment: incidence.comment || '',
                             priority: incidence.priority,
                             technology: incidence.technology?.name || '',
                             estimatedTime: incidence.estimatedTime?.toString() || '',
@@ -216,8 +216,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 setFormData({
                     type: TaskType.I_MODAPL,
                     externalId: '',
-                    title: '',
                     description: '',
+                    comment: '',
                     priority: Priority.MEDIUM,
                     technology: 'SISA',
                     estimatedTime: '',
@@ -463,8 +463,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 return false
             }
             
-            const hasChanges = 
-                (originalFormData && formData.description !== originalFormData.description) ||
+            const hasChanges =
+                (originalFormData && formData.comment !== originalFormData.comment) ||
                 draftTasks.length > 0 ||
                 tasksToToggle.size > 0 ||
                 tasksToDelete.size > 0
@@ -475,8 +475,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             
             setIsSaving(true)
             try {
-                if (originalFormData && formData.description !== originalFormData.description) {
-                    const commentResult = await updateIncidenceComment(initialData.id, formData.description)
+                if (originalFormData && formData.comment !== originalFormData.comment) {
+                    const commentResult = await updateIncidenceComment(initialData.id, formData.comment)
                     if (!commentResult.success) {
                         toast.error(commentResult.error || 'Error al guardar comentario')
                         return false
@@ -527,7 +527,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             }
         }
 
-        if (!formData.type || !formData.externalId || !formData.title) {
+        if (!formData.type || !formData.externalId || !formData.description) {
             toast.error('Tipo, Numero y Descripcion son requeridos')
             return false
         }
@@ -548,8 +548,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 }
 
                 const result = await updateIncidence(initialData.id, {
-                    title: formData.title,
                     description: formData.description,
+                    comment: formData.comment,
                     priority: formData.priority,
                     estimatedTime: hoursValue > 0 ? hoursValue : null,
                     assignees: assigneeData,
@@ -618,8 +618,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 const result = await createIncidence({
                     type: formData.type,
                     externalId: parseInt(formData.externalId),
-                    title: formData.title,
                     description: formData.description,
+                    comment: formData.comment,
                     priority: formData.priority,
                     tech: formData.technology,
                     estimatedTime: hoursValue > 0 ? hoursValue : null,
@@ -686,9 +686,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                    tasksToToggle.size > 0 || 
                    tasksToDelete.size > 0
         }
-        return formData.externalId !== '' || 
-               formData.title !== '' || 
+        return formData.externalId !== '' ||
                formData.description !== '' ||
+               formData.comment !== '' ||
                formData.estimatedTime !== '' ||
                formData.subTasks.length > 0 ||
                formData.assignees.length > 0
@@ -767,10 +767,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             </FormRow>
 
             <FormInput
-                id="title"
+                id="description"
                 label="Descripción"
-                value={formData.title}
-                onChange={(e) => updateFormData({ title: e.target.value })}
+                value={formData.description}
+                onChange={(e) => updateFormData({ description: e.target.value })}
                 disabled={hasRequirements}
                 placeholder="Descripción breve de la incidencia"
             />
@@ -826,7 +826,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                 externalId={initialData.externalWorkItem?.externalId ?? ''}
                                 className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight"
                             />
-                            <span className="text-sm text-foreground font-medium">{initialData.title}</span>
+                            <span className="text-sm text-foreground font-medium">{initialData.description}</span>
                         </div>
                     </div>
                     
@@ -1309,11 +1309,11 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             })()}
 
             <div className="space-y-2">
-                <Label htmlFor="description" className="text-card-foreground/80">Comentario</Label>
+                <Label htmlFor="comment" className="text-card-foreground/80">Comentario</Label>
                 <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => updateFormData({ description: e.target.value })}
+                    id="comment"
+                    value={formData.comment}
+                    onChange={(e) => updateFormData({ comment: e.target.value })}
                     className="bg-input border-border text-foreground min-h-[120px] resize-none"
                     placeholder="Añade comentarios o notas técnicas..."
                 />

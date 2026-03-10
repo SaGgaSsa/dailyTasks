@@ -221,7 +221,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
 
                 {/* Title */}
                 <h3 className="text-xs font-medium text-card-foreground truncate">
-                    {task.title}
+                    {task.description}
                 </h3>
 
                 {/* Separador */}
@@ -347,7 +347,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
                         Completar Incidencia {task.externalWorkItem?.type ?? ''} {task.externalWorkItem?.externalId ?? ''}
                     </DialogTitle>
                     <DialogDescription>
-                        {task.title}
+                        {task.description}
                     </DialogDescription>
                 </DialogHeader>
 

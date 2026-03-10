@@ -39,7 +39,7 @@ export default async function SharedPageView({ params }: PageProps) {
                 <div className="mb-6 text-center">
                     <h1 className="text-2xl font-semibold text-foreground">Documento Compartido</h1>
                     <p className="text-muted-foreground mt-1">
-                        Pertenece a la incidencia: <span className="font-medium">{page.incidence.title}</span>
+                        Pertenece a la incidencia: <span className="font-medium">{page.incidence.description}</span>
                     </p>
                 </div>
 

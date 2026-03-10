@@ -119,7 +119,7 @@ model Incidence {
   id                  Int       @id @default(autoincrement())
   externalWorkItemId  Int
   externalWorkItem    ExternalWorkItem @relation(fields: [externalWorkItemId], references: [id])
-  title               String
+  description         String
   comment             String?   @db.Text
   status              TaskStatus @default(BACKLOG)
   priority            Priority   @default(MEDIUM)

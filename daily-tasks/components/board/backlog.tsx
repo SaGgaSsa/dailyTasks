@@ -166,10 +166,10 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
         ),
     },
     {
-        accessorKey: 'title',
+        accessorKey: 'description',
         header: () => <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Detalle</div>,
         cell: ({ row }) => {
-            const title = row.original.title
+            const title = row.original.description
             const totalHours = row.original.estimatedTime || 0
             const completedHours = calculateCompletedHours(row.original)
             const isComplete = isFullyCompleted(completedHours, row.original.estimatedTime)
@@ -382,7 +382,7 @@ export function Backlog({
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(task => {
             const matchesSearch = searchQuery === '' ||
-                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.externalWorkItem?.type ?? ''} ${task.externalWorkItem?.externalId ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
 

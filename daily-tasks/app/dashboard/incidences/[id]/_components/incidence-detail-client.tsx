@@ -113,7 +113,7 @@ export function IncidenceDetailClient({
             </div>
 
             <h1 className="text-3xl font-bold tracking-tight mt-2 mb-6">
-                {incidenceData.title}
+                {incidenceData.description}
             </h1>
 
             <Tabs 

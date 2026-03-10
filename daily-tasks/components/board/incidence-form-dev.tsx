@@ -323,7 +323,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                 <div className="space-y-6">
                     {initialData && (
                         <h2 className="text-lg font-semibold text-card-foreground">
-                            {initialData.title}
+                            {initialData.description}
                         </h2>
                     )}
 
