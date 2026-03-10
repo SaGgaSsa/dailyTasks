@@ -169,7 +169,7 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {tl.status === TracklistStatus.ACTIVE && (
+                {tl.status === TracklistStatus.ACTIVE && tl.tickets.length > 0 && (
                   <Button
                     variant="ghost"
                     size="icon"
