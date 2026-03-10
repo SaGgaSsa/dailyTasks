@@ -97,22 +97,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <div className="flex-1 p-2">
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-full gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <div className="text-muted-foreground">Cargando...</div>
-          </div>
-        }>
-          <DashboardClient
-            view={currentView}
-            backlogTasks={backlogTasks}
-            kanbanTasks={kanbanTasks}
-            isAdmin={isAdmin}
-          />
-        </Suspense>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full gap-2">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <div className="text-muted-foreground">Cargando...</div>
       </div>
-    </div>
+    }>
+      <DashboardClient
+        view={currentView}
+        backlogTasks={backlogTasks}
+        kanbanTasks={kanbanTasks}
+        isAdmin={isAdmin}
+      />
+    </Suspense>
   )
 }

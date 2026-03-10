@@ -27,7 +27,7 @@ export default function AnalyticsLayout({
       <Sidebar userId={undefined} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-2 relative">
+        <main className="flex-1 overflow-y-auto p-4 relative">
           {children}
         </main>
       </div>
