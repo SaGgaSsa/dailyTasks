@@ -36,12 +36,14 @@ export function TicketActionsMenu({
   triggerSize = 'default',
 }: TicketActionsMenuProps) {
   const router = useRouter()
+  const [menuOpen, setMenuOpen] = useState(false)
   const [dismissOpen, setDismissOpen] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<TicketQAWithDetails | null>(null)
   const [editTarget, setEditTarget] = useState<TicketQAWithDetails | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
 
   const handleCompleteTicket = async () => {
+    setMenuOpen(false)
     const result = await completeTicket(ticket.id, ticket.tracklistId)
     if (result.success) {
       toast.success('Ticket completado')
@@ -51,6 +53,7 @@ export function TicketActionsMenu({
   }
 
   const handleUncompleteTicket = async () => {
+    setMenuOpen(false)
     const result = await uncompleteTicket(ticket.id, ticket.tracklistId)
     if (result.success) {
       toast.success('Ticket vuelto a Test')
@@ -64,7 +67,7 @@ export function TicketActionsMenu({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -88,7 +91,7 @@ export function TicketActionsMenu({
           {!readOnly && ticket.status === TicketQAStatus.TEST && (
             <DropdownMenuItem
               className="text-orange-500 focus:text-orange-500"
-              onClick={() => setRejectTarget(ticket)}
+              onClick={() => { setMenuOpen(false); setRejectTarget(ticket) }}
             >
               <XCircle className="mr-2 h-4 w-4 text-orange-500" />
               Rechazar
@@ -100,18 +103,18 @@ export function TicketActionsMenu({
               Volver a Test
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => { onViewOpen ? onViewOpen() : setDetailOpen(true) }}>
+          <DropdownMenuItem onClick={() => { setMenuOpen(false); onViewOpen ? onViewOpen() : setDetailOpen(true) }}>
             <Eye className="mr-2 h-4 w-4" />
             Ver ticket
           </DropdownMenuItem>
           {ticket.incidenceId && (
-            <DropdownMenuItem onClick={() => router.push(`/dashboard/incidences/${ticket.incidenceId}`)}>
+            <DropdownMenuItem onClick={() => { setMenuOpen(false); router.push(`/dashboard/incidences/${ticket.incidenceId}`) }}>
               <Layers className="mr-2 h-4 w-4" />
               Ver Incidencia
             </DropdownMenuItem>
           )}
           {!readOnly && ticket.status === TicketQAStatus.NEW && (
-            <DropdownMenuItem onClick={() => setEditTarget(ticket)}>
+            <DropdownMenuItem onClick={() => { setMenuOpen(false); setEditTarget(ticket) }}>
               <Pencil className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
@@ -125,7 +128,7 @@ export function TicketActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-600"
-                onClick={() => setDismissOpen(true)}
+                onClick={() => { setMenuOpen(false); setDismissOpen(true) }}
               >
                 <Ban className="mr-2 h-4 w-4" />
                 Desestimar ticket
