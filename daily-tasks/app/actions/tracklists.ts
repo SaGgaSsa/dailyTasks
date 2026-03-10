@@ -7,7 +7,7 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
-import { TicketType, TicketQAStatus, Priority, TaskType } from '@/types/enums'
+import { TicketType, TicketQAStatus, Priority, TaskType, TracklistStatus } from '@/types/enums'
 import { TaskStatus, Priority as PrismaPriority } from '@prisma/client'
 
 interface CreateTracklistData {
@@ -188,6 +188,7 @@ export async function getTracklists(locale: Locale = 'es') {
 
     try {
         const tracklists = await db.tracklist.findMany({
+            where: { status: TracklistStatus.ACTIVE },
             orderBy: { createdAt: 'desc' },
             include: {
                 _count: { select: { tickets: true } },
@@ -388,7 +389,17 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
             }
         }
 
+        // Reactivate tracklist if it was completed or archived
+        const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true } })
+        if (tracklist && tracklist.status !== TracklistStatus.ACTIVE) {
+            await db.tracklist.update({
+                where: { id: tracklistId },
+                data: { status: TracklistStatus.ACTIVE, completedAt: null, completedById: null },
+            })
+        }
+
         revalidatePath('/tracklists')
+        revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true, data: ticket }
     } catch (error) {
         console.error('Error creating ticket:', error)
@@ -577,6 +588,42 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
         return { success: false, error: t(locale, 'errors.saveError') } as const
     }
 }
+export async function completeTracklist(id: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    try {
+        await db.tracklist.update({
+            where: { id },
+            data: {
+                status: TracklistStatus.COMPLETED,
+                completedAt: new Date(),
+                completedById: Number(session.user.id),
+            },
+        })
+        revalidatePath('/tracklists')
+        return { success: true }
+    } catch (error) {
+        console.error('Error completing tracklist:', error)
+        return { success: false, error: 'Error al completar el tracklist' }
+    }
+}
+
+export async function archiveTracklist(id: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    try {
+        await db.tracklist.update({
+            where: { id },
+            data: { status: TracklistStatus.ARCHIVED },
+        })
+        revalidatePath('/tracklists')
+        return { success: true }
+    } catch (error) {
+        console.error('Error archiving tracklist:', error)
+        return { success: false, error: 'Error al archivar el tracklist' }
+    }
+}
+
 export async function uncompleteTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) {

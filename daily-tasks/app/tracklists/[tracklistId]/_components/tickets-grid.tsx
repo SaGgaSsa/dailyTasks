@@ -13,9 +13,10 @@ interface Props {
   selectedUser: string[]
   selectedTech: string[]
   search?: string
+  readOnly?: boolean
 }
 
-export function TicketsGrid({ initialTickets, assignableUsers, view, selectedStatus, selectedUser, selectedTech, search }: Props) {
+export function TicketsGrid({ initialTickets, assignableUsers, view, selectedStatus, selectedUser, selectedTech, search, readOnly }: Props) {
   const filteredTickets = initialTickets.filter((t) => {
     if (selectedStatus.length > 0 && !selectedStatus.includes(t.status)) return false
     if (selectedUser.length > 0 && !selectedUser.includes(String(t.assignedToId ?? ''))) return false
@@ -25,12 +26,13 @@ export function TicketsGrid({ initialTickets, assignableUsers, view, selectedSta
   })
 
   if (view === 'kanban') {
-    return <TicketKanbanBoard tickets={filteredTickets} assignableUsers={assignableUsers} />
+    return <TicketKanbanBoard tickets={filteredTickets} assignableUsers={assignableUsers} readOnly={readOnly} />
   }
   return (
     <TicketsGridComponent
       initialTickets={filteredTickets}
       assignableUsers={assignableUsers}
+      readOnly={readOnly}
     />
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ClipboardList, Plus, EllipsisVertical } from 'lucide-react'
@@ -53,6 +53,10 @@ export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Prop
   const pathname = usePathname()
   const router = useRouter()
   const [tracklists, setTracklists] = useState<Tracklist[]>(initialTracklists)
+
+  useEffect(() => {
+    setTracklists(initialTracklists)
+  }, [initialTracklists])
   const [createOpen, setCreateOpen] = useState(false)
   const [editingTracklist, setEditingTracklist] = useState<TracklistForEdit | undefined>(undefined)
   const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])

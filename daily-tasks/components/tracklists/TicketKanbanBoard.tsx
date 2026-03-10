@@ -12,9 +12,10 @@ const COLUMNS = [
 interface Props {
   tickets: TicketQAWithDetails[]
   assignableUsers: AssignableUser[]
+  readOnly?: boolean
 }
 
-export function TicketKanbanBoard({ tickets, assignableUsers }: Props) {
+export function TicketKanbanBoard({ tickets, assignableUsers, readOnly }: Props) {
   return (
     <div className="grid grid-cols-3 gap-4">
       {COLUMNS.map((col) => {
@@ -32,7 +33,7 @@ export function TicketKanbanBoard({ tickets, assignableUsers }: Props) {
                 <p className="text-xs text-muted-foreground text-center py-4">Sin tickets</p>
               ) : (
                 colTickets.map((ticket) => (
-                  <TicketKanbanCard key={ticket.id} ticket={ticket} assignableUsers={assignableUsers} />
+                  <TicketKanbanCard key={ticket.id} ticket={ticket} assignableUsers={assignableUsers} readOnly={readOnly} />
                 ))
               )}
             </div>

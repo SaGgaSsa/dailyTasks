@@ -17,10 +17,11 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  createdTracklists   Tracklist[]
-  reportedTickets    TicketQA[]  @relation("ReportedBy")
-  assignedTickets    TicketQA[]  @relation("AssignedTo")
-  dismissedTickets   TicketQA[]  @relation("DismissedBy")
+  createdTracklists    Tracklist[]
+  completedTracklists  Tracklist[] @relation("CompletedTracklists")
+  reportedTickets      TicketQA[]  @relation("ReportedBy")
+  assignedTickets      TicketQA[]  @relation("AssignedTo")
+  dismissedTickets     TicketQA[]  @relation("DismissedBy")
 
   assignments        Assignment[]
   attachments        Attachment[]
@@ -210,17 +211,27 @@ model IncidencePage {
   @@map("incidence_pages")
 }
 
+enum TracklistStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 model Tracklist {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  dueDate     DateTime?
-  createdById Int
-  createdBy   User      @relation(fields: [createdById], references: [id])
-  tickets     TicketQA[]
+  id            Int             @id @default(autoincrement())
+  title         String
+  description   String?
+  dueDate       DateTime?
+  status        TracklistStatus @default(ACTIVE)
+  completedAt   DateTime?
+  completedById Int?
+  completedBy   User?           @relation("CompletedTracklists", fields: [completedById], references: [id])
+  createdById   Int
+  createdBy     User            @relation(fields: [createdById], references: [id])
+  tickets       TicketQA[]
   externalWorkItems ExternalWorkItem[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@map("tracklists")
 }

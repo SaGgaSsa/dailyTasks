@@ -12,6 +12,7 @@ import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-p
 interface Props {
   currentId: number
   title: string
+  status: string
   assignableUsers: AssignableUser[]
   initialTickets: TicketQAWithDetails[]
 }
@@ -19,6 +20,7 @@ interface Props {
 export function TracklistViewClient({
   currentId,
   title,
+  status,
   assignableUsers,
   initialTickets,
 }: Props) {
@@ -79,6 +81,7 @@ export function TracklistViewClient({
         selectedUser={selectedUser}
         selectedTech={selectedTech}
         search={search}
+        readOnly={status !== 'ACTIVE'}
       />
       <CreateTicketDialog
         tracklistId={currentId}

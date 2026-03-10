@@ -15,7 +15,7 @@ export default async function TracklistDetailPage({ params }: Props) {
   const [currentTracklist, tickets, assignableUsers] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
-      select: { id: true, title: true }
+      select: { id: true, title: true, status: true }
     }),
     db.ticketQA.findMany({
       where: { tracklistId: numericId },
@@ -39,6 +39,7 @@ export default async function TracklistDetailPage({ params }: Props) {
       <TracklistViewClient
         currentId={numericId}
         title={currentTracklist.title}
+        status={currentTracklist.status}
         assignableUsers={assignableUsers}
         initialTickets={tickets}
       />

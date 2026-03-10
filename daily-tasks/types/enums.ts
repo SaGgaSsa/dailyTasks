@@ -65,3 +65,15 @@ export enum AttachmentType {
     FILE = "FILE",
     LINK = "LINK",
 }
+
+export enum TracklistStatus {
+    ACTIVE = "ACTIVE",
+    COMPLETED = "COMPLETED",
+    ARCHIVED = "ARCHIVED",
+}
+
+export const TRACKLIST_STATUS_LABELS: Record<TracklistStatus, string> = {
+    [TracklistStatus.ACTIVE]: 'Activo',
+    [TracklistStatus.COMPLETED]: 'Completado',
+    [TracklistStatus.ARCHIVED]: 'Archivado',
+}

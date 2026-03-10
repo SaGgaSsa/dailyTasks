@@ -1,16 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, Pencil, ClipboardList } from 'lucide-react'
+import { Eye, Pencil, ClipboardList, CheckCircle2, Archive } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
-import { getTracklistForEdit } from '@/app/actions/tracklists'
+import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
+import { TracklistStatus, TRACKLIST_STATUS_LABELS } from '@/types/enums'
+import { toast } from 'sonner'
 
 // The shape returned by getAllTracklistsWithTickets
 interface TracklistWithTickets {
@@ -18,6 +31,8 @@ interface TracklistWithTickets {
   title: string
   description: string | null
   dueDate: Date | null
+  status: string
+  completedAt: Date | null
   tickets: TicketQAWithDetails[]
 }
 
@@ -50,6 +65,38 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
   const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])
   const [lockedWorkItemIds, setLockedWorkItemIds] = useState<number[]>([])
   const [editOpen, setEditOpen] = useState(false)
+  const [completeTarget, setCompleteTarget] = useState<number | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<number | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+
+  const handleCompleteTracklist = () => {
+    if (!completeTarget) return
+    startTransition(async () => {
+      const result = await completeTracklist(completeTarget)
+      setCompleteTarget(null)
+      if (result.success) {
+        toast.success('Tracklist completado')
+        router.refresh()
+      } else {
+        toast.error(result.error || 'Error al completar')
+      }
+    })
+  }
+
+  const handleArchiveTracklist = () => {
+    if (!archiveTarget) return
+    startTransition(async () => {
+      const result = await archiveTracklist(archiveTarget)
+      setArchiveTarget(null)
+      if (result.success) {
+        toast.success('Tracklist archivado')
+        router.refresh()
+      } else {
+        toast.error(result.error || 'Error al archivar')
+      }
+    })
+  }
 
   const handleEditTracklist = async (tl: TracklistWithTickets) => {
     const result = await getTracklistForEdit(tl.id)
@@ -111,8 +158,39 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
                 {tl.description && (
                   <p className="text-sm text-muted-foreground">{tl.description}</p>
                 )}
+                {tl.status !== TracklistStatus.ACTIVE && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    tl.status === TracklistStatus.COMPLETED
+                      ? 'bg-green-500/15 text-green-400'
+                      : 'bg-zinc-500/15 text-zinc-400'
+                  }`}>
+                    {TRACKLIST_STATUS_LABELS[tl.status as TracklistStatus]}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
+                {tl.status === TracklistStatus.ACTIVE && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-green-500 hover:text-green-400"
+                    title="Completar tracklist"
+                    onClick={() => setCompleteTarget(tl.id)}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {tl.status === TracklistStatus.COMPLETED && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-zinc-400 hover:text-zinc-300"
+                    title="Archivar tracklist"
+                    onClick={() => setArchiveTarget(tl.id)}
+                  >
+                    <Archive className="h-4 w-4" />
+                  </Button>
+                )}
                 <Link href={`/tracklists/${tl.id}`}>
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver tracklist">
                     <Eye className="h-4 w-4" />
@@ -158,6 +236,40 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
           lockedWorkItemIds={lockedWorkItemIds}
         />
       )}
+
+      <AlertDialog open={completeTarget !== null} onOpenChange={(open) => { if (!open) setCompleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Completar tracklist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El tracklist pasará a estado Completado. Dejará de aparecer en el panel lateral. Podés volver a activarlo agregando un nuevo ticket.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCompleteTracklist} disabled={isPending}>
+              Completar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={archiveTarget !== null} onOpenChange={(open) => { if (!open) setArchiveTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Archivar tracklist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El tracklist pasará a estado Archivado. Podés volver a activarlo agregando un nuevo ticket.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveTracklist} disabled={isPending}>
+              Archivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   )
