@@ -9,6 +9,7 @@ import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TaskType, TracklistStatus } from '@/types/enums'
 import { TaskStatus, Priority as PrismaPriority } from '@prisma/client'
+import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 
 interface CreateTracklistData {
     title: string
@@ -580,6 +581,12 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
             where: { id: ticketId },
             data: { status: TicketQAStatus.COMPLETED },
         })
+
+        if (ticket.incidenceId) {
+            await completeIncidenceCore(ticket.incidenceId)
+            revalidatePath('/dashboard')
+        }
+
         revalidatePath('/tracklists')
         revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true } as const
@@ -592,6 +599,24 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
     try {
+        const testTickets = await db.ticketQA.findMany({
+            where: { tracklistId: id, status: TicketQAStatus.TEST },
+        })
+
+        if (testTickets.length > 0) {
+            await db.ticketQA.updateMany({
+                where: { tracklistId: id, status: TicketQAStatus.TEST },
+                data: { status: TicketQAStatus.COMPLETED },
+            })
+
+            const incidenceIds = [...new Set(
+                testTickets.filter(t => t.incidenceId).map(t => t.incidenceId!)
+            )]
+            for (const incId of incidenceIds) {
+                await completeIncidenceCore(incId)
+            }
+        }
+
         await db.tracklist.update({
             where: { id },
             data: {
@@ -601,6 +626,7 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
             },
         })
         revalidatePath('/tracklists')
+        revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
         console.error('Error completing tracklist:', error)
@@ -642,6 +668,15 @@ export async function uncompleteTicket(ticketId: number, tracklistId: number, lo
             where: { id: ticketId },
             data: { status: TicketQAStatus.TEST },
         })
+
+        if (ticket.incidenceId) {
+            await db.incidence.update({
+                where: { id: ticket.incidenceId, status: TaskStatus.DONE },
+                data: { status: TaskStatus.REVIEW, completedAt: null },
+            })
+            revalidatePath('/dashboard')
+        }
+
         revalidatePath('/tracklists')
         revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true } as const

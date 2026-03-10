@@ -978,6 +978,45 @@ export async function toggleSubTask(subTaskId: number) {
     }
 }
 
+export async function completeIncidenceCore(incidenceId: number) {
+    const incidence = await db.incidence.findUnique({
+        where: { id: incidenceId },
+        include: {
+            assignments: {
+                where: { isAssigned: true },
+                include: { tasks: true }
+            }
+        }
+    })
+    if (!incidence) return
+
+    const now = new Date()
+
+    await db.$transaction(async (tx) => {
+        const assignmentIds = incidence.assignments.map(a => a.id)
+
+        if (assignmentIds.length > 0) {
+            await tx.subTask.updateMany({
+                where: {
+                    assignmentId: { in: assignmentIds }
+                },
+                data: {
+                    isCompleted: true,
+                    completedAt: now
+                }
+            })
+        }
+
+        await tx.incidence.update({
+            where: { id: incidenceId },
+            data: {
+                status: TaskStatus.DONE,
+                completedAt: now
+            }
+        })
+    })
+}
+
 export async function completeIncidence(incidenceId: number, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
@@ -985,12 +1024,7 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
     try {
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
-            include: {
-                assignments: {
-                    where: { isAssigned: true },
-                    include: { tasks: true }
-                }
-            }
+            select: { id: true }
         })
 
         if (!incidence) {
@@ -1001,31 +1035,7 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
             return { success: false, error: t(locale, 'business.adminOnly') }
         }
 
-        const now = new Date()
-
-        await db.$transaction(async (tx) => {
-            const assignmentIds = incidence.assignments.map(a => a.id)
-
-            if (assignmentIds.length > 0) {
-                await tx.subTask.updateMany({
-                    where: {
-                        assignmentId: { in: assignmentIds }
-                    },
-                    data: {
-                        isCompleted: true,
-                        completedAt: now
-                    }
-                })
-            }
-
-            await tx.incidence.update({
-                where: { id: incidenceId },
-                data: {
-                    status: TaskStatus.DONE,
-                    completedAt: now
-                }
-            })
-        })
+        await completeIncidenceCore(incidenceId)
 
         revalidatePath('/dashboard')
         return { success: true }
