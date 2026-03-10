@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createTracklist, updateTracklist } from '@/app/actions/tracklists'
 import { FormSheet, FormInput, FormTextarea } from '@/components/ui/form-sheet'
@@ -39,14 +39,30 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalW
   const [hasInitialized, setHasInitialized] = useState(false)
 
   const isEditing = !!tracklist
+  const initialValues = useRef<{
+    title: string
+    description: string
+    dueDate: string
+    workItemIds: number[]
+  } | null>(null)
 
   useEffect(() => {
     if (open && !hasInitialized) {
       if (tracklist) {
-        setTitle(tracklist.title)
-        setDescription(tracklist.description || '')
-        setDueDate(tracklist.dueDate ? new Date(tracklist.dueDate).toISOString().split('T')[0] : '')
-        setSelectedWorkItems(externalWorkItems.map(w => ({ ...w, title: w.title ?? null })))
+        const initTitle = tracklist.title
+        const initDescription = tracklist.description || ''
+        const initDueDate = tracklist.dueDate ? new Date(tracklist.dueDate).toISOString().split('T')[0] : ''
+        const initWorkItems = externalWorkItems.map(w => ({ ...w, title: w.title ?? null }))
+        setTitle(initTitle)
+        setDescription(initDescription)
+        setDueDate(initDueDate)
+        setSelectedWorkItems(initWorkItems)
+        initialValues.current = {
+          title: initTitle,
+          description: initDescription,
+          dueDate: initDueDate,
+          workItemIds: initWorkItems.map(w => w.id).sort()
+        }
       } else {
         setTitle('')
         setDescription('')
@@ -58,11 +74,23 @@ export function CreateTracklistDialog({ open, onOpenChange, tracklist, externalW
 
     if (!open) {
       setHasInitialized(false)
+      initialValues.current = null
     }
   }, [open, tracklist, externalWorkItems, hasInitialized])
 
   const handleSave = async () => {
     if (!title.trim()) return false
+
+    if (isEditing && initialValues.current) {
+      const currentWorkItemIds = selectedWorkItems.map(i => i.id).sort()
+      const hasChanges =
+        title.trim() !== initialValues.current.title ||
+        description.trim() !== initialValues.current.description ||
+        dueDate !== initialValues.current.dueDate ||
+        JSON.stringify(currentWorkItemIds) !== JSON.stringify(initialValues.current.workItemIds)
+
+      if (!hasChanges) return true
+    }
 
     setIsPending(true)
 
