@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { DismissTicketDialog } from '@/components/tracklists/DismissTicketDialog'
-import { TicketDetailModal } from '@/components/tracklists/TicketDetailModal'
+import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { toast } from 'sonner'
 
@@ -120,7 +120,7 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                 const isTest = ticket.status === TicketQAStatus.TEST
                 const isCompleted = ticket.status === TicketQAStatus.COMPLETED
                 return (
-                  <TableRow key={ticket.id} className="hover:bg-accent/50 transition-colors">
+                  <TableRow key={ticket.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => setOpenTicketId(ticket.id)}>
                     <TableCell className="w-8 px-2 py-3 text-center">
                       <Checkbox
                         checked={isCompleted}
@@ -218,12 +218,12 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
       )}
 
       {openTicket && (
-        <TicketDetailModal
-          ticket={openTicket}
-          tracklistId={openTicket.tracklistId}
-          assignableUsers={assignableUsers}
+        <CreateTicketDialog
           open={openTicketId !== null}
           onOpenChange={(open) => { if (!open) setOpenTicketId(null) }}
+          tracklistId={openTicket.tracklistId}
+          assignableUsers={assignableUsers}
+          viewMode={openTicket}
         />
       )}
     </div>

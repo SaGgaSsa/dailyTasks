@@ -18,13 +18,12 @@ import {
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { DismissTicketDialog } from './DismissTicketDialog'
 import { CreateTicketDialog } from './create-ticket-dialog'
-import { TicketDetailModal } from './TicketDetailModal'
 
 interface TicketActionsMenuProps {
   ticket: TicketQAWithDetails
   assignableUsers: AssignableUser[]
   readOnly?: boolean
-  onViewOpen?: () => void
+  onOpenTicket?: (ticket: TicketQAWithDetails) => void
   triggerSize?: 'sm' | 'default'
 }
 
@@ -32,15 +31,22 @@ export function TicketActionsMenu({
   ticket,
   assignableUsers,
   readOnly = false,
-  onViewOpen,
+  onOpenTicket,
   triggerSize = 'default',
 }: TicketActionsMenuProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dismissOpen, setDismissOpen] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<TicketQAWithDetails | null>(null)
-  const [editTarget, setEditTarget] = useState<TicketQAWithDetails | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
+  const [dialogTarget, setDialogTarget] = useState<TicketQAWithDetails | null>(null)
+
+  const handleOpenTicket = (t: TicketQAWithDetails) => {
+    if (onOpenTicket) {
+      onOpenTicket(t)
+    } else {
+      setDialogTarget(t)
+    }
+  }
 
   const handleCompleteTicket = async () => {
     setMenuOpen(false)
@@ -85,7 +91,7 @@ export function TicketActionsMenu({
               onClick={handleCompleteTicket}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Completar
+              Completar ticket
             </DropdownMenuItem>
           )}
           {!readOnly && ticket.status === TicketQAStatus.TEST && (
@@ -94,7 +100,7 @@ export function TicketActionsMenu({
               onClick={() => { setMenuOpen(false); setRejectTarget(ticket) }}
             >
               <XCircle className="mr-2 h-4 w-4 text-orange-500" />
-              Rechazar
+              Rechazar ticket
             </DropdownMenuItem>
           )}
           {!readOnly && ticket.status === TicketQAStatus.COMPLETED && (
@@ -103,20 +109,21 @@ export function TicketActionsMenu({
               Volver a Test
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => { setMenuOpen(false); onViewOpen ? onViewOpen() : setDetailOpen(true) }}>
-            <Eye className="mr-2 h-4 w-4" />
-            Ver ticket
-          </DropdownMenuItem>
+          {ticket.status === TicketQAStatus.NEW && !readOnly ? (
+            <DropdownMenuItem onClick={() => { setMenuOpen(false); handleOpenTicket(ticket) }}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar ticket
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => { setMenuOpen(false); handleOpenTicket(ticket) }}>
+              <Eye className="mr-2 h-4 w-4" />
+              Ver ticket
+            </DropdownMenuItem>
+          )}
           {ticket.incidenceId && (
             <DropdownMenuItem onClick={() => { setMenuOpen(false); router.push(`/dashboard/incidences/${ticket.incidenceId}`) }}>
               <Layers className="mr-2 h-4 w-4" />
               Ver Incidencia
-            </DropdownMenuItem>
-          )}
-          {!readOnly && ticket.status === TicketQAStatus.NEW && (
-            <DropdownMenuItem onClick={() => { setMenuOpen(false); setEditTarget(ticket) }}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
             </DropdownMenuItem>
           )}
           <DropdownMenuItem disabled>
@@ -155,23 +162,15 @@ export function TicketActionsMenu({
         />
       )}
 
-      {editTarget && (
+      {dialogTarget && (
         <CreateTicketDialog
-          open={!!editTarget}
-          onOpenChange={(open) => { if (!open) setEditTarget(null) }}
-          tracklistId={editTarget.tracklistId}
+          open={!!dialogTarget}
+          onOpenChange={(open) => { if (!open) setDialogTarget(null) }}
+          tracklistId={dialogTarget.tracklistId}
           assignableUsers={assignableUsers}
-          editMode={editTarget}
-        />
-      )}
-
-      {!onViewOpen && (
-        <TicketDetailModal
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-          ticket={ticket}
-          tracklistId={ticket.tracklistId}
-          assignableUsers={assignableUsers}
+          {...(dialogTarget.status === TicketQAStatus.NEW && !readOnly
+            ? { editMode: dialogTarget }
+            : { viewMode: dialogTarget })}
         />
       )}
     </>

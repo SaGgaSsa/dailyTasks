@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createTicket, updateTicket, getTicketFormData } from '@/app/actions/tracklists'
+import { createTicket, updateTicket, getTicketFormData, clearTicketUnreadUpdates } from '@/app/actions/tracklists'
 import { rejectTicket } from '@/app/actions/incidence-actions'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
@@ -148,6 +148,13 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   }, [viewMode])
 
   useEffect(() => {
+    const ticket = viewMode || editMode
+    if (open && ticket?.hasUnreadUpdates) {
+      clearTicketUnreadUpdates(ticket.id, ticket.tracklistId)
+    }
+  }, [open, viewMode, editMode])
+
+  useEffect(() => {
     if (!editMode) return
     setType(editMode.type as TicketType)
     setSelectedPriority(editMode.priority as Priority)
@@ -160,7 +167,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   }, [editMode])
 
   useEffect(() => {
-    if (rejectMode) return
+    if (rejectMode || viewMode) return
     if (!selectedTech) return
     // Don't override the module if it already belongs to the selected tech
     if (selectedModule && selectedTech.modules.some(m => m.id === selectedModule.id)) return

@@ -9,9 +9,9 @@ import { AssignableUser } from '@/app/actions/user-actions'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
-import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS } from '@/types/enums'
+import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS, TicketQAStatus } from '@/types/enums'
 import { TicketActionsMenu } from './TicketActionsMenu'
-import { TicketDetailModal } from './TicketDetailModal'
+import { CreateTicketDialog } from './create-ticket-dialog'
 
 
 
@@ -73,7 +73,7 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                 <TableRow
                   key={ticket.id}
                   className="hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={readOnly ? () => setViewTarget(ticket) : undefined}
+                  onClick={() => setViewTarget(ticket)}
                 >
                   <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
                     <div className="relative inline-flex items-center justify-center">
@@ -114,12 +114,12 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-10 px-0 py-3 text-center">
+                  <TableCell className="w-10 px-0 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <TicketActionsMenu
                       ticket={ticket}
                       assignableUsers={assignableUsers}
                       readOnly={readOnly}
-                      onViewOpen={() => setViewTarget(ticket)}
+                      onOpenTicket={setViewTarget}
                     />
                   </TableCell>
                 </TableRow>
@@ -130,12 +130,14 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
       </ScrollArea>
 
       {viewTarget && (
-        <TicketDetailModal
+        <CreateTicketDialog
           open={!!viewTarget}
           onOpenChange={(open) => { if (!open) setViewTarget(null) }}
-          ticket={viewTarget}
           tracklistId={viewTarget.tracklistId}
           assignableUsers={assignableUsers}
+          {...(viewTarget.status === TicketQAStatus.NEW && !readOnly
+            ? { editMode: viewTarget }
+            : { viewMode: viewTarget })}
         />
       )}
     </div>
