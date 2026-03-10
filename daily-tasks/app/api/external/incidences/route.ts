@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { db } from '@/lib/db'
 import { TaskType, Priority, TaskStatus } from '@/types/enums'
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       create: { type: taskType, externalId: Number(externalId), title },
       update: { title },
     })
+    revalidateTag('external-work-items', 'default')
 
     const incidence = await db.incidence.create({
       data: {

@@ -28,7 +28,8 @@ import { PriorityBadge } from '@/components/ui/priority-badge'
 
 import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask, updateSubTaskTitle } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
-import { User } from '@prisma/client'
+import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
+import { User, ExternalWorkItem } from '@prisma/client'
 import { toast } from 'sonner'
 
 interface IncidenceFormProps {
@@ -96,6 +97,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
     const [users, setUsers] = useState<User[]>([])
     const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
+    const [externalWorkItems, setExternalWorkItems] = useState<ExternalWorkItem[]>([])
+    const [isDescriptionManuallyEdited, setIsDescriptionManuallyEdited] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [newSubTask, setNewSubTask] = useState('')
@@ -143,6 +146,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             if (open && techOptions.length === 0) {
                 const result = await getCachedTechsWithModules()
                 setTechOptions(result.techs.map(t => ({ value: t.name, label: t.name })))
+            }
+            if (open && externalWorkItems.length === 0) {
+                const items = await getCachedExternalWorkItems()
+                setExternalWorkItems(items)
             }
             if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
@@ -213,6 +220,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 }
             } else if (open && !initialData) {
                 // Creating new incidence - just load users
+                setIsDescriptionManuallyEdited(false)
                 setFormData({
                     type: TaskType.I_MODAPL,
                     externalId: '',
@@ -262,6 +270,19 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             }, 100)
         }
     }, [isEditMode, isLoading, open, session?.user?.id])
+
+    useEffect(() => {
+        if (isEditMode || isDescriptionManuallyEdited) return
+        const externalIdNum = parseInt(formData.externalId)
+        if (isNaN(externalIdNum)) return
+        const match = externalWorkItems.find(
+            item => item.type === formData.type && item.externalId === externalIdNum
+        )
+        if (match?.title) {
+            updateFormData({ description: match.title })
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.type, formData.externalId])
 
     const updateFormData = (updates: Partial<FormData>) => {
         setFormData(prev => ({ ...prev, ...updates }))
@@ -770,7 +791,14 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 id="description"
                 label="Descripción"
                 value={formData.description}
-                onChange={(e) => updateFormData({ description: e.target.value })}
+                onChange={(e) => {
+                    if (e.target.value === '') {
+                        setIsDescriptionManuallyEdited(false)
+                    } else {
+                        setIsDescriptionManuallyEdited(true)
+                    }
+                    updateFormData({ description: e.target.value })
+                }}
                 disabled={hasRequirements}
                 placeholder="Descripción breve de la incidencia"
             />

@@ -2,7 +2,7 @@
 
 import { cache } from 'react'
 import { db } from '@/lib/db'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus } from '@prisma/client'
 import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
@@ -122,6 +122,7 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             create: { type: data.type, externalId: data.externalId, title: data.description },
             update: { title: data.description },
         })
+        revalidateTag('external-work-items', 'default')
 
         const existingIncidence = await db.incidence.findFirst({
             where: { externalWorkItemId: workItem.id },
