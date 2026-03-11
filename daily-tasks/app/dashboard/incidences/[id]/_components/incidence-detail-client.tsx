@@ -86,7 +86,7 @@ export function IncidenceDetailClient({
     }, [incidence.id])
 
     return (
-        <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-4rem)]">
+        <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-6rem)]">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IncidenceBadge
