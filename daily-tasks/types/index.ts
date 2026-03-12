@@ -1,10 +1,10 @@
-import { Incidence, User, SubTask, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem } from '@prisma/client'
+import { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem } from '@prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
 export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology }
-export type { SubTask, Attachment, IncidencePage, ExternalWorkItem }
+export type { Task, Attachment, IncidencePage, ExternalWorkItem }
 
 export type ModuleWithTech = ModulePrisma & { technology: Technology }
 
@@ -15,7 +15,7 @@ export interface AssigneeWithHours {
 
 export type AssignmentWithDetails = Assignment & {
   user: User
-  tasks: SubTask[]
+  tasks: Task[]
 }
 
 export type AttachmentWithDetails = Attachment & {

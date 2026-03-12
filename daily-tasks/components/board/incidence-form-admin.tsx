@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
@@ -19,14 +19,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { IncidenceWithDetails, SubTask } from '@/types'
+import { IncidenceWithDetails, Task } from '@/types'
 import { TaskType, TaskStatus, Priority } from '@/types/enums'
 import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 
-import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createSubTask, toggleSubTask, deleteSubTask, updateSubTaskTitle } from '@/app/actions/incidence-actions'
+import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createTask, toggleTask, deleteTask, updateTaskTitle } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
 import { User, ExternalWorkItem } from '@prisma/client'
@@ -72,7 +72,7 @@ interface FormData {
     technology: string
     estimatedTime: string
     assignees: AssigneeFormData[]
-    subTasks: { title: string; isCompleted: boolean }[]
+    tasks: { title: string; isCompleted: boolean }[]
 }
 
 export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, externalId, onTaskUpdate, onIncidenceCreated, isDev = false, isKanban = false }: IncidenceFormProps) {
@@ -92,7 +92,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         technology: 'SISA',
         estimatedTime: '',
         assignees: [],
-        subTasks: [],
+        tasks: [],
     })
 
     const [users, setUsers] = useState<User[]>([])
@@ -101,7 +101,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [isDescriptionManuallyEdited, setIsDescriptionManuallyEdited] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [newSubTask, setNewSubTask] = useState('')
     const [originalFormData, setOriginalFormData] = useState<FormData | null>(null)
     const [fullIncidenceData, setFullIncidenceData] = useState<IncidenceWithDetails | null>(null)
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
@@ -118,7 +117,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
     const [editingDraftTaskId, setEditingDraftTaskId] = useState<string | null>(null)
     const [draftTaskEdits, setDraftTaskEdits] = useState<Record<string, string>>({})
-    const taskInputRef = useRef<HTMLInputElement>(null)
 
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
     const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
@@ -162,11 +160,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     technology: 'SISA',
                     estimatedTime: '',
                     assignees: [],
-                    subTasks: [],
+                    tasks: [],
                 })
                 setFullIncidenceData(null)
                 setOriginalFormData(null)
-                setNewSubTask('')
                 setNewTaskInputs({})
                 setTaskInputErrors({})
                 setRemovedAssigneesHours({})
@@ -200,7 +197,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                 userId: a.userId,
                                 assignedHours: a.assignedHours?.toString() || ''
                             })),
-                            subTasks: allAssignments.flatMap(assignment => 
+                            tasks: allAssignments.flatMap(assignment => 
                                 assignment.tasks.map(st => ({ title: st.title, isCompleted: st.isCompleted }))
                             ),
                         }
@@ -230,10 +227,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     technology: 'SISA',
                     estimatedTime: '',
                     assignees: [],
-                    subTasks: [],
+                    tasks: [],
                 })
                 setOriginalFormData(null)
-                setNewSubTask('')
                 setNewTaskInputs({})
                 setTaskInputErrors({})
                 setRemovedAssigneesHours({})
@@ -286,26 +282,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
     const updateFormData = (updates: Partial<FormData>) => {
         setFormData(prev => ({ ...prev, ...updates }))
-    }
-
-    const handleAddSubTask = () => {
-        if (!newSubTask.trim()) return
-        updateFormData({
-            subTasks: [...formData.subTasks, { title: newSubTask, isCompleted: false }]
-        })
-        setNewSubTask('')
-    }
-
-    const handleToggleSubTask = (index: number) => {
-        const updated = formData.subTasks.map((st, i) =>
-            i === index ? { ...st, isCompleted: !st.isCompleted } : st
-        )
-        updateFormData({ subTasks: updated })
-    }
-
-    const handleRemoveSubTask = (index: number) => {
-        const updated = formData.subTasks.filter((_, i) => i !== index)
-        updateFormData({ subTasks: updated })
     }
 
     const handleCreateTask = async (assignmentId: number, title: string) => {
@@ -505,7 +481,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 }
 
                 for (const draft of draftTasks) {
-                    await createSubTask(draft.assignmentId, draft.title)
+                    await createTask(draft.assignmentId, draft.title)
                 }
                 setDraftTasks([])
 
@@ -513,7 +489,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 let reviewMessage = ''
 
                 for (const taskId of tasksToToggle) {
-                    const result = await toggleSubTask(taskId)
+                    const result = await toggleTask(taskId)
                     if (result.success && result.autoTransitionedToReview) {
                         autoTransitionedToReview = true
                         reviewMessage = result.message || ''
@@ -522,7 +498,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 setTasksToToggle(new Set())
 
                 for (const taskId of tasksToDelete) {
-                    const result = await deleteSubTask(taskId)
+                    const result = await deleteTask(taskId)
                 }
                 setTasksToDelete(new Set())
 
@@ -574,7 +550,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     priority: formData.priority,
                     estimatedTime: hoursValue > 0 ? hoursValue : null,
                     assignees: assigneeData,
-                    subTasks: formData.subTasks.length > 0 ? formData.subTasks : undefined,
+                    tasks: formData.tasks.length > 0 ? formData.tasks : undefined,
                 })
 
                 if (result.success) {
@@ -589,7 +565,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                 a => a.id === draft.assignmentId || a.userId === draft.assignmentId
                             )
                             if (assignment) {
-                                const createResult = await createSubTask(assignment.id, draft.title, draft.isCompleted)
+                                const createResult = await createTask(assignment.id, draft.title, draft.isCompleted)
                                 if (createResult.success && createResult.autoTransitionedToReview) {
                                     autoTransitionedToReview = true
                                     reviewMessage = createResult.message || ''
@@ -600,7 +576,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     setDraftTasks([])
 
                     for (const taskId of tasksToToggle) {
-                        const toggleResult = await toggleSubTask(taskId)
+                        const toggleResult = await toggleTask(taskId)
                         if (toggleResult.success && toggleResult.autoTransitionedToReview) {
                             autoTransitionedToReview = true
                             reviewMessage = toggleResult.message || ''
@@ -609,12 +585,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     setTasksToToggle(new Set())
 
                     for (const taskId of tasksToDelete) {
-                        await deleteSubTask(taskId)
+                        await deleteTask(taskId)
                     }
                     setTasksToDelete(new Set())
 
                     for (const [taskId, newTitle] of Object.entries(taskEdits)) {
-                        await updateSubTaskTitle(Number(taskId), newTitle)
+                        await updateTaskTitle(Number(taskId), newTitle)
                     }
                     setTaskEdits({})
 
@@ -671,7 +647,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         setExpandedAssignees(new Set())
         setTasksToToggle(new Set())
         setTasksToDelete(new Set())
-        setNewSubTask('')
         setNewTaskInputs({})
         setTaskInputErrors({})
         setRemovedAssigneesHours({})
@@ -690,7 +665,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         setTasksToDelete(new Set())
         setTaskEdits({})
         setEditingTaskId(null)
-        setNewSubTask('')
         setNewTaskInputs({})
         setTaskInputErrors({})
         setRemovedAssigneesHours({})
@@ -711,7 +685,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                formData.description !== '' ||
                formData.comment !== '' ||
                formData.estimatedTime !== '' ||
-               formData.subTasks.length > 0 ||
+               formData.tasks.length > 0 ||
                formData.assignees.length > 0
     }
 
@@ -888,8 +862,8 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             const userTasks = userAssignment?.tasks || []
                             const userDraftTasks = draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id)
                             const pendingUserDraftTasks = userDraftTasks.filter(t => !t.isCompleted)
-                            const pendingTasks = userTasks.filter((t: SubTask) => !t.isCompleted && !tasksToDelete.has(t.id))
-                            const completedTasks = userTasks.filter((t: SubTask) => t.isCompleted && !tasksToDelete.has(t.id))
+                            const pendingTasks = userTasks.filter((t: Task) => !t.isCompleted && !tasksToDelete.has(t.id))
+                            const completedTasks = userTasks.filter((t: Task) => t.isCompleted && !tasksToDelete.has(t.id))
                             const isExpanded = expandedAssignees.has(user.id)
 
                             return (
@@ -966,7 +940,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     {isExpanded && isSelected && (
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             {/* Tareas pendientes de la base de datos */}
-                                            {pendingTasks.map((task: SubTask) => (
+                                            {pendingTasks.map((task: Task) => (
                                                 <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-accent/30 rounded group">
                                                     <Checkbox
                                                         checked={tasksToToggle.has(task.id)}
@@ -1110,7 +1084,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                     
                                                     {showCompletedTasksByUser[user.id] && (
                                                         <div className="mt-2 space-y-1">
-                                                            {completedTasks.map((task: SubTask) => (
+                                                            {completedTasks.map((task: Task) => (
                                                                 <div key={task.id} className="flex items-center gap-2 px-2 py-1 rounded opacity-60">
                                                                     <Checkbox
                                                                         checked={!tasksToToggle.has(task.id)}
@@ -1159,12 +1133,12 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 const currentUserId = currentUserAssignment?.id || 0
                 const userTasks = currentUserAssignment?.tasks || []
                 
-                const visibleTasks = userTasks.filter((t: SubTask) => !tasksToDelete.has(t.id))
-                const pendingTasks = visibleTasks.filter((t: SubTask) => {
+                const visibleTasks = userTasks.filter((t: Task) => !tasksToDelete.has(t.id))
+                const pendingTasks = visibleTasks.filter((t: Task) => {
                     const isToggled = tasksToToggle.has(t.id)
                     return isToggled ? t.isCompleted : !t.isCompleted
                 })
-                const completedTasks = visibleTasks.filter((t: SubTask) => {
+                const completedTasks = visibleTasks.filter((t: Task) => {
                     const isToggled = tasksToToggle.has(t.id)
                     return isToggled ? !t.isCompleted : t.isCompleted
                 })

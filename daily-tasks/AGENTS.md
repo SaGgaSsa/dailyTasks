@@ -164,7 +164,7 @@ export function MyForm({ onSubmit }: MyFormProps) {
 
 ## Database (Prisma)
 
-- Models: `User`, `Incidence`, `Assignment`, `SubTask`
+- Models: `User`, `Incidence`, `Assignment`, `Task`
 - Use `@map("table_name")` for snake_case columns
 - Singleton client: `import { db } from '@/lib/db'`
 - Enums in Prisma schema match `types/enums.ts`

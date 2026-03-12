@@ -55,7 +55,7 @@ const TICKET_TYPE_TITLE_PREFIX: Record<TicketType, string> = {
     [TicketType.CONSULTA]: 'Consulta',
 }
 
-const TICKET_TYPE_SUBTASK_TITLE: Record<TicketType, string> = {
+const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
     [TicketType.BUG]: 'Corrección',
     [TicketType.CAMBIO]: 'Modificación',
     [TicketType.CONSULTA]: 'Análisis',
@@ -76,7 +76,7 @@ async function runAssignmentTransaction(
 
         const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
         const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
-        const subTaskTitle = TICKET_TYPE_SUBTASK_TITLE[ticket.type as TicketType]
+        const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
 
         let workItem = ticket.externalWorkItemId
             ? await db.externalWorkItem.findUnique({ where: { id: ticket.externalWorkItemId } })
@@ -111,8 +111,8 @@ async function runAssignmentTransaction(
                 update: { isAssigned: true },
             })
 
-            await tx.subTask.create({
-                data: { title: subTaskTitle, assignmentId: assignment.id },
+            await tx.task.create({
+                data: { title: taskTitle, assignmentId: assignment.id },
             })
 
             await tx.ticketQA.update({

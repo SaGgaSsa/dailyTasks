@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { IncidenceWithDetails, SubTask } from '@/types'
+import { IncidenceWithDetails, Task } from '@/types'
 import { TaskType } from '@/types/enums'
 import { FormSheet } from '@/components/ui/form-sheet'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Trash2, Edit2, Loader2 } from 'lucide-react'
-import { toggleSubTask, deleteSubTask, createSubTask, getIncidenceWithUsers, updateSubTaskTitle, updateIncidenceComment } from '@/app/actions/incidence-actions'
+import { toggleTask, deleteTask, createTask, getIncidenceWithUsers, updateTaskTitle, updateIncidenceComment } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
 
 interface IncidenceFormProps {
@@ -38,7 +38,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
     const { data: session } = useSession()
     const currentUserId = session?.user?.id ? Number(session.user.id) : 0
 
-    const [tasks, setTasks] = useState<SubTask[]>([])
+    const [tasks, setTasks] = useState<Task[]>([])
     const [draftTasks, setDraftTasks] = useState<DraftTask[]>([])
     const [tasksToUpdate, setTasksToUpdate] = useState<Set<number>>(new Set())
     const [tasksToDelete, setTasksToDelete] = useState<Set<number>>(new Set())
@@ -169,7 +169,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
         setNewTaskTitle('')
     }
 
-    const startEdit = (task: SubTask) => {
+    const startEdit = (task: Task) => {
         setEditingTaskId(task.id)
         setEditTitle(task.title)
     }
@@ -228,7 +228,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
 
         try {
             for (const draft of draftTasks) {
-                const result = await createSubTask(draft.assignmentId, draft.title)
+                const result = await createTask(draft.assignmentId, draft.title)
                 if (!result.success) {
                     toast.error(result.error)
                     hasErrors = true
@@ -237,7 +237,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
             setDraftTasks([])
 
             for (const taskId of tasksToUpdate) {
-                const result = await toggleSubTask(taskId)
+                const result = await toggleTask(taskId)
                 if (!result.success) {
                     toast.error(result.error)
                     hasErrors = true
@@ -250,7 +250,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
             setTasksToUpdate(new Set())
 
             for (const taskId of tasksToDelete) {
-                const result = await deleteSubTask(taskId)
+                const result = await deleteTask(taskId)
                 if (!result.success) {
                     toast.error(result.error)
                     hasErrors = true
@@ -259,7 +259,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
             setTasksToDelete(new Set())
 
             for (const [taskId, newTitle] of Object.entries(taskEdits)) {
-                const result = await updateSubTaskTitle(Number(taskId), newTitle)
+                const result = await updateTaskTitle(Number(taskId), newTitle)
                 if (!result.success) {
                     toast.error(result.error)
                     hasErrors = true

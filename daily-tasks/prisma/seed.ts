@@ -13,8 +13,42 @@ const prisma = new PrismaClient({ adapter })
 const PASSWORD = 'sisa0314'
 
 async function truncateTables() {
-  await prisma.$executeRaw`TRUNCATE TABLE tickets_qa, assignments, sub_tasks, attachments, incidence_pages, incidences, external_work_items, modules, tracklists, technologies, users RESTART IDENTITY CASCADE`
-  console.log('All tables truncated')
+  const candidateTables = [
+    'tickets_qa',
+    'assignments',
+    'tasks',
+    'sub_tasks',
+    'attachments',
+    'incidence_pages',
+    'incidences',
+    'external_work_items',
+    'modules',
+    'tracklists',
+    'technologies',
+    'users',
+  ]
+
+  const quotedCandidates = candidateTables.map(t => `'${t}'`).join(', ')
+  const existingRows = await prisma.$queryRawUnsafe<Array<{ tablename: string }>>(
+    `
+      SELECT tablename
+      FROM pg_tables
+      WHERE schemaname = 'public'
+        AND tablename IN (${quotedCandidates})
+    `
+  )
+  const existing = new Set(existingRows.map(row => row.tablename))
+  const tablesToTruncate = candidateTables.filter(table => existing.has(table))
+
+  if (tablesToTruncate.length === 0) {
+    console.log('No tables found to truncate')
+    return
+  }
+
+  await prisma.$executeRawUnsafe(
+    `TRUNCATE TABLE ${tablesToTruncate.join(', ')} RESTART IDENTITY CASCADE`
+  )
+  console.log(`Truncated tables: ${tablesToTruncate.join(', ')}`)
 }
 
 const TECHNOLOGIES = [
@@ -205,11 +239,11 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
         where: { incidenceId_userId: { incidenceId: incidence.id, userId: user.id } },
       })
 
-      const existingSubtask = await prisma.subTask.findFirst({
+      const existingTask = await prisma.task.findFirst({
         where: { assignmentId: assignment!.id },
       })
-      if (!existingSubtask) {
-        await prisma.subTask.create({
+      if (!existingTask) {
+        await prisma.task.create({
           data: {
             title: TASK_TITLES[incidences.length % TASK_TITLES.length],
             isCompleted: false,

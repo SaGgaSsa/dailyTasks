@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
-import { createSubTask, toggleSubTask, deleteSubTask, updateIncidence, updateSubTaskTitle, getIncidence } from '@/app/actions/incidence-actions'
+import { createTask, toggleTask, deleteTask, updateIncidence, updateTaskTitle, getIncidence } from '@/app/actions/incidence-actions'
 import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -229,12 +229,12 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             let autoTransitionedToReview = false
 
             for (const taskId of Object.keys(taskEdits)) {
-                await updateSubTaskTitle(Number(taskId), taskEdits[Number(taskId)])
+                await updateTaskTitle(Number(taskId), taskEdits[Number(taskId)])
             }
             setTaskEdits({})
 
             for (const taskId of tasksToToggle) {
-                const result = await toggleSubTask(taskId)
+                const result = await toggleTask(taskId)
                 if (result.success && result.autoTransitionedToReview) {
                     autoTransitionedToReview = true
                 }
@@ -242,7 +242,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             setTasksToToggle(new Set())
 
             for (const taskId of tasksToDelete) {
-                await deleteSubTask(taskId)
+                await deleteTask(taskId)
             }
             setTasksToDelete(new Set())
 
@@ -298,7 +298,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 for (const draft of draftTasks) {
                     const realAssignmentId = userIdToAssignment[draft.userId]
                     if (realAssignmentId) {
-                        const result = await createSubTask(realAssignmentId, draft.title, draft.isCompleted)
+                        const result = await createTask(realAssignmentId, draft.title, draft.isCompleted)
                         if (result.success && result.autoTransitionedToReview) {
                             autoTransitionedToReview = true
                         }
@@ -307,7 +307,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 setDraftTasks([])
             } else if (draftTasks.length > 0) {
                 for (const draft of draftTasks) {
-                    const result = await createSubTask(draft.assignmentId, draft.title, draft.isCompleted)
+                    const result = await createTask(draft.assignmentId, draft.title, draft.isCompleted)
                     if (result.success && result.autoTransitionedToReview) {
                         autoTransitionedToReview = true
                     }

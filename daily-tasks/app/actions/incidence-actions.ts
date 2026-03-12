@@ -102,7 +102,7 @@ interface UpdateIncidenceData {
     description?: string
     technology?: string
     assignees?: AssigneeWithHours[]
-    subTasks?: { title: string; isCompleted: boolean }[]
+    tasks?: { title: string; isCompleted: boolean }[]
 }
 
 export async function createIncidence(data: CreateIncidenceData, locale: Locale = 'es') {
@@ -669,10 +669,10 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
         })
 
         // Verificar si debe reabrirse automáticamente (tareas nuevas en estado DONE)
-        const hasNewSubTasks = data.subTasks && data.subTasks.length > 0
+        const hasNewTasks = data.tasks && data.tasks.length > 0
         const isCurrentlyDone = currentIncidence.status === TaskStatus.DONE
 
-        if (isCurrentlyDone && hasNewSubTasks) {
+        if (isCurrentlyDone && hasNewTasks) {
             await db.incidence.update({
                 where: { id },
                 data: {
@@ -773,7 +773,7 @@ export async function updateIncidenceComment(incidenceId: number, comment: strin
     }
 }
 
-export async function createSubTask(assignmentId: number, title: string, isCompleted: boolean = false) {
+export async function createTask(assignmentId: number, title: string, isCompleted: boolean = false) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
@@ -802,7 +802,7 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
         const isReopening = currentStatus === TaskStatus.DONE
 
         const result = await db.$transaction(async (tx) => {
-            const subTask = await tx.subTask.create({
+            const task = await tx.task.create({
                 data: {
                     title,
                     assignmentId,
@@ -828,7 +828,7 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                 })
             }
 
-            return { subTask, reopened }
+            return { task, reopened }
         })
 
         // Sync linked tickets for reopening (DONE → IN_PROGRESS) and TODO → IN_PROGRESS transitions
@@ -843,7 +843,7 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
         let message = result.reopened ? 'Incidencia reabierta automáticamente' : 'Tarea creada'
 
         if (isCompleted && (currentStatus === TaskStatus.IN_PROGRESS || currentStatus === TaskStatus.TODO)) {
-            const allSubTasks = await db.subTask.findMany({
+            const allTasks = await db.task.findMany({
                 where: {
                     assignment: {
                         incidenceId: assignment.incidenceId
@@ -851,7 +851,7 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
                 }
             })
 
-            const allCompleted = allSubTasks.length > 0 && allSubTasks.every(t => t.isCompleted)
+            const allCompleted = allTasks.length > 0 && allTasks.every(t => t.isCompleted)
 
             if (allCompleted) {
                 await db.incidence.update({
@@ -868,30 +868,30 @@ export async function createSubTask(assignmentId: number, title: string, isCompl
         revalidatePath('/tracklists')
         return {
             success: true,
-            data: result.subTask,
+            data: result.task,
             reopened: result.reopened,
             autoTransitionedToReview,
             message
         }
     } catch (error) {
-        console.error('Error creating subtask:', error)
+        console.error('Error creating task:', error)
         return { success: false, error: 'Error al crear tarea' }
     }
 }
 
-export async function toggleSubTask(subTaskId: number) {
+export async function toggleTask(taskId: number) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
-        const subTask = await db.subTask.findUnique({
-            where: { id: subTaskId },
+        const task = await db.task.findUnique({
+            where: { id: taskId },
             include: { assignment: { include: { incidence: true } } }
         })
 
-        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+        if (!task) return { success: false, error: 'Tarea no encontrada' }
 
-        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAssignedUser = task.assignment.userId === Number(session.user.id)
         const isAdmin = session.user.role === 'ADMIN'
 
         if (!isAssignedUser && !isAdmin) {
@@ -899,7 +899,7 @@ export async function toggleSubTask(subTaskId: number) {
         }
 
         // Validaciones restrictivas para estados bloqueados
-        const currentStatus = subTask.assignment.incidence.status
+        const currentStatus = task.assignment.incidence.status
         
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
@@ -909,10 +909,10 @@ export async function toggleSubTask(subTaskId: number) {
             return { success: false, error: 'Solo los administradores pueden modificar tareas en revisión' }
         }
 
-        const newCompletionStatus = !subTask.isCompleted
+        const newCompletionStatus = !task.isCompleted
 
-        await db.subTask.update({
-            where: { id: subTaskId },
+        await db.task.update({
+            where: { id: taskId },
             data: {
                 isCompleted: newCompletionStatus,
                 completedAt: newCompletionStatus ? new Date() : null
@@ -928,38 +928,38 @@ export async function toggleSubTask(subTaskId: number) {
             // If coming from TODO, first transition to IN_PROGRESS
             if (currentStatus === TaskStatus.TODO) {
                 await db.incidence.update({
-                    where: { id: subTask.assignment.incidenceId },
+                    where: { id: task.assignment.incidenceId },
                     data: { status: TaskStatus.IN_PROGRESS }
                 })
-                await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.IN_PROGRESS)
+                await syncLinkedTickets(task.assignment.incidenceId, TaskStatus.IN_PROGRESS)
             }
             // Transition to REVIEW when all tasks are completed
-            const allSubTasks = await db.subTask.findMany({
+            const allTasks = await db.task.findMany({
                 where: {
                     assignment: {
-                        incidenceId: subTask.assignment.incidenceId
+                        incidenceId: task.assignment.incidenceId
                     }
                 }
             })
 
-            const allCompleted = allSubTasks.length > 0 && allSubTasks.every(t => t.isCompleted)
+            const allCompleted = allTasks.length > 0 && allTasks.every(t => t.isCompleted)
 
             if (allCompleted) {
                 await db.incidence.update({
-                    where: { id: subTask.assignment.incidenceId },
+                    where: { id: task.assignment.incidenceId },
                     data: { status: TaskStatus.REVIEW }
                 })
-                await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.REVIEW)
+                await syncLinkedTickets(task.assignment.incidenceId, TaskStatus.REVIEW)
                 autoTransitionedToReview = true
                 message = '¡Todas las tareas completadas! La incidencia pasó a revisión'
             }
         } else if (!newCompletionStatus && currentStatus === TaskStatus.REVIEW) {
             // Transition to IN_PROGRESS when unchecking a task in REVIEW status
             await db.incidence.update({
-                where: { id: subTask.assignment.incidenceId },
+                where: { id: task.assignment.incidenceId },
                 data: { status: TaskStatus.IN_PROGRESS }
             })
-            await syncLinkedTickets(subTask.assignment.incidenceId, TaskStatus.IN_PROGRESS)
+            await syncLinkedTickets(task.assignment.incidenceId, TaskStatus.IN_PROGRESS)
             autoTransitionedToInProgress = true
             message = 'Incidencia regresada a progreso'
         }
@@ -973,7 +973,7 @@ export async function toggleSubTask(subTaskId: number) {
             autoTransitionedToInProgress
         }
     } catch (error) {
-        console.error('Error toggling subtask:', error)
+        console.error('Error toggling task:', error)
         return { success: false, error: 'Error al actualizar tarea' }
     }
 }
@@ -996,7 +996,7 @@ export async function completeIncidenceCore(incidenceId: number) {
         const assignmentIds = incidence.assignments.map(a => a.id)
 
         if (assignmentIds.length > 0) {
-            await tx.subTask.updateMany({
+            await tx.task.updateMany({
                 where: {
                     assignmentId: { in: assignmentIds }
                 },
@@ -1045,19 +1045,19 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
     }
 }
 
-export async function deleteSubTask(subTaskId: number) {
+export async function deleteTask(taskId: number) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
-        const subTask = await db.subTask.findUnique({
-            where: { id: subTaskId },
+        const task = await db.task.findUnique({
+            where: { id: taskId },
             include: { assignment: { include: { incidence: true } } }
         })
 
-        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+        if (!task) return { success: false, error: 'Tarea no encontrada' }
 
-        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAssignedUser = task.assignment.userId === Number(session.user.id)
         const isAdmin = session.user.role === 'ADMIN'
 
         if (!isAssignedUser && !isAdmin) {
@@ -1065,7 +1065,7 @@ export async function deleteSubTask(subTaskId: number) {
         }
 
         // Validaciones restrictivas para estados bloqueados
-        const currentStatus = subTask.assignment.incidence.status
+        const currentStatus = task.assignment.incidence.status
         
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede eliminar tareas en una incidencia finalizada' }
@@ -1076,42 +1076,42 @@ export async function deleteSubTask(subTaskId: number) {
         }
 
         // Eliminar la subtarea
-        await db.subTask.delete({
-            where: { id: subTaskId }
+        await db.task.delete({
+            where: { id: taskId }
         })
 
         revalidatePath('/dashboard')
         return { success: true, message: 'Tarea eliminada' }
     } catch (error) {
-        console.error('Error deleting subtask:', error)
+        console.error('Error deleting task:', error)
         return { success: false, error: 'Error al eliminar tarea' }
     }
 }
 
-export async function updateSubTaskTitle(subTaskId: number, newTitle: string) {
+export async function updateTaskTitle(taskId: number, newTitle: string) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     try {
-        const subTask = await db.subTask.findUnique({
-            where: { id: subTaskId },
+        const task = await db.task.findUnique({
+            where: { id: taskId },
             include: { assignment: { include: { incidence: true } } }
         })
 
-        if (!subTask) return { success: false, error: 'Tarea no encontrada' }
+        if (!task) return { success: false, error: 'Tarea no encontrada' }
 
-        const isAssignedUser = subTask.assignment.userId === Number(session.user.id)
+        const isAssignedUser = task.assignment.userId === Number(session.user.id)
         const isAdmin = session.user.role === 'ADMIN'
 
         if (!isAssignedUser && !isAdmin) {
             return { success: false, error: 'No autorizado' }
         }
 
-        if (subTask.isCompleted) {
+        if (task.isCompleted) {
             return { success: false, error: 'No puede editar tareas completadas' }
         }
 
-        const currentStatus = subTask.assignment.incidence.status
+        const currentStatus = task.assignment.incidence.status
 
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
@@ -1121,15 +1121,15 @@ export async function updateSubTaskTitle(subTaskId: number, newTitle: string) {
             return { success: false, error: 'Solo los administradores pueden modificar tareas en revisión' }
         }
 
-        await db.subTask.update({
-            where: { id: subTaskId },
+        await db.task.update({
+            where: { id: taskId },
             data: { title: newTitle }
         })
 
         revalidatePath('/dashboard')
         return { success: true, message: 'Tarea actualizada' }
     } catch (error) {
-        console.error('Error updating subtask title:', error)
+        console.error('Error updating task title:', error)
         return { success: false, error: 'Error al actualizar tarea' }
     }
 }
@@ -1198,7 +1198,7 @@ export async function rejectTicket(ticketId: number, description: string, trackl
             return { success: false, error: 'No se encontró la asignación del DEV responsable' }
 
         await db.$transaction(async (tx) => {
-            await tx.subTask.create({
+            await tx.task.create({
                 data: { title: description.trim(), assignmentId: assignment.id, isCompleted: false }
             })
             await tx.incidence.update({

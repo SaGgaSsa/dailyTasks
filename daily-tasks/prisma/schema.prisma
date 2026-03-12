@@ -151,13 +151,13 @@ model Assignment {
 
   assignedHours Int?
   isAssigned     Boolean   @default(true)
-  tasks          SubTask[]
+  tasks          Task[]
 
   @@unique([incidenceId, userId])
   @@map("assignments")
 }
 
-model SubTask {
+model Task {
   id          Int       @id @default(autoincrement())
   title       String
   isCompleted Boolean   @default(false)
@@ -168,7 +168,7 @@ model SubTask {
 
   createdAt   DateTime  @default(now())
 
-  @@map("sub_tasks")
+  @@map("tasks")
 }
 
 model Attachment {
