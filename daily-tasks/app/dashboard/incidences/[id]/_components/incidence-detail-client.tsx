@@ -3,13 +3,11 @@
 import { useState, useCallback, useTransition, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { IncidenceWithDetails, AttachmentWithDetails } from '@/types'
-import { TaskType, Priority } from '@/types/enums'
+import { IncidenceWithDetails } from '@/types'
 import { GeneralTab } from './general-tab'
 import { TasksTab } from './tasks-tab'
 import { AssetsTab } from './assets-tab'
 import { PagesTab } from './pages-tab'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { getIncidence } from '@/app/actions/incidence-actions'
@@ -40,16 +38,13 @@ export function IncidenceDetailClient({
     onSaveRef,
 }: IncidenceDetailClientProps) {
     const [incidenceData, setIncidenceData] = useState<IncidenceWithDetails>(incidence)
-    const [isPending, startTransition] = useTransition()
-    const [activeTab, setActiveTab] = useState("overview")
-
-    useEffect(() => {
+    const [, startTransition] = useTransition()
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window === 'undefined') return 'overview'
         const hash = window.location.hash.replace('#', '')
         const validTabs = ['overview', 'tasks', 'pages', 'files']
-        if (validTabs.includes(hash)) {
-            setActiveTab(hash)
-        }
-    }, [])
+        return validTabs.includes(hash) ? hash : 'overview'
+    })
 
     useEffect(() => {
         const handleHashChange = () => {
@@ -160,8 +155,8 @@ export function IncidenceDetailClient({
 
                 <TabsContent value="files" className="mt-0">
                     <AssetsTab
-                        incidenceId={incidenceData.id}
-                        attachments={incidenceData.attachments}
+                        externalWorkItemId={incidenceData.externalWorkItem.id}
+                        attachments={incidenceData.externalWorkItem.attachments}
                         currentUserId={currentUserId}
                         onRefresh={handleRefreshAttachments}
                     />

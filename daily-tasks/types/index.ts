@@ -22,6 +22,10 @@ export type AttachmentWithDetails = Attachment & {
   uploadedBy: User
 }
 
+export type ExternalWorkItemWithAttachments = ExternalWorkItem & {
+  attachments: AttachmentWithDetails[]
+}
+
 export type IncidencePageWithAuthor = IncidencePage & {
   author: User
 }
@@ -31,9 +35,8 @@ export type IncidenceWithDetails = Omit<Incidence, 'status' | 'technology' | 'pr
   technology: Technology
   priority: Priority
   position: number
-  externalWorkItem: ExternalWorkItem
+  externalWorkItem: ExternalWorkItemWithAttachments
   assignments: AssignmentWithDetails[]
-  attachments: AttachmentWithDetails[]
   pages: IncidencePageWithAuthor[]
   qaTickets: { id: number }[]
 }

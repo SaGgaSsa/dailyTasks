@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 interface AddLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  incidenceId: number
+  externalWorkItemId: number
   uploadedById: number
   onSuccess?: () => void
 }
@@ -29,7 +29,7 @@ interface AddLinkDialogProps {
 export function AddLinkDialog({
   open,
   onOpenChange,
-  incidenceId,
+  externalWorkItemId,
   uploadedById,
   onSuccess,
 }: AddLinkDialogProps) {
@@ -52,7 +52,7 @@ export function AddLinkDialog({
 
     try {
       const result = await addLinkAttachment({
-        incidenceId,
+        externalWorkItemId,
         uploadedById,
         url: url.trim(),
         name: name.trim(),

@@ -89,6 +89,25 @@ function validateFileType(file: File, buffer: Buffer): { valid: boolean; error?:
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
 
+async function resolveExternalWorkItemIdFromForm(formData: FormData): Promise<number | null> {
+    const externalWorkItemId = Number(formData.get('externalWorkItemId'))
+    if (!Number.isNaN(externalWorkItemId) && externalWorkItemId > 0) {
+        return externalWorkItemId
+    }
+
+    const incidenceId = Number(formData.get('incidenceId'))
+    if (Number.isNaN(incidenceId) || incidenceId <= 0) {
+        return null
+    }
+
+    const incidence = await db.incidence.findUnique({
+        where: { id: incidenceId },
+        select: { externalWorkItemId: true }
+    })
+
+    return incidence?.externalWorkItemId ?? null
+}
+
 export async function uploadAttachment(formData: FormData) {
     const session = await auth()
     if (!session?.user) {
@@ -96,12 +115,12 @@ export async function uploadAttachment(formData: FormData) {
     }
 
     const file = formData.get('file') as File | null
-    const incidenceId = Number(formData.get('incidenceId'))
+    const externalWorkItemId = await resolveExternalWorkItemIdFromForm(formData)
     const name = formData.get('name') as string
     const uploadedById = Number(formData.get('uploadedById'))
     const description = formData.get('description') as string | null
 
-    if (!file || !incidenceId || !name || !uploadedById) {
+    if (!file || !externalWorkItemId || !name || !uploadedById) {
         return { success: false, error: 'Faltan datos requeridos' }
     }
 
@@ -118,26 +137,26 @@ export async function uploadAttachment(formData: FormData) {
     }
 
     try {
-        const incidence = await db.incidence.findUnique({
-            where: { id: incidenceId }
+        const workItem = await db.externalWorkItem.findUnique({
+            where: { id: externalWorkItemId }
         })
 
-        if (!incidence) {
-            return { success: false, error: 'Incidencia no encontrada' }
+        if (!workItem) {
+            return { success: false, error: 'External work item no encontrado' }
         }
 
         const originalName = file.name
         const ext = originalName.split('.').pop() || ''
         const uniqueName = `${randomUUID()}.${ext}`
         
-        const uploadDir = join(process.cwd(), 'public', 'uploads', 'incidences', String(incidenceId))
+        const uploadDir = join(process.cwd(), 'public', 'uploads', 'external-work-items', String(externalWorkItemId))
         
         await mkdir(uploadDir, { recursive: true })
         
         const filePath = join(uploadDir, uniqueName)
         await writeFile(filePath, buffer)
 
-        const url = `/uploads/incidences/${incidenceId}/${uniqueName}`
+        const url = `/uploads/external-work-items/${externalWorkItemId}/${uniqueName}`
 
         const attachment = await db.attachment.create({
             data: {
@@ -148,7 +167,7 @@ export async function uploadAttachment(formData: FormData) {
                 size: file.size,
                 mimeType: file.type,
                 description: description || null,
-                incidenceId,
+                externalWorkItemId,
                 uploadedById
             }
         })
@@ -241,7 +260,6 @@ export async function deleteAttachment(
     try {
         const attachment = await db.attachment.findUnique({
             where: { id: attachmentId },
-            include: { incidence: true }
         })
 
         if (!attachment) {
@@ -255,8 +273,13 @@ export async function deleteAttachment(
             return { success: false, error: 'No tienes permiso para eliminar este archivo' }
         }
 
+        if (attachment.isOriginal) {
+            return { success: false, error: 'No se pueden eliminar archivos originales del sistema externo' }
+        }
+
         if (attachment.type === ATTACHMENT_TYPE_FILE) {
-            const filePath = join(process.cwd(), 'public', attachment.url)
+            const relativePath = attachment.url.replace(/^\//, '')
+            const filePath = join(process.cwd(), 'public', relativePath)
             try {
                 await unlink(filePath)
             } catch (fsError) {
@@ -277,7 +300,7 @@ export async function deleteAttachment(
 }
 
 interface AddLinkData {
-    incidenceId: number
+    externalWorkItemId: number
     name: string
     url: string
     description?: string
@@ -290,19 +313,19 @@ export async function addLinkAttachment(data: AddLinkData) {
         return { success: false, error: 'No autorizado' }
     }
 
-    const { incidenceId, name, url, description, uploadedById } = data
+    const { externalWorkItemId, name, url, description, uploadedById } = data
 
-    if (!incidenceId || !name || !url || !uploadedById) {
+    if (!externalWorkItemId || !name || !url || !uploadedById) {
         return { success: false, error: 'Faltan datos requeridos' }
     }
 
     try {
-        const incidence = await db.incidence.findUnique({
-            where: { id: incidenceId }
+        const workItem = await db.externalWorkItem.findUnique({
+            where: { id: externalWorkItemId }
         })
 
-        if (!incidence) {
-            return { success: false, error: 'Incidencia no encontrada' }
+        if (!workItem) {
+            return { success: false, error: 'External work item no encontrado' }
         }
 
         let normalizedUrl = url.trim()
@@ -329,7 +352,7 @@ export async function addLinkAttachment(data: AddLinkData) {
                 size: null,
                 mimeType: null,
                 description: description?.trim() || null,
-                incidenceId,
+                externalWorkItemId,
                 uploadedById
             }
         })

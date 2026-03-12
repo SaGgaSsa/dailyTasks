@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 interface UploadFileDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  incidenceId: number
+  externalWorkItemId: number
   uploadedById: number
   onSuccess?: () => void
 }
@@ -29,7 +29,7 @@ interface UploadFileDialogProps {
 export function UploadFileDialog({
   open,
   onOpenChange,
-  incidenceId,
+  externalWorkItemId,
   uploadedById,
   onSuccess,
 }: UploadFileDialogProps) {
@@ -66,7 +66,7 @@ export function UploadFileDialog({
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
-      formData.append('incidenceId', String(incidenceId))
+      formData.append('externalWorkItemId', String(externalWorkItemId))
       formData.append('uploadedById', String(uploadedById))
       formData.append('name', fileName.trim())
       if (description.trim()) {

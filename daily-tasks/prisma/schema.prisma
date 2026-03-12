@@ -108,9 +108,10 @@ model ExternalWorkItem {
   externalId Int
   title      String?
 
-  incidences  Incidence[]
-  qaTickets   TicketQA[]
-  tracklists  Tracklist[]
+  incidences   Incidence[]
+  attachments  Attachment[]
+  qaTickets    TicketQA[]
+  tracklists   Tracklist[]
 
   @@unique([type, externalId])
   @@map("external_work_items")
@@ -134,7 +135,6 @@ model Incidence {
   updatedAt     DateTime  @updatedAt
 
   assignments   Assignment[]
-  attachments   Attachment[]
   pages         IncidencePage[]
   qaTickets     TicketQA[]
 
@@ -183,8 +183,9 @@ model Attachment {
   mimeType     String?
   description  String?
 
-  incidenceId  Int
-  incidence    Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+  isOriginal         Boolean @default(false)
+  externalWorkItemId Int
+  externalWorkItem   ExternalWorkItem @relation(fields: [externalWorkItemId], references: [id], onDelete: Cascade)
 
   uploadedById Int
   uploadedBy   User      @relation(fields: [uploadedById], references: [id])

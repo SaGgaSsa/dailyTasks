@@ -32,7 +32,18 @@ const getIncidenceCached = cache(async (id: number) => {
     return db.incidence.findUnique({
         where: { id },
             include: {
-                externalWorkItem: true,
+                externalWorkItem: {
+                    include: {
+                        attachments: {
+                            include: {
+                                uploadedBy: true
+                            },
+                            orderBy: {
+                                createdAt: 'desc'
+                            }
+                        }
+                    }
+                },
                 technology: true,
                 assignments: {
                 where: { isAssigned: true },
@@ -44,14 +55,6 @@ const getIncidenceCached = cache(async (id: number) => {
                             { completedAt: 'desc' }
                         ]
                     }
-                }
-            },
-            attachments: {
-                include: {
-                    uploadedBy: true
-                },
-                orderBy: {
-                    createdAt: 'desc'
                 }
             },
             pages: {
@@ -249,7 +252,18 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         const incidences = await db.incidence.findMany({
             where,
             include: {
-                externalWorkItem: true,
+                externalWorkItem: {
+                    include: {
+                        attachments: {
+                            include: {
+                                uploadedBy: true
+                            },
+                            orderBy: {
+                                createdAt: 'desc'
+                            }
+                        }
+                    }
+                },
                 technology: true,
                 assignments: {
                     where: { isAssigned: true },
@@ -353,7 +367,18 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                     externalWorkItem: { type, externalId }
                 },
                 include: {
-                    externalWorkItem: true,
+                    externalWorkItem: {
+                        include: {
+                            attachments: {
+                                include: {
+                                    uploadedBy: true
+                                },
+                                orderBy: {
+                                    createdAt: 'desc'
+                                }
+                            }
+                        }
+                    },
                     technology: true,
                     assignments: {
                         where: { isAssigned: true },
@@ -364,14 +389,6 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                                     createdAt: 'asc'
                                 }
                             }
-                        }
-                    },
-                    attachments: {
-                        include: {
-                            uploadedBy: true
-                        },
-                        orderBy: {
-                            createdAt: 'desc'
                         }
                     },
                     qaTickets: { select: { id: true } }

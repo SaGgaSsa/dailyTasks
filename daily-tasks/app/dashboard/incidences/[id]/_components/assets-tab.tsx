@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, FileIcon, ImageIcon, FileText, Video, Music, File, Plus, Link as LinkIcon } from 'lucide-react'
+import { Search, FileIcon, ImageIcon, FileText, Video, Music, File, Link as LinkIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { AttachmentWithDetails } from '@/types'
@@ -10,7 +10,7 @@ import { AddLinkDialog } from '@/components/assets/add-link-dialog'
 import { AttachmentRowActions } from '@/components/assets/attachment-row-actions'
 
 interface AssetsTabProps {
-    incidenceId: number
+    externalWorkItemId: number
     attachments: AttachmentWithDetails[]
     currentUserId: number
     onRefresh?: () => void
@@ -40,7 +40,7 @@ function formatDate(date: Date): string {
     })
 }
 
-export function AssetsTab({ incidenceId, attachments, currentUserId, onRefresh }: AssetsTabProps) {
+export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRefresh }: AssetsTabProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [isUploadFileOpen, setIsUploadFileOpen] = useState(false)
     const [isAddLinkOpen, setIsAddLinkOpen] = useState(false)
@@ -171,7 +171,7 @@ export function AssetsTab({ incidenceId, attachments, currentUserId, onRefresh }
             <UploadFileDialog
                 open={isUploadFileOpen}
                 onOpenChange={setIsUploadFileOpen}
-                incidenceId={incidenceId}
+                externalWorkItemId={externalWorkItemId}
                 uploadedById={currentUserId}
                 onSuccess={onRefresh}
             />
@@ -179,7 +179,7 @@ export function AssetsTab({ incidenceId, attachments, currentUserId, onRefresh }
             <AddLinkDialog
                 open={isAddLinkOpen}
                 onOpenChange={setIsAddLinkOpen}
-                incidenceId={incidenceId}
+                externalWorkItemId={externalWorkItemId}
                 uploadedById={currentUserId}
                 onSuccess={onRefresh}
             />

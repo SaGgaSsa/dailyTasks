@@ -42,6 +42,7 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
   const [error, setError] = useState<string | null>(null)
 
   const isFile = attachment.type === ATTACHMENT_TYPE_FILE
+  const canDelete = !attachment.isOriginal
 
   const uploadsPath = process.env.NEXT_PUBLIC_UPLOADS_PATH || '/uploads'
   const downloadUrl = isFile ? `${uploadsPath}${attachment.url.replace('/uploads', '')}` : attachment.url
@@ -149,18 +150,21 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
             Editar
           </DropdownMenuItem>
           
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem
-            className="text-red-600 focus:text-red-600"
-            onClick={() => {
-              setError(null)
-              setIsDeleteDialogOpen(true)
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Eliminar
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={() => {
+                  setError(null)
+                  setIsDeleteDialogOpen(true)
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
