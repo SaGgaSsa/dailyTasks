@@ -1067,9 +1067,6 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             )
                         })}
                     </div>
-                    <p className="text-xs text-muted-foreground/70">
-                        Al asignar colaboradores, especifica las horas que cada uno aportará a la tarea.
-                    </p>
                 </div>
             ) : initialData && initialData.assignments.length > 0 ? (
                 <div className="space-y-2">
