@@ -1,10 +1,10 @@
-import { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem } from '@prisma/client'
+import { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem, IncidencePageType } from '@prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
 export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology }
-export type { Task, Attachment, IncidencePage, ExternalWorkItem }
+export type { Task, Attachment, IncidencePage, ExternalWorkItem, IncidencePageType }
 
 export type ModuleWithTech = ModulePrisma & { technology: Technology }
 
@@ -53,6 +53,8 @@ export type TicketQAWithDetails = TicketQA & {
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean
+  scriptPageId: number | null
+  hasScriptsContent: boolean
 }
 
 export const createUserSchema = z.object({

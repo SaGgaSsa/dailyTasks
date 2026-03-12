@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus, TicketType, AttachmentType } from '@prisma/client'
+import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus, TicketType, AttachmentType, IncidencePageType, Prisma, Incidence } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
@@ -11,6 +11,40 @@ const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 const PASSWORD = 'sisa0314'
+
+async function ensureScriptsPage(
+  tx: Prisma.TransactionClient,
+  incidenceId: number,
+  authorId: number
+) {
+  const existingPage = await tx.incidencePage.findFirst({
+    where: { incidenceId, pageType: IncidencePageType.SYSTEM_SCRIPTS },
+    select: { id: true },
+  })
+
+  if (existingPage) return
+
+  await tx.incidencePage.create({
+    data: {
+      incidenceId,
+      authorId,
+      title: 'Scripts',
+      content: Prisma.JsonNull,
+      pageType: IncidencePageType.SYSTEM_SCRIPTS,
+    },
+  })
+}
+
+async function createIncidenceWithScripts(
+  data: Prisma.IncidenceUncheckedCreateInput,
+  authorId: number
+): Promise<Incidence> {
+  return prisma.$transaction(async (tx) => {
+    const incidence = await tx.incidence.create({ data })
+    await ensureScriptsPage(tx, incidence.id, authorId)
+    return incidence
+  })
+}
 
 async function truncateTables() {
   const candidateTables = [
@@ -207,17 +241,15 @@ async function createIncidencesForUser(user: { id: number }, userType: 'admin' |
       })
 
       if (!incidence) {
-        incidence = await prisma.incidence.create({
-          data: {
-            externalWorkItemId: workItem.id,
-            description,
-            comment: description,
-            status,
-            priority: Priority.MEDIUM,
-            technologyId: sisaTech!.id,
-            estimatedTime: 8,
-          },
-        })
+        incidence = await createIncidenceWithScripts({
+          externalWorkItemId: workItem.id,
+          description,
+          comment: description,
+          status,
+          priority: Priority.MEDIUM,
+          technologyId: sisaTech!.id,
+          estimatedTime: 8,
+        }, user.id)
       }
       incidences.push(incidence)
 
@@ -309,17 +341,15 @@ async function createTracklistWithIncidences() {
 
     const existingInc = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
     if (!existingInc) {
-      await prisma.incidence.create({
-        data: {
-          externalWorkItemId: workItem.id,
-          description: incidenceTitles[i],
-          comment: `Incidencia para liberacion de abril #${i + 1}`,
-          status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
-          priority: Priority.HIGH,
-          technologyId: sisaTech.id,
-          estimatedTime: 16,
-        },
-      })
+      await createIncidenceWithScripts({
+        externalWorkItemId: workItem.id,
+        description: incidenceTitles[i],
+        comment: `Incidencia para liberacion de abril #${i + 1}`,
+        status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
+        priority: Priority.HIGH,
+        technologyId: sisaTech.id,
+        estimatedTime: 16,
+      }, admin.id)
     }
     console.log(`Created/updated ExternalWorkItem: ${incidenceTitles[i]} linked to tracklist`)
   }
@@ -470,17 +500,15 @@ async function createRejectTicketScenario(tracklistId: number) {
     where: { externalWorkItemId: existingWorkItem.id },
   })
 
-  const incidence = existingIncidence ?? await prisma.incidence.create({
-    data: {
-      externalWorkItemId: existingWorkItem.id,
-      description: 'Incidencia para probar rechazo desde TEST',
-      comment: 'Fixture de seed para probar flujo de rechazo QA',
-      status: TaskStatus.REVIEW,
-      priority: Priority.HIGH,
-      technologyId: sisaTech.id,
-      estimatedTime: 4,
-    },
-  })
+  const incidence = existingIncidence ?? await createIncidenceWithScripts({
+    externalWorkItemId: existingWorkItem.id,
+    description: 'Incidencia para probar rechazo desde TEST',
+    comment: 'Fixture de seed para probar flujo de rechazo QA',
+    status: TaskStatus.REVIEW,
+    priority: Priority.HIGH,
+    technologyId: sisaTech.id,
+    estimatedTime: 4,
+  }, admin.id)
 
   const assignment = await prisma.assignment.upsert({
     where: { incidenceId_userId: { incidenceId: incidence.id, userId: admin.id } },
@@ -616,10 +644,11 @@ async function createAdditionalTracklistTickets(tracklistId: number, technologyI
 }
 
 async function createICasoIncidences() {
+  const admin = await prisma.user.findUnique({ where: { username: 'ADM' } })
   const sisaTech = await getTechnologyByName('SISA')
   
-  if (!sisaTech) {
-    console.warn('SISA technology not found, skipping I_CASO creation')
+  if (!admin || !sisaTech) {
+    console.warn('Admin or SISA technology not found, skipping I_CASO creation')
     return
   }
 
@@ -648,17 +677,15 @@ async function createICasoIncidences() {
 
     const existing = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
     if (!existing) {
-      await prisma.incidence.create({
-        data: {
-          externalWorkItemId: workItem.id,
-          description: title,
-          comment: `Incidencia I_CASO #${i + 1}`,
-          status: TaskStatus.TODO,
-          priority: Priority.MEDIUM,
-          technologyId: sisaTech.id,
-          estimatedTime: 8,
-        },
-      })
+      await createIncidenceWithScripts({
+        externalWorkItemId: workItem.id,
+        description: title,
+        comment: `Incidencia I_CASO #${i + 1}`,
+        status: TaskStatus.TODO,
+        priority: Priority.MEDIUM,
+        technologyId: sisaTech.id,
+        estimatedTime: 8,
+      }, admin.id)
       console.log(`Created I_CASO incidence: ${title} (externalId: ${externalId})`)
     }
   }
@@ -682,17 +709,15 @@ async function createICasoIncidences() {
 
     const existing = await prisma.incidence.findFirst({ where: { externalWorkItemId: workItem.id } })
     if (!existing) {
-      await prisma.incidence.create({
-        data: {
-          externalWorkItemId: workItem.id,
-          description: title,
-          comment: `Incidencia I_CASO de prueba #${i + 1}`,
-          status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
-          priority: Priority.LOW,
-          technologyId: sisaTech.id,
-          estimatedTime: 4,
-        },
-      })
+      await createIncidenceWithScripts({
+        externalWorkItemId: workItem.id,
+        description: title,
+        comment: `Incidencia I_CASO de prueba #${i + 1}`,
+        status: i < 2 ? TaskStatus.DONE : TaskStatus.IN_PROGRESS,
+        priority: Priority.LOW,
+        technologyId: sisaTech.id,
+        estimatedTime: 4,
+      }, admin.id)
       console.log(`Created I_CASO incidence: ${title} (externalId: ${externalId})`)
     }
   }

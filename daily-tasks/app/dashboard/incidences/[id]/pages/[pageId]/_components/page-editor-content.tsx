@@ -10,6 +10,7 @@ interface PageEditorContentProps {
     pageId: number
     incidenceId: number
     incidenceTitle: string
+    isSpecialPage?: boolean
 }
 
 export function PageEditorContent({ 
@@ -17,7 +18,8 @@ export function PageEditorContent({
     initialTitle, 
     pageId, 
     incidenceId,
-    incidenceTitle 
+    incidenceTitle,
+    isSpecialPage = false,
 }: PageEditorContentProps) {
     const { setBreadcrumbs } = useNavbarBreadcrumbs()
     const [mounted, setMounted] = useState(false)
@@ -47,6 +49,7 @@ export function PageEditorContent({
                 pageId={pageId}
                 incidenceId={incidenceId}
                 isEditor={true}
+                isTitleEditable={!isSpecialPage}
             />
         </div>
     )

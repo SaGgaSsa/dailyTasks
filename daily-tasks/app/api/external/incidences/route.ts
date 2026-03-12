@@ -5,6 +5,7 @@ import { TaskType, Priority, TaskStatus } from '@/types/enums'
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
@@ -130,18 +131,6 @@ export async function POST(request: NextRequest) {
     })
     revalidateTag('external-work-items', 'default')
 
-    const incidence = await db.incidence.create({
-      data: {
-        externalWorkItemId: workItem.id,
-        description: title,
-        technologyId: tech.id,
-        status: TaskStatus.BACKLOG,
-        priority: Priority.MEDIUM,
-        estimatedTime: 0,
-        comment: comment || title,
-      },
-    })
-
     const uploadedById = await getSystemUploaderId()
     if (!uploadedById) {
       return NextResponse.json(
@@ -149,6 +138,23 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    const incidence = await db.$transaction(async (tx) => {
+      const createdIncidence = await tx.incidence.create({
+        data: {
+          externalWorkItemId: workItem.id,
+          description: title,
+          technologyId: tech.id,
+          status: TaskStatus.BACKLOG,
+          priority: Priority.MEDIUM,
+          estimatedTime: 0,
+          comment: comment || title,
+        },
+      })
+
+      await ensureSystemScriptsPage(tx, createdIncidence.id, uploadedById)
+      return createdIncidence
+    })
 
     for (const file of files) {
       const originalName = file.name

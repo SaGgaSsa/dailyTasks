@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistViewClient } from './_components/tracklist-view-client'
+import { IncidencePageType } from '@prisma/client'
+import { pageHasMeaningfulContent } from '@/lib/incidence-pages'
 
 interface Props {
   params: Promise<{ tracklistId: string }>
@@ -25,8 +27,25 @@ export default async function TracklistDetailPage({ params }: Props) {
         externalWorkItem: { select: { id: true, type: true, externalId: true } },
         dismissedBy: { select: { id: true, name: true, username: true } },
         module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
+        incidence: {
+          select: {
+            pages: {
+              where: { pageType: IncidencePageType.SYSTEM_SCRIPTS },
+              select: { id: true, content: true },
+              take: 1,
+            },
+          },
+        },
       }
-    }).then(sortTicketsByPriorityAndNumber),
+    }).then((tickets) => sortTicketsByPriorityAndNumber(tickets.map((ticket) => {
+      const scriptPage = ticket.incidence?.pages[0] ?? null
+
+      return {
+        ...ticket,
+        scriptPageId: scriptPage?.id ?? null,
+        hasScriptsContent: pageHasMeaningfulContent(scriptPage?.content ?? null),
+      }
+    }))),
     getCachedAssignableUsers()
   ])
 

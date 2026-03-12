@@ -201,6 +201,7 @@ model IncidencePage {
   title       String
   content     Json?
   isMainPage  Boolean   @default(false)
+  pageType    IncidencePageType @default(DEFAULT)
 
   incidenceId Int
   incidence   Incidence @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
@@ -212,6 +213,11 @@ model IncidencePage {
   updatedAt   DateTime  @updatedAt
 
   @@map("incidence_pages")
+}
+
+enum IncidencePageType {
+  DEFAULT
+  SYSTEM_SCRIPTS
 }
 
 enum TracklistStatus {

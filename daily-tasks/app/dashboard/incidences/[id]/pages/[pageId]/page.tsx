@@ -38,6 +38,7 @@ export default async function PageEditorPage({ params }: PageProps) {
             pageId={page.id}
             incidenceId={incidenceNumberId}
             incidenceTitle={page.incidence.description}
+            isSpecialPage={page.pageType !== 'DEFAULT'}
         />
     )
 }

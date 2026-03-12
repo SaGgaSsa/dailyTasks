@@ -17,6 +17,7 @@ interface BlockNoteEditorProps {
     pageId: number
     incidenceId: number
     isEditor?: boolean
+    isTitleEditable?: boolean
     theme?: 'light' | 'dark'
 }
 
@@ -35,6 +36,7 @@ export function BlockNoteEditor({
     pageId, 
     incidenceId,
     isEditor = false,
+    isTitleEditable = true,
     theme: propTheme 
 }: BlockNoteEditorProps) {
     const [theme, setTheme] = useState<'light' | 'dark'>(propTheme || 'dark')
@@ -97,6 +99,8 @@ export function BlockNoteEditor({
         if (current.length > 0) {
             setBreadcrumbs([...current.slice(0, -1), { ...current[current.length - 1], label: newTitle || 'Nueva Página' }])
         }
+
+        if (!isTitleEditable) return
 
         if (titleTimeoutRef.current) {
             clearTimeout(titleTimeoutRef.current)
@@ -171,6 +175,7 @@ export function BlockNoteEditor({
                     onChange={handleTitleChange}
                     placeholder="Nueva Página"
                     maxLength={60}
+                    disabled={!isTitleEditable}
                     className="w-full bg-transparent border-none outline-none text-2xl font-semibold mb-4 pl-[54px] placeholder:text-muted-foreground/50"
                 />
                 <BlockNoteView

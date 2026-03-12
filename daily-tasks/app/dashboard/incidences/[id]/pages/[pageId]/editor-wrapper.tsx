@@ -16,9 +16,10 @@ interface EditorWrapperProps {
     pageId: number
     incidenceId: number
     isEditor?: boolean
+    isTitleEditable?: boolean
 }
 
-export function EditorWrapper({ initialContent, initialTitle, pageId, incidenceId, isEditor }: EditorWrapperProps) {
+export function EditorWrapper({ initialContent, initialTitle, pageId, incidenceId, isEditor, isTitleEditable = true }: EditorWrapperProps) {
     return (
         <BlockNoteEditor
             initialContent={initialContent}
@@ -26,6 +27,7 @@ export function EditorWrapper({ initialContent, initialTitle, pageId, incidenceI
             pageId={pageId}
             incidenceId={incidenceId}
             isEditor={isEditor}
+            isTitleEditable={isTitleEditable}
         />
     )
 }

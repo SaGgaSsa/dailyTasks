@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, RotateCcw, Eye, BarChart3, Ban, Layers, Pencil, MoreVertical } from 'lucide-react'
+import { CheckCircle2, XCircle, RotateCcw, Eye, BarChart3, Ban, Layers, Pencil, MoreVertical, FileCode2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
@@ -18,6 +18,7 @@ import {
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { DismissTicketDialog } from './DismissTicketDialog'
 import { CreateTicketDialog } from './create-ticket-dialog'
+import { getOrCreateScriptsPage } from '@/app/actions/pages'
 
 interface TicketActionsMenuProps {
   ticket: TicketQAWithDetails
@@ -65,6 +66,23 @@ export function TicketActionsMenu({
       toast.success('Ticket vuelto a Test')
     } else {
       toast.error(result.error || 'Error al volver el ticket a Test')
+    }
+  }
+
+  const handleOpenScripts = async () => {
+    setMenuOpen(false)
+    if (!ticket.incidenceId) return
+
+    if (ticket.scriptPageId) {
+      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${ticket.scriptPageId}`)
+      return
+    }
+
+    const result = await getOrCreateScriptsPage(ticket.incidenceId)
+    if (result.success && result.data) {
+      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${result.data.id}`)
+    } else {
+      toast.error(result.error || 'Error al abrir scripts')
     }
   }
 
@@ -124,6 +142,12 @@ export function TicketActionsMenu({
             <DropdownMenuItem onClick={() => { setMenuOpen(false); router.push(`/dashboard/incidences/${ticket.incidenceId}`) }}>
               <Layers className="mr-2 h-4 w-4" />
               Ver Incidencia
+            </DropdownMenuItem>
+          )}
+          {ticket.incidenceId && (
+            <DropdownMenuItem onClick={handleOpenScripts}>
+              <FileCode2 className="mr-2 h-4 w-4" />
+              Ver scripts
             </DropdownMenuItem>
           )}
           <DropdownMenuItem disabled>

@@ -8,8 +8,9 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TaskType, TracklistStatus } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority } from '@prisma/client'
+import { TaskStatus, Priority as PrismaPriority, Prisma, IncidencePageType } from '@prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
+import { ensureSystemScriptsPage, pageHasMeaningfulContent } from '@/lib/incidence-pages'
 
 interface CreateTracklistData {
     title: string
@@ -34,6 +35,35 @@ interface CreateTicketData {
     externalWorkItemId?: number
     observations?: string
     assignedToId?: number
+}
+
+const ticketDetailsInclude = {
+    reportedBy: { select: { id: true, name: true, username: true } },
+    assignedTo: { select: { id: true, name: true, username: true } },
+    externalWorkItem: { select: { id: true, type: true, externalId: true } },
+    dismissedBy: { select: { id: true, name: true, username: true } },
+    module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
+    incidence: {
+        select: {
+            pages: {
+                where: { pageType: IncidencePageType.SYSTEM_SCRIPTS },
+                select: { id: true, content: true },
+                take: 1,
+            },
+        },
+    },
+} satisfies Prisma.TicketQAInclude
+
+type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetailsInclude }>
+
+function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
+    const scriptPage = ticket.incidence?.pages[0] ?? null
+
+    return {
+        ...ticket,
+        scriptPageId: scriptPage?.id ?? null,
+        hasScriptsContent: pageHasMeaningfulContent((scriptPage?.content ?? null) as Prisma.JsonValue | null),
+    }
 }
 
 const PRIORITY_MAP: Record<string, PrismaPriority> = {
@@ -104,6 +134,8 @@ async function runAssignmentTransaction(
                     status: TaskStatus.BACKLOG,
                 },
             })
+
+            await ensureSystemScriptsPage(tx, newIncidence.id, assignedToId)
 
             const assignment = await tx.assignment.upsert({
                 where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
@@ -325,15 +357,9 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
     try {
         const tickets = await db.ticketQA.findMany({
             where: { tracklistId: tracklistId },
-            include: {
-                reportedBy: { select: { id: true, name: true, username: true } },
-                assignedTo: { select: { id: true, name: true, username: true } },
-                externalWorkItem: { select: { id: true, type: true, externalId: true } },
-                dismissedBy: { select: { id: true, name: true, username: true } },
-                module: { select: { id: true, name: true, slug: true } },
-            }
+            include: ticketDetailsInclude,
         })
-        const sorted = sortTicketsByPriorityAndNumber(tickets)
+        const sorted = sortTicketsByPriorityAndNumber(tickets.map(enrichTicketScripts))
         return { success: true, data: sorted }
     } catch (error) {
         console.error('Error fetching tickets:', error)
@@ -540,20 +566,14 @@ export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
                 _count: { select: { tickets: true } },
                 createdBy: { select: { id: true, name: true, username: true } },
                 tickets: {
-                    include: {
-                        module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
-                        assignedTo: { select: { id: true, name: true, username: true } },
-                        reportedBy: { select: { id: true, name: true, username: true } },
-                        externalWorkItem: { select: { id: true, type: true, externalId: true } },
-                        dismissedBy: { select: { id: true, name: true, username: true } },
-                    },
+                    include: ticketDetailsInclude,
                 },
             },
         })
 
         const sorted = tracklists.map((tl) => ({
             ...tl,
-            tickets: sortTicketsByPriorityAndNumber(tl.tickets),
+            tickets: sortTicketsByPriorityAndNumber(tl.tickets.map(enrichTicketScripts)),
         }))
 
         return { success: true, data: sorted } as const

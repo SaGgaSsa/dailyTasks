@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { OpenScriptsButton } from '@/components/incidences/open-scripts-button'
 
 interface TaskItemLike {
   id: number
@@ -14,6 +15,9 @@ interface TaskItemLike {
 
 interface TaskItemRowProps {
   task: TaskItemLike
+  incidenceId?: number | null
+  scriptPageId?: number | null
+  onNavigateWithUnsavedChanges?: (url: string) => void
   checked: boolean
   isEditing: boolean
   editValue: string
@@ -31,6 +35,9 @@ interface TaskItemRowProps {
 
 export function TaskItemRow({
   task,
+  incidenceId,
+  scriptPageId,
+  onNavigateWithUnsavedChanges,
   checked,
   isEditing,
   editValue,
@@ -68,11 +75,20 @@ export function TaskItemRow({
         />
       ) : (
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm text-card-foreground/80 truncate">{editValue || task.title}</span>
+          <span className="text-sm text-card-foreground/80 truncate flex-1 min-w-0">{editValue || task.title}</span>
         </div>
       )}
-      {(allowEdit || allowDelete) && (
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="ml-auto flex items-center gap-1">
+        {isQaReported && incidenceId && (
+          <OpenScriptsButton
+            incidenceId={incidenceId}
+            pageId={scriptPageId}
+            onNavigate={onNavigateWithUnsavedChanges}
+            className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
+          />
+        )}
+        {(allowEdit || allowDelete) && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {allowEdit && onStartEdit && (
             <Button
               type="button"
@@ -95,8 +111,9 @@ export function TaskItemRow({
               <Trash2 className="h-3 w-3" />
             </Button>
           )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

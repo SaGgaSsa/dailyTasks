@@ -8,6 +8,7 @@ import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
+import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 
 async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
     const targetTicketStatus =
@@ -140,16 +141,22 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             return { success: false, error: t(locale, 'business.alreadyExists') }
         }
 
-        await db.incidence.create({
-            data: {
-                externalWorkItemId: workItem.id,
-                description: data.description,
-                comment: data.comment,
-                technologyId: tech.id,
-                priority: data.priority as PrismaPriority,
-                estimatedTime: data.estimatedTime,
-                status: TaskStatus.BACKLOG,
-            }
+        const authorId = Number(session.user.id)
+
+        await db.$transaction(async (tx) => {
+            const incidence = await tx.incidence.create({
+                data: {
+                    externalWorkItemId: workItem.id,
+                    description: data.description,
+                    comment: data.comment,
+                    technologyId: tech.id,
+                    priority: data.priority as PrismaPriority,
+                    estimatedTime: data.estimatedTime,
+                    status: TaskStatus.BACKLOG,
+                }
+            })
+
+            await ensureSystemScriptsPage(tx, incidence.id, authorId)
         })
 
         revalidatePath('/dashboard')

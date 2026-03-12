@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Inbox, User } from 'lucide-react'
+import { Inbox, User, FileCode2 } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -76,8 +76,11 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                   onClick={() => setViewTarget(ticket)}
                 >
                   <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
-                    <div className="relative inline-flex items-center justify-center">
+                    <div className="relative inline-flex items-center justify-center gap-1">
                       {ticket.ticketNumber}
+                      {ticket.hasScriptsContent && (
+                        <FileCode2 className="h-3.5 w-3.5 text-amber-500" />
+                      )}
                       {ticket.hasUnreadUpdates && (
                         <span className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-red-500" />
                       )}

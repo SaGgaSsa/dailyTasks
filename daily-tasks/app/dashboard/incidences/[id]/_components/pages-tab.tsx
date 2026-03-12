@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus, FileText, Calendar, MoreVertical, Trash2, Star, Link } from 'lucide-react'
+import { FilePlus, FileText, Calendar, MoreVertical, Trash2, Star, Link, Code2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -21,6 +21,7 @@ import {
 import { IncidencePageWithAuthor } from '@/types'
 import { createPage, deletePage, setMainIncidencePage } from '@/app/actions/pages'
 import { toast } from 'sonner'
+import { IncidencePageType } from '@prisma/client'
 
 interface PagesTabProps {
     incidenceId: number
@@ -108,6 +109,13 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
         }
     }
 
+    const sortedPages = [...pages].sort((a, b) => {
+        if (a.pageType !== b.pageType) {
+            return a.pageType === IncidencePageType.SYSTEM_SCRIPTS ? -1 : 1
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-end">
@@ -128,14 +136,18 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                 </p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {pages.map(page => (
+                    {sortedPages.map(page => (
                         <div
                             key={page.id}
                             onClick={() => router.push(`/dashboard/incidences/${incidenceId}/pages/${page.id}`)}
                             className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                         >
                             <div className="flex items-start gap-3">
-                                <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                                {page.pageType === IncidencePageType.SYSTEM_SCRIPTS ? (
+                                    <Code2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                                ) : (
+                                    <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                                )}
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-medium truncate" title={page.title || 'Nueva Página'}>
                                         {page.title || 'Nueva Página'}
@@ -173,13 +185,15 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                                                 <Link className="h-4 w-4 mr-2" />
                                                 Copiar enlace
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="text-red-500 focus:text-red-500"
-                                                onClick={(e) => handleDeleteClick(page, e)}
-                                            >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Eliminar Página
-                                            </DropdownMenuItem>
+                                            {page.pageType === IncidencePageType.DEFAULT && (
+                                                <DropdownMenuItem
+                                                    className="text-red-500 focus:text-red-500"
+                                                    onClick={(e) => handleDeleteClick(page, e)}
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Eliminar Página
+                                                </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>

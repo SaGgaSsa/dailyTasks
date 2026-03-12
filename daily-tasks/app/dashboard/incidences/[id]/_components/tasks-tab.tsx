@@ -9,6 +9,7 @@ import { createTask, toggleTask, deleteTask, updateIncidence, updateTaskTitle, g
 import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskItemRow } from '@/components/board/task-item-row'
+import { IncidencePageType } from '@prisma/client'
 
 interface TasksTabProps {
     incidence: IncidenceWithDetails
@@ -18,6 +19,7 @@ interface TasksTabProps {
     onIncidenceUpdate: (incidence: IncidenceWithDetails) => void
     onHasChangesChange?: (hasChanges: boolean) => void
     onSaveRef?: (saveFn: () => Promise<void>) => void
+    onNavigateWithUnsavedChanges?: (url: string) => void
 }
 
 interface DraftTask {
@@ -28,7 +30,7 @@ interface DraftTask {
     isCompleted: boolean
 }
 
-export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncidenceUpdate, onHasChangesChange, onSaveRef }: TasksTabProps) {
+export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncidenceUpdate, onHasChangesChange, onSaveRef, onNavigateWithUnsavedChanges }: TasksTabProps) {
     const [newTaskInputs, setNewTaskInputs] = useState<Record<number, string>>({})
     const [taskInputErrors, setTaskInputErrors] = useState<Record<number, boolean>>({})
     const [draftTasks, setDraftTasks] = useState<DraftTask[]>([])
@@ -46,6 +48,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const [draftRemovedAssignees, setDraftRemovedAssignees] = useState<Set<number>>(new Set())
 
     const assignedUserIds = new Set(incidence.assignments.map(a => a.userId))
+    const scriptPage = incidence.pages.find((page) => page.pageType === IncidencePageType.SYSTEM_SCRIPTS) ?? null
 
     const sortedAssignedUsers = [...incidence.assignments]
         .filter(a => !draftRemovedAssignees.has(a.userId))
@@ -480,6 +483,9 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                         <TaskItemRow
                                             key={task.id}
                                             task={task}
+                                            incidenceId={incidence.id}
+                                            scriptPageId={scriptPage?.id ?? null}
+                                            onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
                                             checked={displayCompleted}
                                             isEditing={editingTaskId === task.id}
                                             editValue={taskEdits[task.id] || ''}
@@ -582,22 +588,24 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                             const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted
 
                                             return (
-                                                <div
+                                                <TaskItemRow
                                                     key={task.id}
+                                                    task={task}
+                                                    incidenceId={incidence.id}
+                                                    scriptPageId={scriptPage?.id ?? null}
+                                                    onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
+                                                    checked={displayCompleted}
+                                                    isEditing={false}
+                                                    editValue={taskEdits[task.id] || task.title}
+                                                    onToggle={() => handleToggleTask(task.id)}
+                                                    onEditChange={() => {}}
+                                                    onEditKeyDown={() => {}}
+                                                    onEditBlur={() => {}}
+                                                    canToggle={canEditTasks}
+                                                    canEdit={false}
+                                                    canDelete={false}
                                                     className="flex items-center gap-2 px-2 py-1 rounded group opacity-60"
-                                                >
-                                                    <Checkbox
-                                                        checked={displayCompleted}
-                                                        onCheckedChange={() => handleToggleTask(task.id)}
-                                                        disabled={!canEditTasks}
-                                                        className="border-input"
-                                                    />
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                        <span className="text-sm line-through text-muted-foreground/70 truncate">
-                                                            {taskEdits[task.id] || task.title}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                                                />
                                             )
                                         })}
                                     </div>
