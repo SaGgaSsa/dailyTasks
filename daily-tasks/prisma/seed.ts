@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus, TicketType } from '@prisma/client'
+import { PrismaClient, UserRole, TaskType, TaskStatus, Priority, TicketQAStatus, TicketType, AttachmentType } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
@@ -402,6 +402,35 @@ async function createTracklistWithoutTickets(): Promise<{ id: number } | null> {
   const workItems = await prisma.externalWorkItem.findMany({
     where: { externalId: { in: workItemTitles.map((_, i) => baseExternalId + i) } }
   })
+
+  const modapl5000 = workItems.find(
+    workItem => workItem.type === TaskType.I_MODAPL && workItem.externalId === 5000
+  )
+
+  if (modapl5000) {
+    const originalLink = 'https://drive.google.com/drive/folders/0AEzT-QtS2NpXUk9PVA'
+    const existingOriginalLink = await prisma.attachment.findFirst({
+      where: {
+        externalWorkItemId: modapl5000.id,
+        type: AttachmentType.LINK,
+        url: originalLink,
+      },
+    })
+
+    if (!existingOriginalLink) {
+      await prisma.attachment.create({
+        data: {
+          type: AttachmentType.LINK,
+          name: 'Carpeta original I_MODAPL 5000',
+          url: originalLink,
+          isOriginal: true,
+          externalWorkItemId: modapl5000.id,
+          uploadedById: admin.id,
+        },
+      })
+    }
+  }
+
   await prisma.tracklist.update({
     where: { id: tracklist.id },
     data: { externalWorkItems: { connect: workItems.map(w => ({ id: w.id })) } }
