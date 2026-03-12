@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus } from '@prisma/client'
+import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma } from '@prisma/client'
 import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
 import { auth } from '@/auth'
@@ -28,45 +28,51 @@ async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
     })
 }
 
+const incidenceDetailsInclude = {
+    externalWorkItem: {
+        include: {
+            attachments: {
+                include: {
+                    uploadedBy: true
+                },
+                orderBy: {
+                    createdAt: 'desc' as const
+                }
+            }
+        }
+    },
+    technology: true,
+    assignments: {
+        where: { isAssigned: true },
+        include: {
+            user: true,
+            tasks: {
+                orderBy: [
+                    { isCompleted: 'asc' as const },
+                    { completedAt: 'desc' as const }
+                ]
+            }
+        }
+    },
+    pages: {
+        include: {
+            author: true
+        },
+        orderBy: {
+            createdAt: 'desc' as const
+        }
+    },
+    qaTickets: { select: { id: true } }
+} satisfies Prisma.IncidenceInclude
+
+type IncidenceDetailsPayload = Prisma.IncidenceGetPayload<{
+    include: typeof incidenceDetailsInclude
+}>
+
 const getIncidenceCached = cache(async (id: number) => {
     return db.incidence.findUnique({
         where: { id },
-            include: {
-                externalWorkItem: {
-                    include: {
-                        attachments: {
-                            include: {
-                                uploadedBy: true
-                            },
-                            orderBy: {
-                                createdAt: 'desc'
-                            }
-                        }
-                    }
-                },
-                technology: true,
-                assignments: {
-                where: { isAssigned: true },
-                include: {
-                    user: true,
-                    tasks: {
-                        orderBy: [
-                            { isCompleted: 'asc' },
-                            { completedAt: 'desc' }
-                        ]
-                    }
-                }
-            },
-            pages: {
-                include: {
-                    author: true
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            },
-            qaTickets: { select: { id: true } }
-        }
+        include: incidenceDetailsInclude
     })
 })
 
@@ -251,34 +257,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
 
         const incidences = await db.incidence.findMany({
             where,
-            include: {
-                externalWorkItem: {
-                    include: {
-                        attachments: {
-                            include: {
-                                uploadedBy: true
-                            },
-                            orderBy: {
-                                createdAt: 'desc'
-                            }
-                        }
-                    }
-                },
-                technology: true,
-                assignments: {
-                    where: { isAssigned: true },
-                    include: {
-                        user: true,
-                        tasks: {
-                            orderBy: [
-                                { isCompleted: 'asc' },
-                                { completedAt: 'desc' }
-                            ]
-                        }
-                    }
-                },
-                qaTickets: { select: { id: true } }
-            },
+            include: incidenceDetailsInclude,
             orderBy: viewType === 'BACKLOG' ? [
                 {
                     priority: 'desc'
@@ -297,7 +276,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
         })
 
         // Filtrado para DEV: ocultar incidencias en IN_PROGRESS si el usuario completó todas sus tareas
-        let filteredIncidences = incidences as IncidenceWithDetails[]
+        let filteredIncidences: IncidenceDetailsPayload[] = incidences
         if (isDev && viewType === 'KANBAN') {
             const userId = Number(session.user.id)
             filteredIncidences = incidences.filter((incidence) => {
@@ -313,10 +292,10 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
                     return myAssignment.tasks.length === 0 || myPendingTasks > 0
                 }
                 return true
-            }) as IncidenceWithDetails[]
+            })
         }
 
-        return { data: filteredIncidences }
+        return { data: filteredIncidences as IncidenceWithDetails[] }
     } catch (error) {
         console.error('Error getting incidences:', error)
         return { data: [], error: t(locale as Locale, 'errors.fetchError') }
@@ -327,7 +306,7 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
     try {
         await new Promise(resolve => setTimeout(resolve, 50))
         const incidence = await getIncidenceCached(id)
-        return incidence as IncidenceWithDetails
+        return incidence as IncidenceWithDetails | null
     } catch (error) {
         console.error('Error getting incidence:', error)
         return null
@@ -350,7 +329,7 @@ export async function getIncidencePageData(id: number): Promise<{
         ])
 
         return {
-            incidence: incidence as IncidenceWithDetails,
+            incidence: incidence as IncidenceWithDetails | null,
             users
         }
     } catch (error) {
@@ -366,39 +345,13 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
                 where: {
                     externalWorkItem: { type, externalId }
                 },
-                include: {
-                    externalWorkItem: {
-                        include: {
-                            attachments: {
-                                include: {
-                                    uploadedBy: true
-                                },
-                                orderBy: {
-                                    createdAt: 'desc'
-                                }
-                            }
-                        }
-                    },
-                    technology: true,
-                    assignments: {
-                        where: { isAssigned: true },
-                        include: {
-                            user: true,
-                            tasks: {
-                                orderBy: {
-                                    createdAt: 'asc'
-                                }
-                            }
-                        }
-                    },
-                    qaTickets: { select: { id: true } }
-                }
+                include: incidenceDetailsInclude
             }),
             getUsersCached()
         ])
 
         return {
-            incidence: incidence as IncidenceWithDetails,
+            incidence: incidence as IncidenceWithDetails | null,
             users
         }
     } catch (error) {
@@ -734,20 +687,12 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
 
         const finalIncidence = await db.incidence.findUnique({
             where: { id },
-            include: {
-                assignments: {
-                    include: {
-                        user: true,
-                        tasks: {
-                            orderBy: [
-                                { isCompleted: 'asc' },
-                                { completedAt: 'desc' }
-                            ]
-                        }
-                    }
-                }
-            }
+            include: incidenceDetailsInclude
         })
+
+        if (!finalIncidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
 
         revalidatePath('/dashboard')
         revalidatePath('/tracklists')
