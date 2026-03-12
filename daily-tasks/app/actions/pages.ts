@@ -3,10 +3,18 @@
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
-import { IncidencePageType, Prisma } from '@prisma/client'
+import { IncidencePageType, Prisma, TaskStatus } from '@prisma/client'
 import { SCRIPT_PAGE_TITLE } from '@/lib/incidence-pages'
 
 export type PageContent = Prisma.InputJsonValue
+
+function ensureIncidenceIsEditable(status: TaskStatus) {
+    if (status === TaskStatus.DISMISSED) {
+        return { success: false, error: 'No puede modificar páginas de una incidencia desestimada' } as const
+    }
+
+    return null
+}
 
 export async function createPage(incidenceId: number, title: string) {
     const session = await auth()
@@ -26,6 +34,9 @@ export async function createPage(incidenceId: number, title: string) {
         if (!incidence) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
+
+        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        if (editabilityError) return editabilityError
 
         const authorId = Number(session.user.id)
 
@@ -70,6 +81,18 @@ export async function updatePageContent(
             return { success: false, error: 'Página no encontrada' }
         }
 
+        const incidence = await db.incidence.findUnique({
+            where: { id: page.incidenceId },
+            select: { status: true }
+        })
+
+        if (!incidence) {
+            return { success: false, error: 'Incidencia no encontrada' }
+        }
+
+        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        if (editabilityError) return editabilityError
+
         const updateData: Prisma.IncidencePageUpdateInput = {
             content: content as Prisma.InputJsonValue,
             ...(title !== undefined && page.pageType === IncidencePageType.DEFAULT
@@ -110,6 +133,9 @@ export async function deletePage(pageId: number) {
             return { success: false, error: 'Página no encontrada' }
         }
 
+        const editabilityError = ensureIncidenceIsEditable(page.incidence.status)
+        if (editabilityError) return editabilityError
+
         if (page.pageType !== IncidencePageType.DEFAULT) {
             return { success: false, error: 'No se puede eliminar una página especial' }
         }
@@ -144,6 +170,9 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
         if (!incidence) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
+
+        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        if (editabilityError) return editabilityError
 
         const page = await db.incidencePage.findFirst({
             where: { id: pageId, incidenceId }
@@ -188,10 +217,13 @@ export async function getOrCreateScriptsPage(incidenceId: number) {
         const page = await db.$transaction(async (tx) => {
             const incidence = await tx.incidence.findUnique({
                 where: { id: incidenceId },
-                select: { id: true }
+                select: { id: true, status: true }
             })
 
             if (!incidence) return null
+            if (incidence.status === TaskStatus.DISMISSED) {
+                throw new Error('INCIDENCE_DISMISSED')
+            }
 
             const existing = await tx.incidencePage.findFirst({
                 where: { incidenceId, pageType: IncidencePageType.SYSTEM_SCRIPTS }
@@ -218,6 +250,9 @@ export async function getOrCreateScriptsPage(incidenceId: number) {
         return { success: true, data: page }
     } catch (error) {
         console.error('Error getting scripts page:', error)
+        if (error instanceof Error && error.message === 'INCIDENCE_DISMISSED') {
+            return { success: false, error: 'No puede modificar páginas de una incidencia desestimada' }
+        }
         return { success: false, error: 'Error al obtener la página de scripts' }
     }
 }

@@ -462,14 +462,43 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
     }
 
     try {
-        await db.ticketQA.update({
-            where: { id: ticketId },
-            data: { status: TicketQAStatus.DISMISSED, dismissReason: reason.trim(), dismissedById: Number(session.user.id) }
+        await db.$transaction(async (tx) => {
+            const ticket = await tx.ticketQA.findUnique({
+                where: { id: ticketId },
+                select: { id: true, incidenceId: true }
+            })
+
+            if (!ticket) {
+                throw new Error('TICKET_NOT_FOUND')
+            }
+
+            await tx.ticketQA.update({
+                where: { id: ticketId },
+                data: {
+                    status: TicketQAStatus.DISMISSED,
+                    dismissReason: reason.trim(),
+                    dismissedById: Number(session.user.id)
+                }
+            })
+
+            if (ticket.incidenceId) {
+                await tx.incidence.update({
+                    where: { id: ticket.incidenceId },
+                    data: {
+                        status: TaskStatus.DISMISSED,
+                        completedAt: null
+                    }
+                })
+            }
         })
         revalidatePath(`/tracklists/${tracklistId}`)
+        revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
         console.error('Error dismissing ticket:', error)
+        if (error instanceof Error && error.message === 'TICKET_NOT_FOUND') {
+            return { success: false, error: 'Ticket no encontrado' }
+        }
         return { success: false, error: t(locale, 'errors.saveError') }
     }
 }

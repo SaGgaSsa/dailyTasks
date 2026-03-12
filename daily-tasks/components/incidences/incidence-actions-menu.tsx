@@ -43,7 +43,7 @@ export function IncidenceActionsMenu({
   const [isLoading, setIsLoading] = useState(false)
 
   const canComplete = (task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS) && (task.qaTickets?.length ?? 0) === 0
-  const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW
+  const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW && task.status !== TaskStatus.DISMISSED
 
   const handleOpenDialog = (e: React.MouseEvent) => {
     e.stopPropagation()

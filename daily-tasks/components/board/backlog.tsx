@@ -77,6 +77,7 @@ const statusColors: Record<TaskStatus, string> = {
     IN_PROGRESS: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     REVIEW: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     DONE: 'bg-green-500/10 text-green-400 border-green-500/20',
+    DISMISSED: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
 interface SortableRowProps {
@@ -218,7 +219,8 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
                         row.original.status === 'TODO' ? 'Por Hacer' :
                             row.original.status === 'IN_PROGRESS' ? 'En Progreso' :
                                 row.original.status === 'REVIEW' ? 'Revision' :
-                                    row.original.status === 'DONE' ? 'Finalizado' : row.original.status}
+                                    row.original.status === 'DONE' ? 'Finalizado' :
+                                        row.original.status === 'DISMISSED' ? 'Desestimado' : row.original.status}
                 </Badge>
             </div>
         ),

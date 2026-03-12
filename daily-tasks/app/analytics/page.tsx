@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { TaskStatus, Priority } from '@/types/enums'
+import { Priority, TaskStatus } from '@prisma/client'
 import { AnalyticsClient } from './analytics-client'
 
 interface AnalyticsData {
@@ -18,12 +18,13 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string }> = {
   [TaskStatus.IN_PROGRESS]: { label: 'En Progreso', color: '#3b82f6' },
   [TaskStatus.REVIEW]: { label: 'En Revisión', color: '#f59e0b' },
   [TaskStatus.DONE]: { label: 'Completado', color: '#22c55e' },
+  [TaskStatus.DISMISSED]: { label: 'Desestimado', color: '#ef4444' },
 }
 
 export default async function AnalyticsPage() {
   const incidences = await db.incidence.findMany({
     where: {
-      status: { not: TaskStatus.DONE }
+      status: { notIn: [TaskStatus.DONE, TaskStatus.DISMISSED] }
     },
     include: {
       assignments: {

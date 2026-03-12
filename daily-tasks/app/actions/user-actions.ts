@@ -224,7 +224,7 @@ export async function getUserDetails(userId: number) {
     const assignedIncidences = user.assignments.map(a => a.incidence)
     const totalTasks = user._count.assignments
     const pendingTasks = assignedIncidences.filter(
-      (i) => i.status !== 'DONE'
+      (i) => i.status !== 'DONE' && i.status !== 'DISMISSED'
     ).length
     const completedTasks = assignedIncidences.filter(
       (i) => i.status === 'DONE'

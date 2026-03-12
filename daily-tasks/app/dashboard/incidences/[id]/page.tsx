@@ -30,6 +30,7 @@ const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
     IN_PROGRESS: { label: 'En Progreso', className: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
     REVIEW: { label: 'En Revisión', className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
     DONE: { label: 'Completado', className: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    DISMISSED: { label: 'Desestimado', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
 }
 
 const techLabels: Record<string, string> = {

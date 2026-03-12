@@ -4,6 +4,7 @@ export enum TaskStatus {
     IN_PROGRESS = "IN_PROGRESS",
     REVIEW = "REVIEW",
     DONE = "DONE",
+    DISMISSED = "DISMISSED",
 }
 
 export enum TaskType {

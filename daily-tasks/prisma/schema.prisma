@@ -42,6 +42,7 @@ enum TaskStatus {
   IN_PROGRESS
   REVIEW
   DONE
+  DISMISSED
 }
 
 enum TaskType {

@@ -10,6 +10,12 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 
+const DISMISSED_INCIDENCE_ERROR = 'No puede modificar una incidencia desestimada'
+
+function isDismissedIncidenceStatus(status: TaskStatus) {
+    return status === TaskStatus.DISMISSED
+}
+
 async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
     const targetTicketStatus =
         newStatus === TaskStatus.REVIEW
@@ -268,7 +274,11 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
     const isDev = session.user.role === 'DEV'
 
     try {
-        const where: Record<string, unknown> = {}
+        const where: Record<string, unknown> = {
+            NOT: {
+                status: TaskStatus.DISMISSED
+            }
+        }
 
         // View type filtering - only apply if no status filter
         if (!status && viewType === 'KANBAN') {
@@ -459,6 +469,14 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
 
         if (!incidence) {
             return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (isDismissedIncidenceStatus(incidence.status)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
+
+        if (newStatus === TaskStatus.DISMISSED) {
+            return { success: false, error: 'Las incidencias desestimadas solo pueden establecerse desde un ticket' }
         }
 
         const isBacklogToTodo = incidence.status === TaskStatus.BACKLOG && newStatus === TaskStatus.TODO
@@ -655,6 +673,14 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             return { success: false, error: t(locale, 'errors.notFound') }
         }
 
+        if (isDismissedIncidenceStatus(currentIncidence.status)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
+
+        if (data.status === TaskStatus.DISMISSED) {
+            return { success: false, error: 'Las incidencias desestimadas solo pueden establecerse desde un ticket' }
+        }
+
         let techConnect = undefined
         if (data.technology) {
             const tech = await db.technology.findUnique({ where: { name: data.technology } })
@@ -810,6 +836,10 @@ export async function saveIncidenceTaskChanges(
 
         if (!currentIncidence) {
             return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (isDismissedIncidenceStatus(currentIncidence.status)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
         }
 
         const isAssignedToIncidence = currentIncidence.assignments.some(a => a.isAssigned && a.userId === userId)
@@ -1157,6 +1187,10 @@ export async function createTask(assignmentId: number, title: string, isComplete
         // Validaciones restrictivas para estados bloqueados
         const currentStatus = assignment.incidence.status
 
+        if (isDismissedIncidenceStatus(currentStatus)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
+
         if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
             return { success: false, error: 'Solo los administradores pueden agregar tareas en revisión' }
         }
@@ -1263,6 +1297,10 @@ export async function toggleTask(taskId: number) {
 
         // Validaciones restrictivas para estados bloqueados
         const currentStatus = task.assignment.incidence.status
+
+        if (isDismissedIncidenceStatus(currentStatus)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
         
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
@@ -1352,6 +1390,7 @@ export async function completeIncidenceCore(incidenceId: number) {
         }
     })
     if (!incidence) return
+    if (isDismissedIncidenceStatus(incidence.status)) return
 
     const now = new Date()
 
@@ -1387,11 +1426,15 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
     try {
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
-            select: { id: true }
+            select: { id: true, status: true }
         })
 
         if (!incidence) {
             return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (isDismissedIncidenceStatus(incidence.status)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
         }
 
         if (session.user.role !== 'ADMIN') {
@@ -1430,6 +1473,10 @@ export async function deleteTask(taskId: number) {
         // Validaciones restrictivas para estados bloqueados
         const currentStatus = task.assignment.incidence.status
         const isQaReported = (task as typeof task & { isQaReported?: boolean }).isQaReported === true
+
+        if (isDismissedIncidenceStatus(currentStatus)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
         
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede eliminar tareas en una incidencia finalizada' }
@@ -1485,6 +1532,10 @@ export async function updateTaskTitle(taskId: number, newTitle: string) {
 
         const currentStatus = task.assignment.incidence.status
 
+        if (isDismissedIncidenceStatus(currentStatus)) {
+            return { success: false, error: DISMISSED_INCIDENCE_ERROR }
+        }
+
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede modificar tareas en una incidencia finalizada' }
         }
@@ -1525,6 +1576,10 @@ export async function deleteIncidence(incidenceId: number) {
 
         if (incidence.status === TaskStatus.DONE) {
             return { success: false, error: 'No se pueden eliminar incidencias completadas' }
+        }
+
+        if (incidence.status === TaskStatus.DISMISSED) {
+            return { success: false, error: 'No se pueden eliminar incidencias desestimadas' }
         }
 
         if (incidence.status === TaskStatus.REVIEW) {

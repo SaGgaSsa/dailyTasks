@@ -77,6 +77,8 @@ function getStatusColor(status: string): string {
   switch (status) {
     case 'DONE':
       return 'text-green-400'
+    case 'DISMISSED':
+      return 'text-red-400'
     case 'IN_PROGRESS':
       return 'text-blue-400'
     case 'REVIEW':
@@ -95,6 +97,7 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     IN_PROGRESS: 'bg-blue-600 text-blue-100',
     REVIEW: 'bg-yellow-600 text-yellow-100',
     DONE: 'bg-green-600 text-green-100',
+    DISMISSED: 'bg-red-600 text-red-100',
   }
   const colorClass = colors[status] || 'bg-zinc-700 text-zinc-300'
 
@@ -104,6 +107,7 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     IN_PROGRESS: 'En Progreso',
     REVIEW: 'En Revisión',
     DONE: 'Completada',
+    DISMISSED: 'Desestimada',
   }
 
   return (
