@@ -39,21 +39,21 @@ export function IncidenceDetailClient({
 }: IncidenceDetailClientProps) {
     const [incidenceData, setIncidenceData] = useState<IncidenceWithDetails>(incidence)
     const [, startTransition] = useTransition()
-    const [activeTab, setActiveTab] = useState(() => {
-        if (typeof window === 'undefined') return 'overview'
-        const hash = window.location.hash.replace('#', '')
-        const validTabs = ['overview', 'tasks', 'pages', 'files']
-        return validTabs.includes(hash) ? hash : 'overview'
-    })
+    const [activeTab, setActiveTab] = useState('overview')
 
     useEffect(() => {
+        const validTabs = ['overview', 'tasks', 'pages', 'files']
+
         const handleHashChange = () => {
             const hash = window.location.hash.replace('#', '')
-            const validTabs = ['overview', 'tasks', 'pages', 'files']
             if (validTabs.includes(hash)) {
                 setActiveTab(hash)
+            } else {
+                setActiveTab('overview')
             }
         }
+
+        handleHashChange()
         window.addEventListener('hashchange', handleHashChange)
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [])
