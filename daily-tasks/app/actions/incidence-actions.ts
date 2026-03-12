@@ -806,7 +806,8 @@ export async function createTask(assignmentId: number, title: string, isComplete
                 data: {
                     title,
                     assignmentId,
-                    isCompleted
+                    isCompleted,
+                    isQaReported: false
                 }
             })
 
@@ -1066,6 +1067,7 @@ export async function deleteTask(taskId: number) {
 
         // Validaciones restrictivas para estados bloqueados
         const currentStatus = task.assignment.incidence.status
+        const isQaReported = (task as typeof task & { isQaReported?: boolean }).isQaReported === true
         
         if (currentStatus === TaskStatus.DONE) {
             return { success: false, error: 'No puede eliminar tareas en una incidencia finalizada' }
@@ -1073,6 +1075,9 @@ export async function deleteTask(taskId: number) {
 
         if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
             return { success: false, error: 'Solo los administradores pueden eliminar tareas en revisión' }
+        }
+        if (isQaReported) {
+            return { success: false, error: 'No puede eliminar tareas reportadas por QA' }
         }
 
         // Eliminar la subtarea
@@ -1107,8 +1112,13 @@ export async function updateTaskTitle(taskId: number, newTitle: string) {
             return { success: false, error: 'No autorizado' }
         }
 
+        const isQaReported = (task as typeof task & { isQaReported?: boolean }).isQaReported === true
+
         if (task.isCompleted) {
             return { success: false, error: 'No puede editar tareas completadas' }
+        }
+        if (isQaReported) {
+            return { success: false, error: 'No puede editar tareas reportadas por QA' }
         }
 
         const currentStatus = task.assignment.incidence.status
@@ -1171,12 +1181,22 @@ export async function deleteIncidence(incidenceId: number) {
     }
 }
 
-export async function rejectTicket(ticketId: number, description: string, tracklistId: number) {
+interface RejectTicketInput {
+    ticketId: number
+    description: string
+    observations?: string
+    tracklistId: number
+}
+
+export async function rejectTicket({ ticketId, description, observations, tracklistId }: RejectTicketInput) {
     const session = await auth()
     if (!session?.user) return { success: false, error: 'No autorizado' }
 
     if (!description || description.trim().length < 3) {
         return { success: false, error: 'La descripción debe tener al menos 3 caracteres' }
+    }
+    if (observations && observations.trim().length > 1000) {
+        return { success: false, error: 'La observación no puede superar los 1000 caracteres' }
     }
 
     try {
@@ -1197,9 +1217,22 @@ export async function rejectTicket(ticketId: number, description: string, trackl
         if (!assignment)
             return { success: false, error: 'No se encontró la asignación del DEV responsable' }
 
+        const rejectionDetail = description.trim()
+        const rejectionTitle =
+            rejectionDetail.length > 120
+                ? `${rejectionDetail.slice(0, 117)}...`
+                : rejectionDetail
+        const rejectionObservations = observations?.trim() || null
+
         await db.$transaction(async (tx) => {
             await tx.task.create({
-                data: { title: description.trim(), assignmentId: assignment.id, isCompleted: false }
+                data: {
+                    title: rejectionTitle,
+                    description: rejectionObservations,
+                    assignmentId: assignment.id,
+                    isQaReported: true,
+                    isCompleted: false
+                }
             })
             await tx.incidence.update({
                 where: { id: ticket.incidenceId! },

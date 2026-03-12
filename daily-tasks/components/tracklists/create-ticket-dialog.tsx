@@ -131,6 +131,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       ? assignableUsers.find(u => u.id === rejectMode.assignedTo!.id) ?? null
       : null)
     setSelectedWorkItem(rejectMode.externalWorkItem ?? null)
+    setDescription('')
+    setObservations('')
   }, [rejectMode])
 
   useEffect(() => {
@@ -188,7 +190,12 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
 
     setIsPending(true)
     if (rejectMode) {
-      const result = await rejectTicket(rejectMode.id, description.trim(), tracklistId)
+      const result = await rejectTicket({
+        ticketId: rejectMode.id,
+        description: description.trim(),
+        observations: observations.trim() || undefined,
+        tracklistId,
+      })
       setIsPending(false)
       if (result.success) {
         toast.success('Ticket rechazado. Se creó una tarea para el DEV.')
@@ -277,17 +284,15 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               disabled={!!viewMode}
             />
           </div>
-          {!rejectMode && (
-            <div className="space-y-2">
-              <Textarea
-                value={observations}
-                onChange={e => setObservations(e.target.value)}
-                placeholder="Observación"
-                rows={4}
-                disabled={!!viewMode}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Textarea
+              value={observations}
+              onChange={e => setObservations(e.target.value)}
+              placeholder={rejectMode ? 'Observación del rechazo (opcional)' : 'Observación'}
+              rows={4}
+              disabled={!!viewMode}
+            />
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Popover open={typeOpen} onOpenChange={setTypeOpen}>
               <PopoverTrigger asChild>

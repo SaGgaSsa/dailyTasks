@@ -360,20 +360,20 @@ function randomFutureDate(daysFromNowMin: number, daysFromNowMax: number): Date 
   return d
 }
 
-async function createTracklistWithoutTickets() {
+async function createTracklistWithoutTickets(): Promise<{ id: number } | null> {
   const admin = await prisma.user.findUnique({ where: { username: 'ADM' } })
   const sisaTech = await getTechnologyByName('SISA')
 
   if (!admin || !sisaTech) {
     console.warn('Admin or SISA technology not found, skipping tracklist without tickets')
-    return
+    return null
   }
 
   const title = randomItem(TRACKLIST_RANDOM_TITLES)
   const existing = await prisma.tracklist.findFirst({ where: { title } })
   if (existing) {
     console.log(`Tracklist "${title}" already exists, skipping`)
-    return
+    return { id: existing.id }
   }
 
   const tracklist = await prisma.tracklist.create({
@@ -408,6 +408,100 @@ async function createTracklistWithoutTickets() {
   })
 
   console.log(`Created tracklist without tickets: ${tracklist.title} (${workItemTitles.length} work items, 0 tickets)`)
+  return { id: tracklist.id }
+}
+
+async function createRejectTicketScenario(tracklistId: number) {
+  const admin = await prisma.user.findUnique({ where: { username: 'ADM' } })
+  const sisaTech = await getTechnologyByName('SISA')
+  const defaultModule = await prisma.module.findFirst({ where: { slug: 'serv' } })
+
+  if (!admin || !sisaTech || !defaultModule) {
+    console.warn('Admin, SISA technology or Serv module not found, skipping reject ticket scenario')
+    return
+  }
+
+  const tracklistWithItems = await prisma.tracklist.findUnique({
+    where: { id: tracklistId },
+    select: {
+      externalWorkItems: {
+        orderBy: { externalId: 'asc' },
+        take: 1,
+      },
+    },
+  })
+
+  const existingWorkItem = tracklistWithItems?.externalWorkItems[0]
+  if (!existingWorkItem) {
+    console.warn(`Tracklist ${tracklistId} has no external work items, skipping reject ticket scenario`)
+    return
+  }
+
+  const existingIncidence = await prisma.incidence.findFirst({
+    where: { externalWorkItemId: existingWorkItem.id },
+  })
+
+  const incidence = existingIncidence ?? await prisma.incidence.create({
+    data: {
+      externalWorkItemId: existingWorkItem.id,
+      description: 'Incidencia para probar rechazo desde TEST',
+      comment: 'Fixture de seed para probar flujo de rechazo QA',
+      status: TaskStatus.REVIEW,
+      priority: Priority.HIGH,
+      technologyId: sisaTech.id,
+      estimatedTime: 4,
+    },
+  })
+
+  const assignment = await prisma.assignment.upsert({
+    where: { incidenceId_userId: { incidenceId: incidence.id, userId: admin.id } },
+    create: {
+      incidenceId: incidence.id,
+      userId: admin.id,
+      assignedHours: 2,
+      isAssigned: true,
+    },
+    update: {
+      assignedHours: 2,
+      isAssigned: true,
+    },
+  })
+
+  const completedAt = new Date()
+  await prisma.task.create({
+    data: {
+      title: 'Tarea inicial completada para entrar en TEST',
+      description: 'Tarea base del fixture de rechazo QA',
+      isQaReported: true,
+      isCompleted: true,
+      completedAt,
+      assignmentId: assignment.id,
+    },
+  })
+
+  const lastTicket = await prisma.ticketQA.findFirst({
+    where: { tracklistId },
+    orderBy: { ticketNumber: 'desc' },
+  })
+  const nextTicketNumber = (lastTicket?.ticketNumber || 0) + 1
+
+  await prisma.ticketQA.create({
+    data: {
+      tracklistId,
+      ticketNumber: nextTicketNumber,
+      type: TicketType.BUG,
+      moduleId: defaultModule.id,
+      description: 'Ticket TEST para probar rechazo y creación de tarea',
+      priority: Priority.HIGH,
+      reportedById: admin.id,
+      assignedToId: admin.id,
+      incidenceId: incidence.id,
+      status: TicketQAStatus.TEST,
+      observations: 'Caso armado por seed para probar el flujo de rechazo',
+    },
+  })
+
+  console.log(`Created reject-ticket scenario on tracklist ${tracklistId} (ticket in TEST assigned to ADM)`)
 }
 
 async function createAdditionalTracklistTickets(tracklistId: number, technologyId: number, adminId: number) {
@@ -608,7 +702,12 @@ async function main() {
     await createTracklistWithIncidences()
 
     console.log('\n--- Creating Tracklist without Tickets ---')
-    await createTracklistWithoutTickets()
+    const tracklistWithoutTickets = await createTracklistWithoutTickets()
+
+    if (tracklistWithoutTickets) {
+      console.log('\n--- Creating Reject Ticket Scenario ---')
+      await createRejectTicketScenario(tracklistWithoutTickets.id)
+    }
 
     console.log('\n--- Creating I_CASO Incidences ---')
     await createICasoIncidences()

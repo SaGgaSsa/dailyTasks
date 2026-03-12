@@ -160,6 +160,8 @@ model Assignment {
 model Task {
   id          Int       @id @default(autoincrement())
   title       String
+  description String?   @db.Text
+  isQaReported Boolean  @default(false)
   isCompleted Boolean   @default(false)
   completedAt DateTime?
 
@@ -252,7 +254,7 @@ model TicketQA {
   reportedBy          User      @relation("ReportedBy", fields: [reportedById], references: [id])
   assignedToId        Int?
   assignedTo          User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
-  incidenceId         Int?
+  incidenceId         Int?      @unique
   incidence           Incidence? @relation(fields: [incidenceId], references: [id])
   status              TicketQAStatus @default(NEW)
   dismissReason       String?   @db.Text

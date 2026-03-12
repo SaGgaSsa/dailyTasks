@@ -346,7 +346,9 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                             )}
                         </div>
 
-                        {pendingTasks.map(task => (
+                        {pendingTasks.map(task => {
+                            const isQaReported = (task as typeof task & { isQaReported?: boolean }).isQaReported === true
+                            return (
                             <div key={task.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group">
                                 <Checkbox
                                     checked={task.isCompleted}
@@ -366,11 +368,13 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                         autoFocus
                                     />
                                 ) : (
-                                    <span className={`text-sm flex-1 ${task.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>
-                                        {taskEdits[task.id] || task.title}
-                                    </span>
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className={`text-sm truncate ${task.isCompleted ? 'line-through text-muted-foreground/70' : 'text-card-foreground/80'}`}>
+                                            {taskEdits[task.id] || task.title}
+                                        </span>
+                                    </div>
                                 )}
-                                {!task.isCompleted && (
+                                {!task.isCompleted && !isQaReported && (
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                             type="button"
@@ -393,7 +397,7 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )})}
 
                         {draftPending.map(draft => (
                             <div key={draft.tempId} className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 rounded group">
@@ -506,9 +510,11 @@ export function IncidenceFormDev({ open, onOpenChange, initialData, type, extern
                                         onCheckedChange={() => handleToggle(task.id)}
                                         className="border-input"
                                     />
-                                    <span className="text-sm text-muted-foreground line-through flex-1">
-                                        {taskEdits[task.id] || task.title}
-                                    </span>
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className="text-sm text-muted-foreground line-through truncate">
+                                            {taskEdits[task.id] || task.title}
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,6 +24,7 @@ import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
+import { TaskItemRow } from '@/components/board/task-item-row'
 
 import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createTask, toggleTask, deleteTask, updateTaskTitle } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
@@ -941,50 +941,22 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             {/* Tareas pendientes de la base de datos */}
                                             {pendingTasks.map((task: Task) => (
-                                                <div key={task.id} className="flex items-center gap-2 px-2 py-1 bg-accent/30 rounded group">
-                                                    <Checkbox
-                                                        checked={tasksToToggle.has(task.id)}
-                                                        onCheckedChange={() => handleToggleTask(task.id)}
-                                                        className="border-input"
-                                                    />
-                                                    {editingTaskId === task.id ? (
-                                                        <Input
-                                                            value={taskEdits[task.id] || ''}
-                                                            onChange={(e) => setTaskEdits(prev => ({ ...prev, [task.id]: e.target.value }))}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') handleSaveEditTask(task.id)
-                                                                if (e.key === 'Escape') handleCancelEditTask(task.id)
-                                                            }}
-                                                            onBlur={() => handleSaveEditTask(task.id)}
-                                                            className="flex-1 bg-input border-border text-foreground h-6 text-sm"
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <span className="text-sm text-card-foreground/80 flex-1">{taskEdits[task.id] || task.title}</span>
-                                                    )}
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleStartEditTask(task.id, task.title)}
-                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                            </svg>
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeleteTask(task.id)}
-                                                            className="h-5 w-5 text-muted-foreground/70 hover:text-red-400"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
+                                                <TaskItemRow
+                                                    key={task.id}
+                                                    task={task}
+                                                    checked={tasksToToggle.has(task.id)}
+                                                    isEditing={editingTaskId === task.id}
+                                                    editValue={taskEdits[task.id] || ''}
+                                                    onToggle={() => handleToggleTask(task.id)}
+                                                    onEditChange={(value) => setTaskEdits(prev => ({ ...prev, [task.id]: value }))}
+                                                    onEditKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveEditTask(task.id)
+                                                        if (e.key === 'Escape') handleCancelEditTask(task.id)
+                                                    }}
+                                                    onEditBlur={() => handleSaveEditTask(task.id)}
+                                                    onStartEdit={() => handleStartEditTask(task.id, task.title)}
+                                                    onDelete={() => handleDeleteTask(task.id)}
+                                                />
                                             ))}
 
                                             {/* Tareas nuevas en la sesión */}
@@ -1175,6 +1147,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     const isToggled = tasksToToggle.has(task.id)
                                     const isMarkedForDelete = tasksToDelete.has(task.id)
                                     const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted
+                                    const isQaReported = (task as typeof task & { isQaReported?: boolean }).isQaReported === true
                                     
                                     return (
                                         <div
@@ -1186,16 +1159,20 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                 onCheckedChange={() => handleToggleTask(task.id)}
                                                 className="border-input"
                                             />
-                                            <span className="text-sm text-card-foreground/80 flex-1">{task.title}</span>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleDeleteTask(task.id)}
-                                                className="h-6 w-6 text-muted-foreground/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <span className="text-sm text-card-foreground/80 truncate">{task.title}</span>
+                                            </div>
+                                            {!isQaReported && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                    className="h-6 w-6 text-muted-foreground/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            )}
                                         </div>
                                     )
                                 })}
