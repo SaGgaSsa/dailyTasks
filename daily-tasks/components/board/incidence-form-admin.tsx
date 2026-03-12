@@ -26,7 +26,7 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TaskItemRow } from '@/components/board/task-item-row'
 
-import { createIncidence, updateIncidence, updateIncidenceComment, getIncidence, getIncidenceWithUsers, createTask, toggleTask, deleteTask, updateTaskTitle } from '@/app/actions/incidence-actions'
+import { createIncidence, getIncidence, getIncidenceWithUsers, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
 import { User, ExternalWorkItem } from '@prisma/client'
@@ -60,6 +60,7 @@ interface DraftTask {
     tempId: string
     title: string
     assignmentId: number
+    userId: number
     isCompleted: boolean
 }
 
@@ -284,14 +285,14 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
         setFormData(prev => ({ ...prev, ...updates }))
     }
 
-    const handleCreateTask = async (assignmentId: number, title: string) => {
+    const handleCreateTask = async (assignmentId: number, userId: number, title: string) => {
         if (!title.trim() || title.trim().length < 3) {
             setTaskInputErrors(prev => ({ ...prev, [assignmentId]: true }))
             return
         }
         
         const tempId = `${assignmentId}-${Date.now()}`
-        setDraftTasks(prev => [...prev, { tempId, title, assignmentId, isCompleted: false }])
+        setDraftTasks(prev => [...prev, { tempId, title, assignmentId, userId, isCompleted: false }])
         setNewTaskInputs(prev => ({ ...prev, [assignmentId]: '' }))
         setTaskInputErrors(prev => ({ ...prev, [assignmentId]: false }))
         
@@ -455,6 +456,25 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     }
 
     const handleSave = async () => {
+        const updatedTasks = (fullIncidenceData?.assignments ?? [])
+            .flatMap((assignment) => assignment.tasks)
+            .filter((task) => !tasksToDelete.has(task.id))
+            .map((task) => {
+                const nextTitle = taskEdits[task.id] ?? task.title
+                const nextIsCompleted = tasksToToggle.has(task.id) ? !task.isCompleted : task.isCompleted
+
+                if (nextTitle === task.title && nextIsCompleted === task.isCompleted) {
+                    return null
+                }
+
+                return {
+                    taskId: task.id,
+                    title: nextTitle,
+                    isCompleted: nextIsCompleted,
+                }
+            })
+            .filter((task): task is NonNullable<typeof task> => task !== null)
+
         if (isDev) {
             if (!initialData?.id) {
                 return false
@@ -472,35 +492,24 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
             
             setIsSaving(true)
             try {
-                if (originalFormData && formData.comment !== originalFormData.comment) {
-                    const commentResult = await updateIncidenceComment(initialData.id, formData.comment)
-                    if (!commentResult.success) {
-                        toast.error(commentResult.error || 'Error al guardar comentario')
-                        return false
-                    }
-                }
+                const result = await saveIncidenceTaskChanges({
+                    incidenceId: initialData.id,
+                    createdTasks: draftTasks.map((draft) => ({
+                        userId: draft.userId,
+                        title: draft.title,
+                        isCompleted: draft.isCompleted,
+                    })),
+                    updatedTasks,
+                    deletedTaskIds: [...tasksToDelete],
+                    incidencePatch: originalFormData && formData.comment !== originalFormData.comment
+                        ? { comment: formData.comment }
+                        : undefined,
+                })
 
-                for (const draft of draftTasks) {
-                    await createTask(draft.assignmentId, draft.title)
+                if (!result.success) {
+                    toast.error(result.error || 'Error al guardar')
+                    return false
                 }
-                setDraftTasks([])
-
-                let autoTransitionedToReview = false
-                let reviewMessage = ''
-
-                for (const taskId of tasksToToggle) {
-                    const result = await toggleTask(taskId)
-                    if (result.success && result.autoTransitionedToReview) {
-                        autoTransitionedToReview = true
-                        reviewMessage = result.message || ''
-                    }
-                }
-                setTasksToToggle(new Set())
-
-                for (const taskId of tasksToDelete) {
-                    const result = await deleteTask(taskId)
-                }
-                setTasksToDelete(new Set())
 
                 const updatedData = await getIncidence(initialData.id)
                 if (updatedData) {
@@ -510,8 +519,13 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     }
                 }
 
-                if (autoTransitionedToReview) {
-                    toast.success('🎉 ' + reviewMessage)
+                setDraftTasks([])
+                setTasksToToggle(new Set())
+                setTasksToDelete(new Set())
+                setTaskEdits({})
+
+                if (result.autoTransitionedToReview) {
+                    toast.success('🎉 ' + result.message)
                 } else {
                     toast.success('Guardado correctamente')
                 }
@@ -544,55 +558,27 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     return true
                 }
 
-                const result = await updateIncidence(initialData.id, {
-                    description: formData.description,
-                    comment: formData.comment,
-                    priority: formData.priority,
-                    estimatedTime: hoursValue > 0 ? hoursValue : null,
+                const result = await saveIncidenceTaskChanges({
+                    incidenceId: initialData.id,
                     assignees: assigneeData,
-                    tasks: formData.tasks.length > 0 ? formData.tasks : undefined,
+                    createdTasks: draftTasks.map((draft) => ({
+                        userId: draft.userId,
+                        title: draft.title,
+                        isCompleted: draft.isCompleted,
+                    })),
+                    updatedTasks,
+                    deletedTaskIds: [...tasksToDelete],
+                    incidencePatch: {
+                        description: formData.description,
+                        comment: formData.comment,
+                        priority: formData.priority,
+                        estimatedTime: hoursValue > 0 ? hoursValue : null,
+                        technology: formData.technology,
+                    },
                 })
 
                 if (result.success) {
                     toast.success(`${initialData.externalWorkItem?.type ?? ''} ${initialData.externalWorkItem?.externalId ?? ''} actualizada`)
-
-                    let autoTransitionedToReview = false
-                    let reviewMessage = ''
-
-                    if (draftTasks.length > 0 && result.data) {
-                        for (const draft of draftTasks) {
-                            const assignment = result.data.assignments.find(
-                                a => a.id === draft.assignmentId || a.userId === draft.assignmentId
-                            )
-                            if (assignment) {
-                                const createResult = await createTask(assignment.id, draft.title, draft.isCompleted)
-                                if (createResult.success && createResult.autoTransitionedToReview) {
-                                    autoTransitionedToReview = true
-                                    reviewMessage = createResult.message || ''
-                                }
-                            }
-                        }
-                    }
-                    setDraftTasks([])
-
-                    for (const taskId of tasksToToggle) {
-                        const toggleResult = await toggleTask(taskId)
-                        if (toggleResult.success && toggleResult.autoTransitionedToReview) {
-                            autoTransitionedToReview = true
-                            reviewMessage = toggleResult.message || ''
-                        }
-                    }
-                    setTasksToToggle(new Set())
-
-                    for (const taskId of tasksToDelete) {
-                        await deleteTask(taskId)
-                    }
-                    setTasksToDelete(new Set())
-
-                    for (const [taskId, newTitle] of Object.entries(taskEdits)) {
-                        await updateTaskTitle(Number(taskId), newTitle)
-                    }
-                    setTaskEdits({})
 
                     const updatedData = await getIncidence(initialData.id)
                     if (updatedData) {
@@ -602,8 +588,13 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         }
                     }
 
-                    if (autoTransitionedToReview) {
-                        toast.success('🎉 ' + reviewMessage)
+                    setDraftTasks([])
+                    setTasksToToggle(new Set())
+                    setTasksToDelete(new Set())
+                    setTaskEdits({})
+
+                    if (result.autoTransitionedToReview) {
+                        toast.success('🎉 ' + result.message)
                     }
 
                     return true
@@ -1027,7 +1018,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                         const assignmentId = userAssignment?.id || user.id
                                                         const value = newTaskInputs[user.id] || ''
                                                         if (value.length >= 3) {
-                                                            handleCreateTask(assignmentId, value)
+                                                            handleCreateTask(assignmentId, user.id, value)
                                                             setNewTaskInputs(prev => ({ ...prev, [user.id]: '' }))
                                                             setTaskInputErrors(prev => ({ ...prev, [assignmentId]: false }))
                                                         } else {
@@ -1220,7 +1211,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                             if (e.key === 'Enter' && currentUserId > 0) {
                                                 const value = newTaskInputs[currentUserId] || ''
                                                 if (value.length >= 3) {
-                                                    handleCreateTask(currentUserId, value)
+                                                    handleCreateTask(currentUserId, Number(session?.user?.id), value)
                                                     setNewTaskInputs(prev => ({ ...prev, [currentUserId]: '' }))
                                                     setTaskInputErrors(prev => ({ ...prev, [currentUserId]: false }))
                                                 } else {

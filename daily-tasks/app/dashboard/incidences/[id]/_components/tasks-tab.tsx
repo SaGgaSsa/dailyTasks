@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
-import { createTask, toggleTask, deleteTask, updateIncidence, updateTaskTitle, getIncidence } from '@/app/actions/incidence-actions'
+import { saveIncidenceTaskChanges, getIncidence } from '@/app/actions/incidence-actions'
 import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskItemRow } from '@/components/board/task-item-row'
@@ -230,93 +230,62 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
     const handleSaveChanges = useCallback(async () => {
         try {
-            let autoTransitionedToReview = false
+            const updatedTasks = incidence.assignments
+                .flatMap((assignment) => assignment.tasks)
+                .filter((task) => !tasksToDelete.has(task.id))
+                .map((task) => {
+                    const nextTitle = taskEdits[task.id] ?? task.title
+                    const nextIsCompleted = tasksToToggle.has(task.id) ? !task.isCompleted : task.isCompleted
 
-            for (const taskId of Object.keys(taskEdits)) {
-                await updateTaskTitle(Number(taskId), taskEdits[Number(taskId)])
-            }
-            setTaskEdits({})
+                    if (nextTitle === task.title && nextIsCompleted === task.isCompleted) {
+                        return null
+                    }
 
-            for (const taskId of tasksToToggle) {
-                const result = await toggleTask(taskId)
-                if (result.success && result.autoTransitionedToReview) {
-                    autoTransitionedToReview = true
-                }
-            }
-            setTasksToToggle(new Set())
+                    return {
+                        taskId: task.id,
+                        title: nextTitle,
+                        isCompleted: nextIsCompleted,
+                    }
+                })
+                .filter((task): task is NonNullable<typeof task> => task !== null)
 
-            for (const taskId of tasksToDelete) {
-                await deleteTask(taskId)
-            }
-            setTasksToDelete(new Set())
-
-            if (draftRemovedAssignees.size > 0) {
-                const currentAssignees = incidence.assignments
+            const assigneeData = [
+                ...incidence.assignments
                     .filter(a => !draftRemovedAssignees.has(a.userId))
                     .map(a => ({
                         userId: a.userId,
-                        assignedHours: a.assignedHours
-                    }))
+                        assignedHours: assigneeHours[a.userId] === '' ? null : (parseInt(assigneeHours[a.userId]) || a.assignedHours)
+                    })),
+                ...[...draftAssignees].map(userId => ({
+                    userId,
+                    assignedHours: assigneeHours[userId] === '' ? null : parseInt(assigneeHours[userId]) || null
+                }))
+            ]
 
-                const result = await updateIncidence(incidence.id, { assignees: currentAssignees })
-                if (result.success && result.data) {
-                    onIncidenceUpdate(result.data)
-                }
-            }
+            const hasAssigneeChanges =
+                draftAssignees.size > 0 ||
+                draftRemovedAssignees.size > 0 ||
+                Object.keys(assigneeHours).some(uid => {
+                    const numUid = Number(uid)
+                    const assignment = incidence.assignments.find(a => a.userId === numUid)
+                    const originalHours = assignment?.assignedHours?.toString() || ''
+                    return assigneeHours[numUid] !== originalHours
+                })
 
-            if (draftAssignees.size > 0 || Object.keys(assigneeHours).some(uid => {
-                const numUid = Number(uid)
-                const assignment = incidence.assignments.find(a => a.userId === numUid)
-                const originalHours = assignment?.assignedHours?.toString() || ''
-                return assigneeHours[numUid] !== originalHours
-            })) {
-                const assigneeData = [
-                    ...incidence.assignments
-                        .filter(a => !draftRemovedAssignees.has(a.userId))
-                        .map(a => ({
-                            userId: a.userId,
-                            assignedHours: assigneeHours[a.userId] === '' ? null : (parseInt(assigneeHours[a.userId]) || a.assignedHours)
-                        })),
-                    ...[...draftAssignees].map(userId => ({
-                        userId,
-                        assignedHours: assigneeHours[userId] === '' ? null : parseInt(assigneeHours[userId]) || null
-                    }))
-                ]
+            const result = await saveIncidenceTaskChanges({
+                incidenceId: incidence.id,
+                assignees: hasAssigneeChanges ? assigneeData : undefined,
+                createdTasks: draftTasks.map((draft) => ({
+                    userId: draft.userId,
+                    title: draft.title,
+                    isCompleted: draft.isCompleted,
+                })),
+                updatedTasks,
+                deletedTaskIds: [...tasksToDelete],
+            })
 
-                const result = await updateIncidence(incidence.id, { assignees: assigneeData })
-                if (result.success && result.data) {
-                    onIncidenceUpdate(result.data)
-                }
-            }
-
-            if (draftAssignees.size > 0) {
-                const updatedIncidence = await getIncidence(incidence.id)
-                if (!updatedIncidence) {
-                    throw new Error('No se pudo obtener la incidencia actualizada')
-                }
-
-                const userIdToAssignment = Object.fromEntries(
-                    updatedIncidence.assignments.map(a => [a.userId, a.id])
-                )
-
-                for (const draft of draftTasks) {
-                    const realAssignmentId = userIdToAssignment[draft.userId]
-                    if (realAssignmentId) {
-                        const result = await createTask(realAssignmentId, draft.title, draft.isCompleted)
-                        if (result.success && result.autoTransitionedToReview) {
-                            autoTransitionedToReview = true
-                        }
-                    }
-                }
-                setDraftTasks([])
-            } else if (draftTasks.length > 0) {
-                for (const draft of draftTasks) {
-                    const result = await createTask(draft.assignmentId, draft.title, draft.isCompleted)
-                    if (result.success && result.autoTransitionedToReview) {
-                        autoTransitionedToReview = true
-                    }
-                }
-                setDraftTasks([])
+            if (!result.success) {
+                throw new Error(result.error || 'Error al guardar cambios')
             }
 
             const finalData = await getIncidence(incidence.id)
@@ -326,8 +295,12 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
             setDraftAssignees(new Set())
             setDraftRemovedAssignees(new Set())
+            setDraftTasks([])
+            setTasksToToggle(new Set())
+            setTasksToDelete(new Set())
+            setTaskEdits({})
 
-            if (autoTransitionedToReview) {
+            if (result.autoTransitionedToReview) {
                 toast.success('Todas las tareas completadas. Incidencia en revisión.')
             } else {
                 toast.success(`${incidence.externalWorkItem.type} ${incidence.externalWorkItem.externalId} actualizada`)

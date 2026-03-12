@@ -13,6 +13,33 @@ export interface AssigneeWithHours {
   assignedHours: number | null
 }
 
+export interface IncidenceTaskCreateInput {
+  userId: number
+  title: string
+  isCompleted: boolean
+}
+
+export interface IncidenceTaskUpdateInput {
+  taskId: number
+  title: string
+  isCompleted: boolean
+}
+
+export interface SaveIncidenceTaskChangesInput {
+  incidenceId: number
+  assignees?: AssigneeWithHours[]
+  createdTasks?: IncidenceTaskCreateInput[]
+  updatedTasks?: IncidenceTaskUpdateInput[]
+  deletedTaskIds?: number[]
+  incidencePatch?: {
+    description?: string
+    comment?: string
+    priority?: Priority
+    estimatedTime?: number | null
+    technology?: string
+  }
+}
+
 export type AssignmentWithDetails = Assignment & {
   user: User
   tasks: Task[]

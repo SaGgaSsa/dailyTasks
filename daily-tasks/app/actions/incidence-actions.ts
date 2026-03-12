@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma } from '@prisma/client'
 import { Priority } from '@/types/enums'
-import { IncidenceWithDetails, AssigneeWithHours } from '@/types'
+import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
@@ -113,6 +113,82 @@ interface UpdateIncidenceData {
     technology?: string
     assignees?: AssigneeWithHours[]
     tasks?: { title: string; isCompleted: boolean }[]
+}
+
+function hasAdminIncidencePatch(patch?: SaveIncidenceTaskChangesInput['incidencePatch']) {
+    if (!patch) return false
+
+    return (
+        patch.description !== undefined ||
+        patch.priority !== undefined ||
+        patch.estimatedTime !== undefined ||
+        patch.technology !== undefined
+    )
+}
+
+function computeNextIncidenceStatus(params: {
+    initialStatus: TaskStatus
+    hasEstimatedTime: boolean
+    hasAssignees: boolean
+    totalTasks: number
+    allTasksCompleted: boolean
+    createdTasksCount: number
+    completionChanged: boolean
+    deletedTasksCount: number
+}) {
+    const {
+        initialStatus,
+        hasEstimatedTime,
+        hasAssignees,
+        totalTasks,
+        allTasksCompleted,
+        createdTasksCount,
+        completionChanged,
+        deletedTasksCount,
+    } = params
+
+    const allConditionsMet = hasEstimatedTime && hasAssignees
+    const hasTaskStructureChanges = createdTasksCount > 0 || deletedTasksCount > 0
+    const hasTaskStatusChanges = completionChanged || hasTaskStructureChanges
+
+    if (!allConditionsMet && ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(initialStatus)) {
+        return TaskStatus.BACKLOG
+    }
+
+    if (initialStatus === TaskStatus.BACKLOG) {
+        if (!allConditionsMet) return TaskStatus.BACKLOG
+        if (totalTasks > 0) {
+            return allTasksCompleted ? TaskStatus.REVIEW : TaskStatus.IN_PROGRESS
+        }
+        return TaskStatus.TODO
+    }
+
+    if (initialStatus === TaskStatus.DONE) {
+        if (createdTasksCount === 0) return TaskStatus.DONE
+        return totalTasks > 0 && allTasksCompleted ? TaskStatus.REVIEW : TaskStatus.IN_PROGRESS
+    }
+
+    if (!allConditionsMet) {
+        return initialStatus
+    }
+
+    if (totalTasks > 0 && allTasksCompleted) {
+        return TaskStatus.REVIEW
+    }
+
+    if (initialStatus === TaskStatus.REVIEW && hasTaskStatusChanges) {
+        return TaskStatus.IN_PROGRESS
+    }
+
+    if (initialStatus === TaskStatus.TODO && hasTaskStatusChanges && totalTasks > 0) {
+        return TaskStatus.IN_PROGRESS
+    }
+
+    if (initialStatus === TaskStatus.IN_PROGRESS) {
+        return TaskStatus.IN_PROGRESS
+    }
+
+    return initialStatus
 }
 
 export async function createIncidence(data: CreateIncidenceData, locale: Locale = 'es') {
@@ -707,6 +783,313 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }
+    }
+}
+
+export async function saveIncidenceTaskChanges(
+    input: SaveIncidenceTaskChangesInput,
+    locale: Locale = 'es'
+) {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+
+    const userId = Number(session.user.id)
+    const isAdmin = session.user.role === 'ADMIN'
+
+    try {
+        const currentIncidence = await db.incidence.findUnique({
+            where: { id: input.incidenceId },
+            include: {
+                assignments: {
+                    include: {
+                        tasks: true
+                    }
+                }
+            }
+        })
+
+        if (!currentIncidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        const isAssignedToIncidence = currentIncidence.assignments.some(a => a.isAssigned && a.userId === userId)
+        const hasTaskChanges =
+            (input.createdTasks?.length ?? 0) > 0 ||
+            (input.updatedTasks?.length ?? 0) > 0 ||
+            (input.deletedTaskIds?.length ?? 0) > 0
+
+        if (input.assignees && !isAdmin) {
+            return { success: false, error: t(locale, 'business.adminOnly') }
+        }
+
+        if (hasAdminIncidencePatch(input.incidencePatch) && !isAdmin) {
+            return { success: false, error: t(locale, 'business.adminOnly') }
+        }
+
+        if (input.incidencePatch?.comment !== undefined && !isAdmin && !isAssignedToIncidence) {
+            return { success: false, error: t(locale, 'business.assigneeOnly') }
+        }
+
+        if (hasTaskChanges && !isAdmin && !isAssignedToIncidence) {
+            return { success: false, error: t(locale, 'business.assigneeOnly') }
+        }
+
+        const technologyId = input.incidencePatch?.technology
+            ? await db.technology.findUnique({ where: { name: input.incidencePatch.technology }, select: { id: true } })
+            : null
+
+        if (input.incidencePatch?.technology && !technologyId) {
+            return { success: false, error: 'Tecnología no válida' }
+        }
+
+        const taskMap = new Map(
+            currentIncidence.assignments.flatMap((assignment) =>
+                assignment.tasks.map((task) => [task.id, { task, assignment }])
+            )
+        )
+
+        const completionChanged = (input.updatedTasks ?? []).some((taskChange) => {
+            const currentTask = taskMap.get(taskChange.taskId)?.task
+            return currentTask ? currentTask.isCompleted !== taskChange.isCompleted : false
+        })
+
+        const createdTasksCount = input.createdTasks?.length ?? 0
+        const deletedTasksCount = input.deletedTaskIds?.length ?? 0
+
+        const txResult = await db.$transaction(async (tx) => {
+            if (input.assignees) {
+                const currentAssignments = await tx.assignment.findMany({
+                    where: { incidenceId: input.incidenceId }
+                })
+
+                const currentUserIds = currentAssignments.map((assignment) => assignment.userId)
+                const nextUserIds = input.assignees!.map((assignee) => assignee.userId)
+                const toDeactivate = currentUserIds.filter((assignmentUserId) => !nextUserIds.includes(assignmentUserId))
+
+                if (toDeactivate.length > 0) {
+                    await tx.assignment.updateMany({
+                        where: {
+                            incidenceId: input.incidenceId,
+                            userId: { in: toDeactivate }
+                        },
+                        data: { isAssigned: false }
+                    })
+                }
+
+                for (const assignee of input.assignees) {
+                    await tx.assignment.upsert({
+                        where: {
+                            incidenceId_userId: {
+                                incidenceId: input.incidenceId,
+                                userId: assignee.userId
+                            }
+                        },
+                        update: {
+                            assignedHours: assignee.assignedHours,
+                            isAssigned: true
+                        },
+                        create: {
+                            incidenceId: input.incidenceId,
+                            userId: assignee.userId,
+                            assignedHours: assignee.assignedHours,
+                            isAssigned: true
+                        }
+                    })
+                }
+            }
+
+            const currentStatus = currentIncidence.status
+
+            for (const taskId of input.deletedTaskIds ?? []) {
+                const taskEntry = taskMap.get(taskId)
+                if (!taskEntry) {
+                    throw new Error(`Tarea ${taskId} no encontrada`)
+                }
+
+                const { task, assignment } = taskEntry
+                if (!isAdmin && assignment.userId !== userId) {
+                    throw new Error('No autorizado')
+                }
+
+                if (currentStatus === TaskStatus.DONE) {
+                    throw new Error('No puede eliminar tareas en una incidencia finalizada')
+                }
+
+                if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+                    throw new Error('Solo los administradores pueden eliminar tareas en revisión')
+                }
+
+                if (task.isQaReported) {
+                    throw new Error('No puede eliminar tareas reportadas por QA')
+                }
+
+                await tx.task.delete({
+                    where: { id: taskId }
+                })
+            }
+
+            for (const taskChange of input.updatedTasks ?? []) {
+                const taskEntry = taskMap.get(taskChange.taskId)
+                if (!taskEntry) {
+                    throw new Error(`Tarea ${taskChange.taskId} no encontrada`)
+                }
+
+                const { task, assignment } = taskEntry
+                if (!isAdmin && assignment.userId !== userId) {
+                    throw new Error('No autorizado')
+                }
+
+                if (currentStatus === TaskStatus.DONE) {
+                    throw new Error('No puede modificar tareas en una incidencia finalizada')
+                }
+
+                if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+                    throw new Error('Solo los administradores pueden modificar tareas en revisión')
+                }
+
+                if (task.isQaReported && task.title !== taskChange.title) {
+                    throw new Error('No puede editar tareas reportadas por QA')
+                }
+
+                if (task.isCompleted && task.title !== taskChange.title) {
+                    throw new Error('No puede editar tareas completadas')
+                }
+
+                await tx.task.update({
+                    where: { id: task.id },
+                    data: {
+                        title: taskChange.title,
+                        isCompleted: taskChange.isCompleted,
+                        completedAt: taskChange.isCompleted ? (task.completedAt ?? new Date()) : null
+                    }
+                })
+            }
+
+            const activeAssignments = await tx.assignment.findMany({
+                where: { incidenceId: input.incidenceId, isAssigned: true }
+            })
+            const assignmentByUserId = new Map(activeAssignments.map((assignment) => [assignment.userId, assignment]))
+
+            for (const draft of input.createdTasks ?? []) {
+                const assignment = assignmentByUserId.get(draft.userId)
+                if (!assignment) {
+                    throw new Error(`No se encontró asignación para el usuario ${draft.userId}`)
+                }
+
+                if (!isAdmin && assignment.userId !== userId) {
+                    throw new Error('No autorizado')
+                }
+
+                if (currentStatus === TaskStatus.REVIEW && !isAdmin) {
+                    throw new Error('Solo los administradores pueden agregar tareas en revisión')
+                }
+
+                await tx.task.create({
+                    data: {
+                        title: draft.title,
+                        assignmentId: assignment.id,
+                        isCompleted: draft.isCompleted,
+                        completedAt: draft.isCompleted ? new Date() : null,
+                        isQaReported: false
+                    }
+                })
+            }
+
+            const incidencePatch: Prisma.IncidenceUpdateInput = {}
+
+            if (input.incidencePatch?.description !== undefined) {
+                incidencePatch.description = input.incidencePatch.description
+            }
+            if (input.incidencePatch?.comment !== undefined) {
+                incidencePatch.comment = input.incidencePatch.comment
+            }
+            if (input.incidencePatch?.priority !== undefined) {
+                incidencePatch.priority = input.incidencePatch.priority as PrismaPriority
+            }
+            if (input.incidencePatch?.estimatedTime !== undefined) {
+                incidencePatch.estimatedTime = input.incidencePatch.estimatedTime
+            }
+            if (technologyId) {
+                incidencePatch.technology = { connect: { id: technologyId.id } }
+            }
+
+            if (Object.keys(incidencePatch).length > 0) {
+                await tx.incidence.update({
+                    where: { id: input.incidenceId },
+                    data: incidencePatch
+                })
+            }
+
+            const finalIncidence = await tx.incidence.findUnique({
+                where: { id: input.incidenceId },
+                include: {
+                    assignments: {
+                        where: { isAssigned: true },
+                        include: { tasks: true }
+                    }
+                }
+            })
+
+            if (!finalIncidence) {
+                throw new Error('Incidencia no encontrada')
+            }
+
+            const finalTasks = finalIncidence.assignments.flatMap((assignment) => assignment.tasks)
+            const totalTasks = finalTasks.length
+            const allTasksCompleted = totalTasks > 0 && finalTasks.every((task) => task.isCompleted)
+            const nextStatus = computeNextIncidenceStatus({
+                initialStatus: currentIncidence.status,
+                hasEstimatedTime: Boolean(finalIncidence.estimatedTime && finalIncidence.estimatedTime > 0),
+                hasAssignees: finalIncidence.assignments.length > 0,
+                totalTasks,
+                allTasksCompleted,
+                createdTasksCount,
+                completionChanged,
+                deletedTasksCount,
+            })
+
+            if (nextStatus !== finalIncidence.status) {
+                await tx.incidence.update({
+                    where: { id: input.incidenceId },
+                    data: {
+                        status: nextStatus,
+                        completedAt: nextStatus === TaskStatus.DONE ? finalIncidence.completedAt : null
+                    }
+                })
+            }
+
+            return {
+                finalStatus: nextStatus,
+                autoTransitionedToReview: nextStatus === TaskStatus.REVIEW && currentIncidence.status !== TaskStatus.REVIEW,
+                reopened: currentIncidence.status === TaskStatus.DONE && nextStatus !== TaskStatus.DONE,
+            }
+        })
+
+        if (([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(txResult.finalStatus)) {
+            await syncLinkedTickets(input.incidenceId, txResult.finalStatus)
+        }
+
+        revalidatePath('/dashboard')
+        revalidatePath('/tracklists')
+
+        const message = txResult.autoTransitionedToReview
+            ? '¡Todas las tareas completadas! La incidencia pasó a revisión'
+            : txResult.reopened
+                ? 'Incidencia reabierta automáticamente'
+                : 'Guardado correctamente'
+
+        return {
+            success: true,
+            autoTransitionedToReview: txResult.autoTransitionedToReview,
+            reopened: txResult.reopened,
+            message
+        }
+    } catch (error) {
+        console.error('Error saving incidence task changes:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al guardar cambios'
+        }
     }
 }
 
