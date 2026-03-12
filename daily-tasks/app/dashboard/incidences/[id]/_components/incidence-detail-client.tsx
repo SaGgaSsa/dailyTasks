@@ -24,6 +24,7 @@ interface IncidenceDetailClientProps {
     onSave?: () => void
     onHasChangesChange?: (hasChanges: boolean) => void
     onSaveRef?: (saveFn: () => Promise<void>) => void
+    onNavigateWithUnsavedChanges?: (url: string) => void
 }
 
 export function IncidenceDetailClient({ 
@@ -36,6 +37,7 @@ export function IncidenceDetailClient({
     onSave,
     onHasChangesChange,
     onSaveRef,
+    onNavigateWithUnsavedChanges,
 }: IncidenceDetailClientProps) {
     const [incidenceData, setIncidenceData] = useState<IncidenceWithDetails>(incidence)
     const [, startTransition] = useTransition()
@@ -141,6 +143,7 @@ export function IncidenceDetailClient({
                         onIncidenceUpdate={handleIncidenceUpdate}
                         onHasChangesChange={onHasChangesChange}
                         onSaveRef={onSaveRef}
+                        onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
                     />
                 </TabsContent>
 

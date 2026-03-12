@@ -61,6 +61,16 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
         saveFnRef.current = saveFn
     }, [])
 
+    const handleNavigateWithUnsavedChanges = useCallback((url: string) => {
+        if (!hasChanges) {
+            window.location.href = url
+            return
+        }
+
+        pendingNavigationRef.current = url
+        setShowExitDialog(true)
+    }, [hasChanges])
+
     useEffect(() => {
         if (!hasChanges) return
 
@@ -104,6 +114,7 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
                 onSave={handleSave}
                 onHasChangesChange={handleHasChangesChange}
                 onSaveRef={handleSaveRef}
+                onNavigateWithUnsavedChanges={handleNavigateWithUnsavedChanges}
             />
             <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
                 <DialogContent className="bg-card border-border">
