@@ -30,7 +30,6 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TicketType, Priority } from '@/types/enums'
 import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
-import { OpenScriptsButton } from '@/components/incidences/open-scripts-button'
 
 const TIPO_TICKET = [
   { value: TicketType.BUG, label: 'Bug' },
@@ -276,16 +275,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
             {viewMode ? `Ticket #${viewMode.ticketNumber}` : rejectMode ? rejectMode.description : editMode ? `Editar Ticket #${editMode.ticketNumber}` : 'Nuevo Ticket'}
           </DialogTitle>
         </DialogHeader>
-        {viewMode?.incidenceId && (
-          <div className="flex justify-end">
-            <OpenScriptsButton
-              incidenceId={viewMode.incidenceId}
-              pageId={viewMode.scriptPageId}
-              size="sm"
-              className="h-8 gap-2 px-3"
-            />
-          </div>
-        )}
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Input
