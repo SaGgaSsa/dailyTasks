@@ -1069,6 +1069,15 @@ export async function saveIncidenceTaskChanges(
             await syncLinkedTickets(input.incidenceId, txResult.finalStatus)
         }
 
+        const finalIncidence = await db.incidence.findUnique({
+            where: { id: input.incidenceId },
+            include: incidenceDetailsInclude
+        })
+
+        if (!finalIncidence) {
+            throw new Error('Incidencia no encontrada')
+        }
+
         revalidatePath('/dashboard')
         revalidatePath('/tracklists')
 
@@ -1082,7 +1091,8 @@ export async function saveIncidenceTaskChanges(
             success: true,
             autoTransitionedToReview: txResult.autoTransitionedToReview,
             reopened: txResult.reopened,
-            message
+            message,
+            data: finalIncidence as IncidenceWithDetails
         }
     } catch (error) {
         console.error('Error saving incidence task changes:', error)

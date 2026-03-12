@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
-import { saveIncidenceTaskChanges, getIncidence } from '@/app/actions/incidence-actions'
+import { saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskItemRow } from '@/components/board/task-item-row'
@@ -288,9 +288,8 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 throw new Error(result.error || 'Error al guardar cambios')
             }
 
-            const finalData = await getIncidence(incidence.id)
-            if (finalData) {
-                onIncidenceUpdate(finalData)
+            if (result.data) {
+                onIncidenceUpdate(result.data)
             }
 
             setDraftAssignees(new Set())

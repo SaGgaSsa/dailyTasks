@@ -26,7 +26,7 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TaskItemRow } from '@/components/board/task-item-row'
 
-import { createIncidence, getIncidence, getIncidenceWithUsers, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
+import { createIncidence, getIncidenceWithUsers, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
 import { User, ExternalWorkItem } from '@prisma/client'
@@ -511,11 +511,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     return false
                 }
 
-                const updatedData = await getIncidence(initialData.id)
-                if (updatedData) {
-                    setFullIncidenceData(updatedData)
+                if (result.data) {
+                    setFullIncidenceData(result.data)
                     if (onTaskUpdate) {
-                        onTaskUpdate(updatedData)
+                        onTaskUpdate(result.data)
                     }
                 }
 
@@ -580,11 +579,10 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 if (result.success) {
                     toast.success(`${initialData.externalWorkItem?.type ?? ''} ${initialData.externalWorkItem?.externalId ?? ''} actualizada`)
 
-                    const updatedData = await getIncidence(initialData.id)
-                    if (updatedData) {
-                        setFullIncidenceData(updatedData)
+                    if (result.data) {
+                        setFullIncidenceData(result.data)
                         if (onTaskUpdate) {
-                            onTaskUpdate(updatedData)
+                            onTaskUpdate(result.data)
                         }
                     }
 
