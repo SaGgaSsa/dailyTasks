@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import {
   Sheet,
-  SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  RightSheetContent,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   Copy,
   ExternalLink,
-  Mail,
   Calendar,
   Shield,
   AlertTriangle,
@@ -132,20 +131,20 @@ export function UserDetailSheet({
     } else {
       setDetails(null)
     }
-  }, [open, userId])
+  }, [open, userId, loadUserDetails])
 
-  const loadUserDetails = async () => {
+  const loadUserDetails = useCallback(async () => {
     if (!userId) return
     setLoading(true)
     try {
       const data = await getUserDetails(userId)
       setDetails(data)
-    } catch (error) {
+    } catch {
       toast.error('Error al cargar los detalles del usuario')
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
   const handleClose = () => {
     onOpenChange(false)
@@ -155,9 +154,9 @@ export function UserDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
+      <RightSheetContent
         showCloseButton={false}
-        className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-[#191919] border-zinc-800 overflow-y-auto"
+        className="bg-[#191919] border-zinc-800 overflow-y-auto"
       >
         <SheetHeader className="sr-only">
           <SheetTitle>Detalles del usuario</SheetTitle>
@@ -354,7 +353,7 @@ export function UserDetailSheet({
             </div>
           )}
         </div>
-      </SheetContent>
+      </RightSheetContent>
     </Sheet>
   )
 }

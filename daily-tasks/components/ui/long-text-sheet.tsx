@@ -3,11 +3,11 @@
 import { ReactNode } from 'react'
 import {
   Sheet,
-  SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  RightSheetContent,
 } from '@/components/ui/sheet'
 
 interface LongTextSheetProps {
@@ -30,7 +30,7 @@ export function LongTextSheet({
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-xl">
+      <RightSheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}
@@ -43,7 +43,7 @@ export function LongTextSheet({
             </pre>
           </div>
         </div>
-      </SheetContent>
+      </RightSheetContent>
     </Sheet>
   )
 }

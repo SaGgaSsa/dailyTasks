@@ -85,6 +85,20 @@ function SheetContent({
   )
 }
 
+function RightSheetContent({
+  className,
+  side,
+  ...props
+}: React.ComponentProps<typeof SheetContent>) {
+  return (
+    <SheetContent
+      side={side ?? "right"}
+      className={cn("w-full sm:min-w-[45vw] sm:max-w-[50vw]", className)}
+      {...props}
+    />
+  )
+}
+
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -136,6 +150,7 @@ export {
   SheetTrigger,
   SheetClose,
   SheetContent,
+  RightSheetContent,
   SheetHeader,
   SheetFooter,
   SheetTitle,

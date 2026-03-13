@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
     Sheet,
-    SheetContent,
     SheetHeader,
     SheetTitle,
     SheetDescription,
+    RightSheetContent,
 } from '@/components/ui/sheet'
 import {
     Select,
@@ -77,7 +77,7 @@ export function FormSheet({
                 }
             }}
         >
-            <SheetContent
+            <RightSheetContent
                 showCloseButton={false}
                 onInteractOutside={(e) => {
                     e.preventDefault()
@@ -89,7 +89,7 @@ export function FormSheet({
                         onClose()
                     }
                 }}
-                className="w-full sm:min-w-[45vw] sm:max-w-[50vw] bg-card border-border overflow-y-auto"
+                className="bg-card border-border overflow-y-auto"
             >
                 <SheetHeader className="space-y-2 border-b border-border">
                     <div className="flex items-center justify-between">
@@ -130,7 +130,7 @@ export function FormSheet({
                 <div className="flex flex-col space-y-4 pt-4 py-6 px-8">
                     {children}
                 </div>
-            </SheetContent>
+            </RightSheetContent>
         </Sheet>
     )
 }
