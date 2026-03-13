@@ -1,15 +1,17 @@
 'use client'
 
 import { KeyboardEvent } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { FileText, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { OpenScriptsButton } from '@/components/incidences/open-scripts-button'
+import { LongTextSheet } from '@/components/ui/long-text-sheet'
 
 interface TaskItemLike {
   id: number
   title: string
+  description?: string | null
   isQaReported?: boolean
 }
 
@@ -55,6 +57,7 @@ export function TaskItemRow({
   const isQaReported = task.isQaReported === true
   const allowEdit = canEdit && !isQaReported
   const allowDelete = canDelete && !isQaReported
+  const hasDescription = Boolean(task.description?.trim())
 
   return (
     <div className={className}>
@@ -79,6 +82,25 @@ export function TaskItemRow({
         </div>
       )}
       <div className="ml-auto flex items-center gap-1">
+        {hasDescription && (
+          <LongTextSheet
+            title="Descripción de la tarea"
+            content={task.description?.trim() || ''}
+            description={task.title}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={(event) => event.stopPropagation()}
+                className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
+                title="Ver descripción"
+              >
+                <FileText className="h-3 w-3" />
+              </Button>
+            }
+          />
+        )}
         {isQaReported && incidenceId && (
           <OpenScriptsButton
             incidenceId={incidenceId}

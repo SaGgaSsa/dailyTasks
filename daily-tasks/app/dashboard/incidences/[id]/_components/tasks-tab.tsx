@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
 import { saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
-import { Trash2, Loader2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
+import { Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskItemRow } from '@/components/board/task-item-row'
 import { IncidencePageType } from '@prisma/client'
@@ -335,7 +335,6 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     return (
         <div className="space-y-0">
             {[...sortedAssignedUsers, ...newAssignees.map(user => {
-                const existingAssignment = incidence.assignments.find(a => a.userId === user.id)
                 return {
                     id: -user.id,
                     userId: user.id,
