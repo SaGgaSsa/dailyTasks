@@ -176,7 +176,7 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                                                     disabled={isSettingMain}
                                                 >
                                                     <Star className="h-4 w-4 mr-2" />
-                                                    Fijar como principal
+                                                    Fijar
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem
