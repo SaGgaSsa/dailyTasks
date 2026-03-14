@@ -125,14 +125,6 @@ export function UserDetailSheet({
   const [details, setDetails] = useState<UserDetails | null>(null)
   const [isDebugOpen, setIsDebugOpen] = useState(false)
 
-  useEffect(() => {
-    if (open && userId) {
-      loadUserDetails()
-    } else {
-      setDetails(null)
-    }
-  }, [open, userId, loadUserDetails])
-
   const loadUserDetails = useCallback(async () => {
     if (!userId) return
     setLoading(true)
@@ -145,6 +137,14 @@ export function UserDetailSheet({
       setLoading(false)
     }
   }, [userId])
+
+  useEffect(() => {
+    if (open && userId) {
+      loadUserDetails()
+    } else {
+      setDetails(null)
+    }
+  }, [open, userId, loadUserDetails])
 
   const handleClose = () => {
     onOpenChange(false)
