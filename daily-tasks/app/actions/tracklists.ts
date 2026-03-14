@@ -574,6 +574,13 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
             }
         })
 
+        if (data.assignedToId) {
+            const txResult = await runAssignmentTransaction(ticketId, data.assignedToId, tracklistId)
+            if (!txResult.success) {
+                console.error('Assignment transaction failed after ticket update:', txResult.error)
+            }
+        }
+
         revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true }
     } catch (error) {
