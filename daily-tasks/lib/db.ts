@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
+
+const { Pool } = require('pg') as {
+  Pool: new (config: { connectionString?: string }) => {
+    end(): Promise<void>
+  }
+}
 
 // Extend globalThis to include prisma property
 declare global {
@@ -11,6 +16,7 @@ declare global {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
+const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0])
 
 // Singleton instance
 let prisma: PrismaClient
@@ -24,7 +30,7 @@ if (typeof window === 'undefined') {
       globalThis.prisma = new PrismaClient({
         log: ['info', 'warn', 'error'],
         errorFormat: 'pretty',
-        adapter: new PrismaPg(pool),
+        adapter,
       })
     }
     prisma = globalThis.prisma
@@ -33,7 +39,7 @@ if (typeof window === 'undefined') {
     prisma = new PrismaClient({
       log: ['error'],
       errorFormat: 'colorless',
-      adapter: new PrismaPg(pool),
+      adapter,
     })
   }
 } else {

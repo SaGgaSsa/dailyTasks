@@ -1,13 +1,18 @@
 import { PrismaClient, UserRole } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
 import 'dotenv/config'
+
+const { Pool } = require('pg') as {
+  Pool: new (config: { connectionString?: string }) => {
+    end(): Promise<void>
+  }
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
-const adapter = new PrismaPg(pool)
+const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0])
 const prisma = new PrismaClient({ adapter })
 
 const SEED_ADMIN_PASSWORD = '1234'
