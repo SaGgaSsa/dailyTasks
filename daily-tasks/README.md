@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Daily Tasks
 
-## Getting Started
+Aplicación Next.js 16 + TypeScript + Prisma + PostgreSQL.
 
-First, run the development server:
+## Estado del repositorio
+
+- Flujo local activo con `npm run dev`
+- Viable para Vercel
+- Dockerización productiva pendiente de agregarse
+
+## Requisitos
+
+- Node.js 22
+- npm 11
+- PostgreSQL 15+ o contenedor Docker con PostgreSQL
+
+## Variables requeridas
+
+Crear `.env` a partir de `.env.example`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variables base:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
+DATABASE_URL=
+INGEST_SECRET=
+EXTERNAL_API_SECRET=
+NEXTAUTH_SECRET=
+NEXT_PUBLIC_UPLOADS_PATH=/uploads
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Variables recomendadas para despliegue:
 
-## Learn More
+```bash
+NEXTAUTH_URL=
+NEXT_PUBLIC_APP_URL=
+```
 
-To learn more about Next.js, take a look at the following resources:
+Para Docker interno:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+DATABASE_URL=postgresql://postgres:postgres@db:5432/daily_tasks
+NEXTAUTH_URL=http://localhost:8850
+NEXT_PUBLIC_APP_URL=http://localhost:8850
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Instalación local
 
-## Deploy on Vercel
+```bash
+npm install
+npx prisma generate
+npx prisma db push
+npm run seed
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Acceso local:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+http://localhost:3000
+```
+
+## Build local
+
+```bash
+npm run lint
+npm run build
+npm run start
+```
+
+## Estructura de despliegue objetivo en Docker
+
+Servicios:
+
+- `app`: Next.js en `3000`
+- `db`: PostgreSQL con volumen persistente
+- `proxy`: publicación externa por `8850`
+- uploads persistidos
+- scripts de backup/restore en root
+
+Levantar:
+
+```bash
+docker compose up -d --build
+```
+
+Acceso:
+
+```bash
+http://localhost:8850
+```
+
+Parar:
+
+```bash
+docker compose down
+```
+
+Logs:
+
+```bash
+docker compose logs -f app
+docker compose logs -f db
+docker compose logs -f proxy
+```
+
+## Backup y restore
+
+Backup:
+
+```bash
+./backup-db.sh
+```
+
+Restore:
+
+```bash
+./restore-db.sh dailyTasks_2026_03_14.bak
+```
+
+## Notas operativas
+
+- Los uploads actuales se escriben en `public/uploads`
+- La base usa `DATABASE_URL`; en Docker debe apuntar a `db`
+- No hay migraciones Prisma versionadas todavía en `prisma/migrations`
+- El contenedor aplica `prisma db push` al iniciar
+- Si se resetea la base y se vuelve a seedear, hay que reingresar sesión
