@@ -138,10 +138,11 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                 const isCompleted = ticket.status === TicketQAStatus.COMPLETED
                 return (
                   <TableRow key={ticket.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => setOpenTicketId(ticket.id)}>
-                    <TableCell className="w-8 px-2 py-3 text-center">
+                    <TableCell className="w-8 px-2 py-3 text-center" onClick={(event) => event.stopPropagation()}>
                       <Checkbox
                         checked={isCompleted}
                         disabled={(!isTest && !isCompleted) || completing === ticket.id}
+                        onClick={(event) => event.stopPropagation()}
                         onCheckedChange={() => isCompleted ? handleUncomplete(ticket) : handleComplete(ticket)}
                         aria-label="Completar ticket"
                       />
