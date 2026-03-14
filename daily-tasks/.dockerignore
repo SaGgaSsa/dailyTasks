@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+backups
+npm-debug.log*
+.env
+.env.local
+.env.development
+.env.production
+.vercel
+README.bak
+docs

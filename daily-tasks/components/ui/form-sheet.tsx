@@ -1,0 +1,240 @@
+'use client'
+
+import { Check, X, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+    Sheet,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+    RightSheetContent,
+} from '@/components/ui/sheet'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+
+interface FormSheetProps {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    title: string
+    isEditMode: boolean
+    isSaving: boolean
+    onSave: () => Promise<boolean> | void
+    onClose: () => void
+    hasUnsavedChanges?: boolean
+    onDiscard?: () => void
+    children: React.ReactNode
+}
+
+export function FormSheet({
+    open,
+    onOpenChange,
+    title,
+    isEditMode,
+    isSaving,
+    onSave,
+    onClose,
+    hasUnsavedChanges,
+    onDiscard,
+    children,
+}: FormSheetProps) {
+    const handleSaveAndClose = async () => {
+        const success = await onSave()
+        if (success !== false) {
+            onOpenChange(false)
+        }
+    }
+
+    const handleClose = () => {
+        if (hasUnsavedChanges && onDiscard) {
+            onDiscard()
+        } else {
+            onClose()
+        }
+    }
+
+    const handleCloseAndDiscard = () => {
+        if (hasUnsavedChanges && onDiscard) {
+            onDiscard()
+        } else {
+            onOpenChange(false)
+        }
+    }
+
+    return (
+        <Sheet
+            open={open}
+            onOpenChange={(newOpen) => {
+                if (!newOpen) {
+                    handleClose()
+                }
+            }}
+        >
+            <RightSheetContent
+                showCloseButton={false}
+                onInteractOutside={(e) => {
+                    e.preventDefault()
+                    if (hasUnsavedChanges && !isEditMode && onDiscard) {
+                        onDiscard()
+                    } else if (isEditMode) {
+                        handleSaveAndClose()
+                    } else {
+                        onClose()
+                    }
+                }}
+                className="bg-card border-border overflow-y-auto"
+            >
+                <SheetHeader className="space-y-2 border-b border-border">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 pt-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleSaveAndClose}
+                                disabled={isSaving}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                title="Guardar"
+                            >
+                            {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                                <Check className="h-4 w-4" />
+                            )}
+                        </Button>
+                        </div>
+                        <SheetTitle className="text-card-foreground pt-1">
+                            {title}
+                        </SheetTitle>
+                        <SheetDescription className="sr-only">
+                            Formulario para {isEditMode ? 'editar' : 'crear'} registro
+                        </SheetDescription>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCloseAndDiscard}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            title={hasUnsavedChanges ? "Descartar cambios" : "Cerrar"}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </SheetHeader>
+
+                <div className="flex flex-col space-y-4 pt-4 py-6 px-8">
+                    {children}
+                </div>
+            </RightSheetContent>
+        </Sheet>
+    )
+}
+
+interface FormFieldProps {
+    id?: string
+    label: string
+    children: React.ReactNode
+}
+
+export function FormField({ id, label, children }: FormFieldProps) {
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={id} className="text-card-foreground/80">
+                {label}
+            </Label>
+            {children}
+        </div>
+    )
+}
+
+interface FormInputProps extends React.ComponentProps<typeof Input> {
+    label: string
+}
+
+export function FormInput({ label, id, className, ...props }: FormInputProps) {
+    return (
+        <FormField id={id} label={label}>
+            <Input
+                id={id}
+                className={`bg-input border-input text-foreground ${className || ''}`}
+                {...props}
+            />
+        </FormField>
+    )
+}
+
+interface FormTextareaProps extends React.ComponentProps<typeof Textarea> {
+    label: string
+}
+
+export function FormTextarea({ label, id, className, ...props }: FormTextareaProps) {
+    return (
+        <FormField id={id} label={label}>
+            <Textarea
+                id={id}
+                className={`bg-input border-input text-foreground ${className || ''}`}
+                {...props}
+            />
+        </FormField>
+    )
+}
+
+interface SelectOption {
+    value: string
+    label: string
+}
+
+interface FormSelectProps {
+    label: string
+    id?: string
+    value: string
+    onValueChange: (value: string) => void
+    options: SelectOption[]
+    placeholder?: string
+    disabled?: boolean
+    className?: string
+}
+
+export function FormSelect({
+    label,
+    id,
+    value,
+    onValueChange,
+    options,
+    placeholder,
+    disabled,
+    className,
+}: FormSelectProps) {
+    return (
+        <FormField id={id} label={label}>
+            <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+                <SelectTrigger className={`bg-input border-input text-foreground ${className || ''}`}>
+                    <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                    {options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-popover-foreground">
+                            {opt.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </FormField>
+    )
+}
+
+export function FormRow({ children }: { children: React.ReactNode }) {
+    return <div className="grid grid-cols-2 gap-4">{children}</div>
+}
+
+export function FormRow3({ children }: { children: React.ReactNode }) {
+    return <div className="grid grid-cols-3 gap-4">{children}</div>
+}
+
+export { Label }
+export type { FormSheetProps, FormFieldProps, FormInputProps, FormTextareaProps, FormSelectProps, SelectOption }
