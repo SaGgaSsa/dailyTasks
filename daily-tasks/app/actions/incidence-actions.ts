@@ -1612,10 +1612,6 @@ export async function rejectTicket({ ticketId, description, observations, trackl
     if (!description || description.trim().length < 3) {
         return { success: false, error: 'La descripción debe tener al menos 3 caracteres' }
     }
-    if (observations && observations.trim().length > 1000) {
-        return { success: false, error: 'La observación no puede superar los 1000 caracteres' }
-    }
-
     try {
         const ticket = await db.ticketQA.findUnique({
             where: { id: ticketId },

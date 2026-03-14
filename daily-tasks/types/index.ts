@@ -111,7 +111,7 @@ const ticketSchemaBase = z.object({
   description: z.string().min(1, 'Descripción requerida').max(500, 'Máximo 500 caracteres'),
   priority: z.nativeEnum(Priority),
   externalWorkItemId: z.number().optional(),
-  observations: z.string().max(1000, 'Máximo 1000 caracteres').optional(),
+  observations: z.string().optional(),
   assignedToId: z.number().optional(),
 })
 

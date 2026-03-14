@@ -7,7 +7,6 @@ import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog'
@@ -28,6 +27,7 @@ import { Check, ChevronDown, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
+import { Observation } from '@/components/tracklists/observation'
 import { TicketType, Priority } from '@/types/enums'
 import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 
@@ -285,11 +285,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
             />
           </div>
           <div className="space-y-2">
-            <Textarea
+            <Observation
               value={observations}
-              onChange={e => setObservations(e.target.value)}
+              onChange={setObservations}
               placeholder={rejectMode ? 'Observación del rechazo (opcional)' : 'Observación'}
-              rows={4}
               disabled={!!viewMode}
             />
           </div>
