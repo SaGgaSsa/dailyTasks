@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
 import { computeGanttDates, getBarPosition, isDelayed } from '@/lib/gantt-utils'
-import { getBarColorClasses } from './gantt-status-colors'
+import { getBarColorClasses, STATUS_STYLES } from './gantt-status-colors'
 import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
   Tooltip,
@@ -10,12 +10,6 @@ import {
 } from '@/components/ui/tooltip'
 import { UserAvatar } from '@/components/ui/user-avatar'
 
-const STATUS_LABELS: Record<string, string> = {
-  TODO: 'Pendiente',
-  IN_PROGRESS: 'En Progreso',
-  REVIEW: 'En Revisión',
-  DONE: 'Completado',
-}
 
 interface Props {
   incidence: GanttIncidence
@@ -101,7 +95,7 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  'absolute top-2 h-6 rounded-md transition-opacity overflow-hidden flex items-center px-1.5 gap-1.5',
+                  'absolute top-2 h-6 rounded-r-md transition-opacity overflow-hidden flex items-center px-1.5 gap-1.5',
                   getBarColorClasses(incidence.status, delayed),
                   isEstimated && 'border-r-2 border-dashed border-foreground/20'
                 )}
@@ -143,7 +137,7 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
                 <p>
                   {incidence.technology.name} - {trámite}
                 </p>
-                <p>{STATUS_LABELS[incidence.status] ?? incidence.status}</p>
+                <p>{STATUS_STYLES[incidence.status]?.label ?? incidence.status}</p>
                 <p>
                   {formatDate(startDate)} → {formatDate(endDate)}
                   {isEstimated && ' (estimado)'}
