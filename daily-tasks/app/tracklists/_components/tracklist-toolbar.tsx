@@ -1,8 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { ListTodo, LayoutDashboard, SquircleDashed, BrainCircuit, User, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { SquircleDashed, BrainCircuit, User } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { SearchBar } from '@/components/ui/search-bar'
@@ -35,7 +34,7 @@ interface TracklistToolbarProps {
   view: string
   onViewChange: (v: string) => void
   viewOptions: ViewOption[]
-  onAdd: () => void
+  trailing?: ReactNode
 }
 
 export function TracklistToolbar({
@@ -51,7 +50,7 @@ export function TracklistToolbar({
   view,
   onViewChange,
   viewOptions,
-  onAdd,
+  trailing,
 }: TracklistToolbarProps) {
   return (
     <div className="flex items-center justify-between px-1">
@@ -83,12 +82,7 @@ export function TracklistToolbar({
         />
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
-          onClick={onAdd}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        {trailing}
         <Tabs value={view} onValueChange={onViewChange}>
           <TabsList className="bg-muted border border-border h-8">
             {viewOptions.map(opt => (

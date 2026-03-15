@@ -39,10 +39,11 @@ function GanttLegend() {
 interface Props {
   tracklists: GanttTracklist[]
   nonWorkingDays?: Date[]
+  referenceDate?: Date
 }
 
-export function GanttChart({ tracklists, nonWorkingDays = [] }: Props) {
-  const { weekStart, weekEnd } = getWeekRange(new Date())
+export function GanttChart({ tracklists, nonWorkingDays = [], referenceDate }: Props) {
+  const { weekStart, weekEnd } = getWeekRange(referenceDate ?? new Date())
   const weekDays = getWeekDays(weekStart)
 
   if (tracklists.length === 0) {

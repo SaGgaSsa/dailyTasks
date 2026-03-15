@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, Pencil, ClipboardList, CheckCircle2, Archive, ListTodo, GanttChart as GanttChartIcon } from 'lucide-react'
@@ -18,6 +18,7 @@ import {
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
 import { GanttChart } from './gantt/gantt-chart'
+import { WeekNavigator } from './gantt/week-navigator'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
@@ -25,6 +26,7 @@ import { TicketQAWithDetails, GanttTracklist } from '@/types'
 import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
 import { TracklistStatus, TRACKLIST_STATUS_LABELS } from '@/types/enums'
 import { toast } from 'sonner'
+import { getGanttDateBounds, getWeekRange } from '@/lib/gantt-utils'
 
 // The shape returned by getAllTracklistsWithTickets
 interface TracklistWithTickets {
@@ -68,6 +70,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState<string[]>([])
   const [selectedTech, setSelectedTech] = useState<string[]>([])
+  const [weekOffset, setWeekOffset] = useState(0)
   const [createTracklistOpen, setCreateTracklistOpen] = useState(false)
   const [editingTracklist, setEditingTracklist] = useState<TracklistForEdit | null>(null)
   const [editWorkItems, setEditWorkItems] = useState<TracklistExternalWorkItem[]>([])
@@ -77,6 +80,18 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
   const [archiveTarget, setArchiveTarget] = useState<number | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  const referenceDate = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + weekOffset * 7)
+    return d
+  }, [weekOffset])
+
+  const { earliest, latest } = useMemo(() => getGanttDateBounds(ganttData), [ganttData])
+  const weekStart = useMemo(() => getWeekRange(referenceDate).weekStart, [referenceDate])
+
+  const canGoPrev = earliest !== null && weekStart > getWeekRange(earliest).weekStart
+  const canGoNext = latest !== null && weekStart < getWeekRange(latest).weekStart
 
   const handleCompleteTracklist = () => {
     if (!completeTarget) return
@@ -133,7 +148,17 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
           view={view}
           onViewChange={(v) => setView(v as 'list' | 'gantt')}
           viewOptions={ALL_TRACKLISTS_VIEW_OPTIONS}
-          onAdd={() => setCreateTracklistOpen(true)}
+          trailing={view === 'gantt' ? (
+            <WeekNavigator
+              weekOffset={weekOffset}
+              onPrev={() => setWeekOffset(o => o - 1)}
+              onNext={() => setWeekOffset(o => o + 1)}
+              onToday={() => setWeekOffset(0)}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
+              weekStart={weekStart}
+            />
+          ) : undefined}
         />
         <FilterChips
           searchQuery={search}
@@ -153,7 +178,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
 
       {/* Tracklists */}
       {view === 'gantt' ? (
-        <GanttChart tracklists={ganttData} />
+        <GanttChart tracklists={ganttData} referenceDate={referenceDate} />
       ) : tracklists.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
           <ClipboardList className="h-10 w-10 opacity-30" />

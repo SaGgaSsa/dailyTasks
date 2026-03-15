@@ -1,3 +1,5 @@
+import type { GanttTracklist } from '@/types'
+
 const HOURS_PER_DAY = 8
 
 export interface GanttBarDates {
@@ -137,4 +139,36 @@ export function isDelayed(endDate: Date, status: string, isEstimated: boolean): 
   if (!isEstimated) return false
   if (status === 'DONE' || status === 'REVIEW') return false
   return new Date() > endDate
+}
+
+// --- Date bounds ---
+
+export function getGanttDateBounds(tracklists: GanttTracklist[]): { earliest: Date | null; latest: Date | null } {
+  let earliest: Date | null = null
+  let latest: Date | null = null
+
+  for (const tl of tracklists) {
+    if (tl.dueDate && (latest === null || tl.dueDate > latest)) {
+      latest = tl.dueDate
+    }
+
+    for (const inc of tl.incidences) {
+      const startDate = inc.startedAt ?? inc.ticket?.createdAt ?? inc.createdAt
+      if (earliest === null || startDate < earliest) {
+        earliest = startDate
+      }
+
+      const { endDate } = computeGanttDates({
+        startedAt: inc.startedAt,
+        completedAt: inc.completedAt,
+        estimatedTime: inc.estimatedTime,
+        ticketCreatedAt: inc.ticket?.createdAt ?? inc.createdAt,
+      })
+      if (latest === null || endDate > latest) {
+        latest = endDate
+      }
+    }
+  }
+
+  return { earliest, latest }
 }

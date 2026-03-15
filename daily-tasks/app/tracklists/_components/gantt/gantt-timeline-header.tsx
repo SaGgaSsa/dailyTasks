@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { getTodayPosition } from '@/lib/gantt-utils'
 
-const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
+const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 
 interface Props {
   weekDays: Date[]

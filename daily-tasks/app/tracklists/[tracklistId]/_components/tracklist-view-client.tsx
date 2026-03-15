@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ListTodo, LayoutDashboard } from 'lucide-react'
+import { ListTodo, LayoutDashboard, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from '@/app/tracklists/_components/tracklist-toolbar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
@@ -63,7 +64,14 @@ export function TracklistViewClient({
           view={view}
           onViewChange={(v) => setView(v as 'list' | 'kanban')}
           viewOptions={viewOptions}
-          onAdd={() => setIsTicketDialogOpen(true)}
+          trailing={
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 w-8 p-0"
+              onClick={() => setIsTicketDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
         />
         <FilterChips
           searchQuery={search}
