@@ -56,9 +56,9 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
   const trámite = `${ewi.type} ${ewi.externalId}`
 
   return (
-    <div className="flex items-center h-10 group">
+    <div className="flex items-center h-10 group hover:bg-muted/40 transition-colors">
       {/* Left column - info */}
-      <div className="w-[280px] shrink-0 flex items-center gap-2 px-3 sticky left-0 z-20 bg-background">
+      <div className="w-[280px] shrink-0 flex items-center gap-2 px-3 sticky left-0 z-20 bg-background group-hover:bg-muted/40 transition-colors">
         <span className="text-xs truncate flex-1" title={incidence.description}>
           {incidence.description}
         </span>
@@ -140,8 +140,8 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
             <TooltipContent side="top" className="max-w-xs">
               <div className="flex flex-col gap-1">
                 <p className="font-medium">{incidence.description}</p>
-                <p className="text-muted-foreground">
-                  {incidence.technology.name} — {trámite}
+                <p>
+                  {incidence.technology.name} - {trámite}
                 </p>
                 <p>{STATUS_LABELS[incidence.status] ?? incidence.status}</p>
                 <p>
