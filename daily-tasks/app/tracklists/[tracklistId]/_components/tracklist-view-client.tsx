@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS } from '@/app/tracklists/_components/tracklist-toolbar'
+import { ListTodo, LayoutDashboard } from 'lucide-react'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from '@/app/tracklists/_components/tracklist-toolbar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { TicketsGrid } from './tickets-grid'
@@ -34,6 +35,11 @@ export function TracklistViewClient({
     return () => setBreadcrumbs([])
   }, [title, setBreadcrumbs])
 
+  const viewOptions: ViewOption[] = [
+    { value: 'list', icon: <ListTodo className="h-4 w-4" /> },
+    { value: 'kanban', icon: <LayoutDashboard className="h-4 w-4" /> },
+  ]
+
   const [view, setView] = useState<'list' | 'kanban'>('list')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState<string[]>([])
@@ -55,7 +61,8 @@ export function TracklistViewClient({
           onTechChange={setSelectedTech}
           assignableUsers={assignableUsers}
           view={view}
-          onViewChange={setView}
+          onViewChange={(v) => setView(v as 'list' | 'kanban')}
+          viewOptions={viewOptions}
           onAdd={() => setIsTicketDialogOpen(true)}
         />
         <FilterChips

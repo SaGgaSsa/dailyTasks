@@ -130,6 +130,7 @@ model Incidence {
   technologyId        Int
   estimatedTime       Int?
   completedAt         DateTime?
+  startedAt           DateTime?
 
   position      Float     @default(0)
   createdAt     DateTime  @default(now())

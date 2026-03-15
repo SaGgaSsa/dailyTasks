@@ -73,6 +73,15 @@ export type TracklistWithDetails = Tracklist & {
   createdBy: Pick<User, 'id' | 'name' | 'username'>
 }
 
+export interface IncidenceGanttData {
+  id: number
+  status: TaskStatus
+  startedAt: Date | null
+  completedAt: Date | null
+  estimatedTime: number | null
+  totalAssignedHours: number
+}
+
 export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
@@ -82,6 +91,7 @@ export type TicketQAWithDetails = TicketQA & {
   hasUnreadUpdates: boolean
   scriptPageId: number | null
   hasScriptsContent: boolean
+  incidenceGantt: IncidenceGanttData | null
 }
 
 export const createUserSchema = z.object({

@@ -45,6 +45,15 @@ const ticketDetailsInclude = {
     module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
     incidence: {
         select: {
+            id: true,
+            status: true,
+            startedAt: true,
+            completedAt: true,
+            estimatedTime: true,
+            assignments: {
+                where: { isAssigned: true },
+                select: { assignedHours: true }
+            },
             pages: {
                 where: { pageType: IncidencePageType.SYSTEM_SCRIPTS },
                 select: { id: true, content: true },
@@ -58,11 +67,22 @@ type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetai
 
 function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     const scriptPage = ticket.incidence?.pages[0] ?? null
+    const inc = ticket.incidence
+
+    const incidenceGantt = inc ? {
+        id: inc.id,
+        status: inc.status as import('@/types/enums').TaskStatus,
+        startedAt: inc.startedAt,
+        completedAt: inc.completedAt,
+        estimatedTime: inc.estimatedTime,
+        totalAssignedHours: inc.assignments.reduce((sum, a) => sum + (a.assignedHours ?? 0), 0),
+    } : null
 
     return {
         ...ticket,
         scriptPageId: scriptPage?.id ?? null,
         hasScriptsContent: pageHasMeaningfulContent((scriptPage?.content ?? null) as Prisma.JsonValue | null),
+        incidenceGantt,
     }
 }
 

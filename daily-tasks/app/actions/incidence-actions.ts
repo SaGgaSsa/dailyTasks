@@ -563,7 +563,12 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             where: { id: incidenceId },
             data: {
                 status: newStatus,
-                position: newPosition
+                position: newPosition,
+                ...(incidence.status === TaskStatus.BACKLOG &&
+                    ([TaskStatus.TODO, TaskStatus.IN_PROGRESS] as TaskStatus[]).includes(newStatus) &&
+                    !incidence.startedAt
+                      ? { startedAt: new Date() }
+                      : {})
             }
         })
 
@@ -1055,7 +1060,12 @@ export async function saveIncidenceTaskChanges(
                     where: { id: input.incidenceId },
                     data: {
                         status: nextStatus,
-                        completedAt: nextStatus === TaskStatus.DONE ? finalIncidence.completedAt : null
+                        completedAt: nextStatus === TaskStatus.DONE ? finalIncidence.completedAt : null,
+                        ...(currentIncidence.status === TaskStatus.BACKLOG &&
+                            ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(nextStatus) &&
+                            !currentIncidence.startedAt
+                              ? { startedAt: new Date() }
+                              : {})
                     }
                 })
             }
@@ -1385,7 +1395,8 @@ export async function completeIncidenceCore(incidenceId: number) {
             where: { id: incidenceId },
             data: {
                 status: TaskStatus.DONE,
-                completedAt: now
+                completedAt: now,
+                startedAt: incidence.startedAt ?? now
             }
         })
     })

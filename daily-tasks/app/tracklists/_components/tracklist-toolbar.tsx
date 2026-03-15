@@ -1,5 +1,6 @@
 'use client'
 
+import { type ReactNode } from 'react'
 import { ListTodo, LayoutDashboard, SquircleDashed, BrainCircuit, User, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,6 +20,8 @@ export const TECH_OPTIONS = [
   { value: 'SPRING', label: 'SPRING' },
 ]
 
+export type ViewOption = { value: string; icon: ReactNode }
+
 interface TracklistToolbarProps {
   search: string
   onSearchChange: (v: string) => void
@@ -29,8 +32,9 @@ interface TracklistToolbarProps {
   selectedTech: string[]
   onTechChange: (v: string[]) => void
   assignableUsers: AssignableUser[]
-  view: 'list' | 'kanban'
-  onViewChange: (v: 'list' | 'kanban') => void
+  view: string
+  onViewChange: (v: string) => void
+  viewOptions: ViewOption[]
   onAdd: () => void
 }
 
@@ -46,6 +50,7 @@ export function TracklistToolbar({
   assignableUsers,
   view,
   onViewChange,
+  viewOptions,
   onAdd,
 }: TracklistToolbarProps) {
   return (
@@ -84,14 +89,13 @@ export function TracklistToolbar({
         >
           <Plus className="h-4 w-4" />
         </Button>
-        <Tabs value={view} onValueChange={(v) => onViewChange(v as 'list' | 'kanban')}>
+        <Tabs value={view} onValueChange={onViewChange}>
           <TabsList className="bg-muted border border-border h-8">
-            <TabsTrigger value="list" className="data-[state=active]:bg-accent px-3">
-              <ListTodo className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="data-[state=active]:bg-accent px-3">
-              <LayoutDashboard className="h-4 w-4" />
-            </TabsTrigger>
+            {viewOptions.map(opt => (
+              <TabsTrigger key={opt.value} value={opt.value} className="data-[state=active]:bg-accent px-3">
+                {opt.icon}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       </div>

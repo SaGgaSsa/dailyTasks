@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, Pencil, ClipboardList, CheckCircle2, Archive } from 'lucide-react'
+import { Eye, Pencil, ClipboardList, CheckCircle2, Archive, ListTodo, GanttChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -18,7 +18,7 @@ import {
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
 import { FilterChips } from '@/components/ui/filter-chips'
-import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS } from './tracklist-toolbar'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
 import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
@@ -55,7 +55,13 @@ interface Props {
   assignableUsers: AssignableUser[]
 }
 
+const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
+  { value: 'list', icon: <ListTodo className="h-4 w-4" /> },
+  { value: 'gantt', icon: <GanttChart className="h-4 w-4" /> },
+]
+
 export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
+  const [view, setView] = useState<'list' | 'gantt'>('list')
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState<string[]>([])
@@ -122,8 +128,9 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
           selectedTech={selectedTech}
           onTechChange={setSelectedTech}
           assignableUsers={assignableUsers}
-          view="list"
-          onViewChange={() => {}}
+          view={view}
+          onViewChange={(v) => setView(v as 'list' | 'gantt')}
+          viewOptions={ALL_TRACKLISTS_VIEW_OPTIONS}
           onAdd={() => setCreateTracklistOpen(true)}
         />
         <FilterChips
@@ -143,7 +150,12 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
       </div>
 
       {/* Tracklists */}
-      {tracklists.length === 0 ? (
+      {view === 'gantt' ? (
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+          <GanttChart className="h-10 w-10 opacity-30" />
+          <p className="text-sm">Vista Gantt (próximamente)</p>
+        </div>
+      ) : tracklists.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
           <ClipboardList className="h-10 w-10 opacity-30" />
           <p className="text-sm">No hay tracklists. Crea uno con el botón de arriba.</p>
