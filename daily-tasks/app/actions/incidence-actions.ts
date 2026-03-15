@@ -238,6 +238,19 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
                 }
             })
 
+            if (data.assignees && data.assignees.length > 0) {
+                for (const assignee of data.assignees) {
+                    await tx.assignment.create({
+                        data: {
+                            incidenceId: incidence.id,
+                            userId: assignee.userId,
+                            assignedHours: assignee.assignedHours ?? null,
+                            isAssigned: true,
+                        }
+                    })
+                }
+            }
+
             await ensureSystemScriptsPage(tx, incidence.id, authorId)
         })
 

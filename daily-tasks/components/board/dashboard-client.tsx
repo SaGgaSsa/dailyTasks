@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
@@ -41,7 +40,6 @@ interface DashboardClientProps {
 
 export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
     const { data: session } = useSession()
-    const router = useRouter()
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
     const [backlogTasksState, setBacklogTasksState] = useState<IncidenceWithDetails[]>(backlogTasks)
@@ -137,9 +135,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         }
     }, [view, params])
 
-    const handleIncidenceCreated = useCallback(() => {
-        router.refresh()
-    }, [router])
+    const handleIncidenceCreated = useCallback(async () => {
+        await handleTaskUpdate()
+    }, [handleTaskUpdate])
 
     const handleKanbanCardClick = useCallback((task: IncidenceWithDetails) => {
         setSelectedTask(task)
