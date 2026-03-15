@@ -4,24 +4,23 @@ import { unstable_cache, revalidateTag } from 'next/cache'
 import { db } from '@/lib/db'
 
 export const getCachedNonWorkingDays = unstable_cache(
-  async (): Promise<Date[]> => {
-    const rows = await db.nonWorkingDay.findMany({
-      select: { date: true },
-      orderBy: { date: 'asc' },
-    })
-    return rows.map((r) => r.date)
-  },
+  async (): Promise<Date[]> => fetchNonWorkingDays(),
   ['non-working-days-cache-key'],
   { tags: ['non-working-days'] }
 )
 
+async function fetchNonWorkingDays(): Promise<Date[]> {
+  const rows = await db.nonWorkingDay.findMany({
+    select: { date: true },
+    orderBy: { date: 'asc' },
+  })
+  return rows.map((r) => r.date)
+}
+
 export async function getNonWorkingDays(): Promise<{ success: boolean; data?: Date[]; error?: string }> {
   try {
-    const rows = await db.nonWorkingDay.findMany({
-      select: { date: true },
-      orderBy: { date: 'asc' },
-    })
-    return { success: true, data: rows.map((r) => r.date) }
+    const data = await fetchNonWorkingDays()
+    return { success: true, data }
   } catch {
     return { success: false, error: 'Error al obtener los días no laborables' }
   }

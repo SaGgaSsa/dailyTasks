@@ -16,18 +16,39 @@ interface ComputeGanttDatesParams {
   nonWorkingDays?: Date[]
 }
 
+// --- Visual constants ---
+
+export const NON_WORKING_DAY_BG = 'bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--color-muted)_4px,var(--color-muted)_8px)]'
+
 // --- Business day helpers ---
 
-export function isBusinessDay(date: Date, nonWorkingDays: Date[] = []): boolean {
+/** Build a Set<string> from a Date[] for O(1) lookups. */
+export function buildNonWorkingDaySet(nonWorkingDays: Date[]): Set<string> {
+  const set = new Set<string>()
+  for (const nwd of nonWorkingDays) {
+    const d = nwd instanceof Date ? nwd : new Date(nwd)
+    set.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`)
+  }
+  return set
+}
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+export function isBusinessDay(date: Date, nonWorkingDays: Date[] | Set<string> = []): boolean {
   const day = date.getDay()
   if (day === 0 || day === 6) return false
+  if (nonWorkingDays instanceof Set) {
+    return !nonWorkingDays.has(dateKey(date))
+  }
   return !nonWorkingDays.some(
     (nwd) => {
       const d = nwd instanceof Date ? nwd : new Date(nwd)
       return (
-        d.getUTCFullYear() === date.getFullYear() &&
-        d.getUTCMonth() === date.getMonth() &&
-        d.getUTCDate() === date.getDate()
+        d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate()
       )
     }
   )
@@ -141,7 +162,7 @@ export interface BarSegment {
   widthPercent: number
 }
 
-function isSameDate(a: Date, b: Date): boolean {
+export function isSameDate(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&

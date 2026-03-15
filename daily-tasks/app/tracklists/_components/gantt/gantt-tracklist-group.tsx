@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { GanttTracklist } from '@/types'
 import { GanttRow } from './gantt-row'
-import { getBarPosition, isBusinessDay } from '@/lib/gantt-utils'
+import { getBarPosition, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG } from '@/lib/gantt-utils'
 
 interface Props {
   tracklist: GanttTracklist
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, weekDays, nonWorkingDays }: Props) {
+  const nwdSet = buildNonWorkingDaySet(nonWorkingDays)
   const dueDateEnd = tracklist.dueDate ? new Date(tracklist.dueDate) : null
   if (dueDateEnd) dueDateEnd.setHours(23, 59, 59, 999)
   const dueDatePosition = dueDateEnd
@@ -55,7 +56,7 @@ export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, weekDays, n
               <div key={i} className={cn(
                 'flex-1',
                 i < 4 && 'border-r-2 border-border/60',
-                !isBusinessDay(d, nonWorkingDays) && 'bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--color-muted)_4px,var(--color-muted)_8px)]'
+                !isBusinessDay(d, nwdSet) && NON_WORKING_DAY_BG
               )} />
             ))}
           </div>

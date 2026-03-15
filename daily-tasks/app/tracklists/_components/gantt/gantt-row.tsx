@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
-import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, type BarSegment } from '@/lib/gantt-utils'
+import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG, type BarSegment } from '@/lib/gantt-utils'
 import { getBarColorClasses, STATUS_STYLES } from './gantt-status-colors'
 import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
@@ -24,6 +24,7 @@ function formatDate(d: Date): string {
 }
 
 export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDays }: Props) {
+  const nwdSet = buildNonWorkingDaySet(nonWorkingDays)
   const { startDate, endDate, isEstimated } = computeGanttDates({
     startedAt: incidence.startedAt,
     completedAt: incidence.completedAt,
@@ -100,7 +101,7 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
             <div key={i} className={cn(
               'flex-1',
               i < 4 && 'border-r-2 border-border/60',
-              !isBusinessDay(d, nonWorkingDays) && 'bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--color-muted)_4px,var(--color-muted)_8px)]'
+              !isBusinessDay(d, nwdSet) && NON_WORKING_DAY_BG
             )} />
           ))}
         </div>

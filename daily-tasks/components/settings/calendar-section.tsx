@@ -8,14 +8,6 @@ import { getNonWorkingDays, syncNonWorkingDays } from '@/app/actions/non-working
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
 interface CalendarSectionProps {
   readOnly?: boolean
 }
