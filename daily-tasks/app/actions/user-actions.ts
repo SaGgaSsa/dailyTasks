@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { TaskStatus, TaskType, Priority } from '@/types/enums'
 import { User, UserRole } from '@prisma/client'
 import { createUserSchema, updateUserSchema } from '@/types'
+import bcrypt from 'bcryptjs'
 
 interface GetUsersResult {
     data: User[]
@@ -60,12 +61,13 @@ export async function upsertUser(data: UpsertUserData) {
             revalidatePath('/dashboard')
             return { success: true }
         } else {
+            const hashedPassword = await bcrypt.hash(data.password, 10)
             await db.user.create({
                 data: {
                     username: data.username,
                     name: data.name,
                     email: data.email,
-                    password: data.password,
+                    password: hashedPassword,
                     role: data.role,
                     ...(data.technologies.length > 0 && {
                         technologies: { connect: data.technologies.map(t => ({ name: t.connect.name })) },
@@ -111,13 +113,15 @@ export async function createUser(formData: FormData) {
     )
     const technologies = techIds.filter((t): t is NonNullable<typeof t> => t !== null).map(t => ({ connect: { id: t.id } }))
 
+    const hashedPassword = await bcrypt.hash(password, 10)
+
     try {
         await db.user.create({
             data: {
                 username,
                 name,
                 email,
-                password,
+                password: hashedPassword,
                 role,
                 technologies: technologies as never,
             }
@@ -176,10 +180,12 @@ export async function updateUserPassword(formData: FormData) {
     const userId = Number(formData.get('userId'))
     const newPassword = formData.get('newPassword') as string
     
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+
     try {
         await db.user.update({
             where: { id: userId },
-            data: { password: newPassword }
+            data: { password: hashedPassword }
         })
         return { success: true }
     } catch (error) {
