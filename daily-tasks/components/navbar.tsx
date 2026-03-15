@@ -21,7 +21,16 @@ import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { useSidebar } from '@/components/providers/sidebar-provider'
-import { useSettingsDialog } from '@/components/providers/settings-dialog-provider'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -31,7 +40,7 @@ export function Navbar() {
   const { locale, setLocale, t } = useI18n()
   const { breadcrumbs } = useNavbarBreadcrumbs()
   const { toggle } = useSidebar()
-  const { openSettings } = useSettingsDialog()
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -150,25 +159,7 @@ export function Navbar() {
                   </svg>
                   {!mounted ? 'Cambiar tema' : isDark ? 'Cambiar a Claro' : 'Cambiar a Oscuro'}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={openSettings}>
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M4 21v-2a4 4 0 0 1 3-3.87"></path>
-                    <path d="M12 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
-                  </svg>
-                  Perfil
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={openSettings}>
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2a10 10 0 1 0 10 10"></path>
-                    <path d="M12 2a10 10 0 0 1 10 10"></path>
-                    <path d="M12 2a10 10 0 0 0-10 10"></path>
-                    <path d="M12 2a10 10 0 0 1-10 10"></path>
-                  </svg>
-                  Configuración
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={() => setShowLogoutConfirm(true)}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <path d="M16 17l5-5-5-5"></path>
@@ -178,6 +169,21 @@ export function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Se cerrará tu sesión actual y volverás a la pantalla de inicio de sesión.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => signOut()}>Salir</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
       </div>
     </header>

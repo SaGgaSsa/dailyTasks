@@ -24,15 +24,10 @@ export const authConfig = {
           throw new Error('Email y contraseña son requeridos')
         }
 
-        const identifier = credentials.email as string
+        const email = credentials.email as string
 
         const user = await db.user.findFirst({
-          where: {
-            OR: [
-              { email: identifier },
-              { username: identifier.toUpperCase() }
-            ]
-          }
+          where: { email }
         })
 
         if (!user) {

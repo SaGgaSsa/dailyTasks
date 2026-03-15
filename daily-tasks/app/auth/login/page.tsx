@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { ClipboardCheck, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -42,9 +42,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
+    <div className="w-full max-w-md px-4">
+      <Card className="w-full shadow-lg border-border/50">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <ClipboardCheck className="h-6 w-6" />
+            </div>
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Daily Tasks</CardTitle>
           <CardDescription className="text-center">
             Inicia sesión para acceder a tu panel de control
@@ -53,11 +58,11 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email o Usuario</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                type="text"
-                placeholder="tu@ejemplo.com o USUARIO"
+                type="email"
+                placeholder="tu@ejemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -76,6 +81,11 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
             </div>
+            {error && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
@@ -87,8 +97,9 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
-
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            Gestión de tareas e incidencias
+          </p>
         </CardContent>
       </Card>
     </div>
