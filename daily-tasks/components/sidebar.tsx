@@ -15,6 +15,7 @@ import {
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
 import { useSidebar } from '@/components/providers/sidebar-provider'
+import { useSettingsDialog } from '@/components/providers/settings-dialog-provider'
 
 interface SidebarProps {
   userId?: string
@@ -24,6 +25,7 @@ interface SidebarProps {
 export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
   const { data: session } = useSession()
   const { isOpen } = useSidebar()
+  const { openSettings } = useSettingsDialog()
   const pathname = usePathname()
   const { t } = useI18n()
 
@@ -103,6 +105,7 @@ export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
             <Button
               variant="ghost"
               className={`w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 ${!isOpen ? 'justify-center px-0' : ''}`}
+              onClick={openSettings}
             >
               <Settings className="h-4 w-4" />
               {isOpen && <span>Settings</span>}

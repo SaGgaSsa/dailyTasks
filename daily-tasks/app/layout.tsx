@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider"
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
+import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -114,11 +115,13 @@ export default async function RootLayout({
             >
               <NavbarBreadcrumbProvider>
                 <SidebarProvider defaultOpen={defaultSidebarOpen}>
-                  <PerformanceErrorBoundary>
-                    <ThemeSync />
-                    {children}
-                    <Toaster />
-                  </PerformanceErrorBoundary>
+                  <SettingsDialogProvider>
+                    <PerformanceErrorBoundary>
+                      <ThemeSync />
+                      {children}
+                      <Toaster />
+                    </PerformanceErrorBoundary>
+                  </SettingsDialogProvider>
                 </SidebarProvider>
               </NavbarBreadcrumbProvider>
             </ThemeProvider>

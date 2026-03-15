@@ -21,6 +21,7 @@ import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { useSidebar } from '@/components/providers/sidebar-provider'
+import { useSettingsDialog } from '@/components/providers/settings-dialog-provider'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -30,6 +31,7 @@ export function Navbar() {
   const { locale, setLocale, t } = useI18n()
   const { breadcrumbs } = useNavbarBreadcrumbs()
   const { toggle } = useSidebar()
+  const { openSettings } = useSettingsDialog()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -148,7 +150,7 @@ export function Navbar() {
                   </svg>
                   {!mounted ? 'Cambiar tema' : isDark ? 'Cambiar a Claro' : 'Cambiar a Oscuro'}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={openSettings}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
                     <path d="M4 21v-2a4 4 0 0 1 3-3.87"></path>
@@ -157,7 +159,7 @@ export function Navbar() {
                   </svg>
                   Perfil
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={openSettings}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 2a10 10 0 1 0 10 10"></path>
                     <path d="M12 2a10 10 0 0 1 10 10"></path>
