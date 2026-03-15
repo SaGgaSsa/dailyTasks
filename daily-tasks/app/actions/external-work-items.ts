@@ -14,6 +14,12 @@ export const getCachedExternalWorkItems = unstable_cache(
   { tags: ['external-work-items'] }
 )
 
+export async function getExternalWorkItems(): Promise<ExternalWorkItem[]> {
+  return db.externalWorkItem.findMany({
+    orderBy: [{ type: 'asc' }, { externalId: 'asc' }],
+  })
+}
+
 interface CreateExternalWorkItemData {
   type: TaskType
   externalId: number

@@ -50,9 +50,10 @@ const EMPTY_ROW: NewRow = { type: '', externalId: '', title: '' }
 interface ExternalWorkItemsSectionProps {
   items: ExternalWorkItem[]
   onRefresh: () => Promise<void>
+  canManage: boolean
 }
 
-export function ExternalWorkItemsSection({ items, onRefresh }: ExternalWorkItemsSectionProps) {
+export function ExternalWorkItemsSection({ items, onRefresh, canManage }: ExternalWorkItemsSectionProps) {
   const [newRow, setNewRow] = useState<NewRow>({ ...EMPTY_ROW })
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +102,9 @@ export function ExternalWorkItemsSection({ items, onRefresh }: ExternalWorkItems
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Trámites Externos</h2>
-        <p className="text-sm text-muted-foreground">Gestionar trámites del sistema externo</p>
+        <p className="text-sm text-muted-foreground">
+          {canManage ? 'Gestionar trámites del sistema externo' : 'Trámites registrados del sistema externo'}
+        </p>
       </div>
 
       <div className="rounded-lg border">
@@ -111,7 +114,7 @@ export function ExternalWorkItemsSection({ items, onRefresh }: ExternalWorkItems
               <TableHead className="w-[140px] h-9 px-2">Tipo</TableHead>
               <TableHead className="w-[120px] h-9 px-2">ID Externo</TableHead>
               <TableHead className="h-9 px-2">Título</TableHead>
-              <TableHead className="w-[60px] h-9 px-2">Acciones</TableHead>
+              {canManage && <TableHead className="w-[60px] h-9 px-2">Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -120,69 +123,73 @@ export function ExternalWorkItemsSection({ items, onRefresh }: ExternalWorkItems
                 <TableCell className="py-1.5 px-2 font-mono text-xs">{item.type}</TableCell>
                 <TableCell className="py-1.5 px-2">{item.externalId}</TableCell>
                 <TableCell className="py-1.5 px-2">{item.title || '—'}</TableCell>
-                <TableCell className="py-1.5 px-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteConfirmId(item.id)}
-                    disabled={isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+                {canManage && (
+                  <TableCell className="py-1.5 px-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteConfirmId(item.id)}
+                      disabled={isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
 
             {/* New row */}
-            <TableRow>
-              <TableCell className="py-1.5 px-2">
-                <Select
-                  value={newRow.type}
-                  onValueChange={(value) => setNewRow({ ...newRow, type: value as TaskType })}
-                >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASK_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell className="py-1.5 px-2">
-                <Input
-                  type="number"
-                  placeholder="ID"
-                  className="h-8 text-xs"
-                  value={newRow.externalId}
-                  onChange={(e) => setNewRow({ ...newRow, externalId: e.target.value })}
-                />
-              </TableCell>
-              <TableCell className="py-1.5 px-2">
-                <Input
-                  type="text"
-                  placeholder="Título del trámite"
-                  className="h-8 text-xs"
-                  value={newRow.title}
-                  onChange={(e) => setNewRow({ ...newRow, title: e.target.value })}
-                />
-              </TableCell>
-              <TableCell className="py-1.5 px-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-primary"
-                  onClick={handleCreate}
-                  disabled={isPending}
-                >
-                  <Save className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
+            {canManage && (
+              <TableRow>
+                <TableCell className="py-1.5 px-2">
+                  <Select
+                    value={newRow.type}
+                    onValueChange={(value) => setNewRow({ ...newRow, type: value as TaskType })}
+                  >
+                    <SelectTrigger className="h-8 w-full text-xs">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="py-1.5 px-2">
+                  <Input
+                    type="number"
+                    placeholder="ID"
+                    className="h-8 text-xs"
+                    value={newRow.externalId}
+                    onChange={(e) => setNewRow({ ...newRow, externalId: e.target.value })}
+                  />
+                </TableCell>
+                <TableCell className="py-1.5 px-2">
+                  <Input
+                    type="text"
+                    placeholder="Título del trámite"
+                    className="h-8 text-xs"
+                    value={newRow.title}
+                    onChange={(e) => setNewRow({ ...newRow, title: e.target.value })}
+                  />
+                </TableCell>
+                <TableCell className="py-1.5 px-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={handleCreate}
+                    disabled={isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

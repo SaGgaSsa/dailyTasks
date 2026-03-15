@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { User, FileText } from 'lucide-react'
 import { ExternalWorkItem } from '@prisma/client'
-import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
+import { getExternalWorkItems } from '@/app/actions/external-work-items'
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import { ExternalWorkItemsSection } from '@/components/settings/external-work-it
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'profile', label: 'Perfil', icon: User, groupLabel: 'Cuenta' },
-  { id: 'external-work-items', label: 'Trámites', icon: FileText, groupLabel: 'Integraciones', adminOnly: true },
+  { id: 'external-work-items', label: 'Trámites', icon: FileText, groupLabel: 'Integraciones' },
 ]
 
 interface SettingsDialogProps {
@@ -28,14 +28,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = useState('profile')
   const [workItems, setWorkItems] = useState<ExternalWorkItem[]>([])
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'ADMIN'
+  const userRole = session?.user?.role
+  const isAdmin = userRole === 'ADMIN'
+  const canManageWorkItems = userRole === 'ADMIN' || userRole === 'QA'
 
   const visibleSections = SETTINGS_SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
   )
 
   const loadWorkItems = useCallback(async () => {
-    const data = await getCachedExternalWorkItems()
+    const data = await getExternalWorkItems()
     setWorkItems(data)
   }, [])
 
@@ -51,7 +53,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case 'profile':
         return <AccountProfileSection />
       case 'external-work-items':
-        return isAdmin ? <ExternalWorkItemsSection items={workItems} onRefresh={loadWorkItems} /> : null
+        return <ExternalWorkItemsSection items={workItems} onRefresh={loadWorkItems} canManage={canManageWorkItems} />
       default:
         return null
     }
