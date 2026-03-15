@@ -96,6 +96,7 @@ export const authConfig = {
       return !!auth?.user
     }
   },
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 }
 
