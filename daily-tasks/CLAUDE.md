@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workflow
+
+When implementing new features, always implement the code directly rather than stopping at a plan and waiting for confirmation. Only create plans when explicitly asked to plan.
+
 ## Project
 
 Daily Tasks is a Jira-like incident/ticket management app for teams. Built with Next.js 16, TypeScript (strict), Prisma 7 + PostgreSQL, Tailwind CSS v4, Radix UI, dnd-kit, and NextAuth v5.
@@ -89,6 +93,16 @@ const result = await serverAction(data)
 if (result.success) toast.success('Guardado correctamente')
 else toast.error(result.error || 'Error')
 ```
+
+## Code Conventions
+
+- When adding UI features like modals or dialogs, always reuse existing components rather than creating new separate ones. Check for existing similar components first.
+- When renaming fields or modifying schema, grep the entire codebase for ALL references before making changes. Be careful not to change similarly-named fields on different models.
+
+## Build & Verification
+
+- After every edit, verify imports are still valid — never remove an import without checking all files that use it. Run the build after removing any import.
+- Always run `npm run build` after multi-file changes to catch errors before committing.
 
 ## Naming Conventions
 
