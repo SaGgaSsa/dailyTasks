@@ -1,6 +1,6 @@
 # Commit Skill
 
-1. Run `npm run build` and fix any errors
+1. Run `cd daily-tasks && npm run build` and fix any errors
 
 2. Run `git diff --staged` to review changes
 
