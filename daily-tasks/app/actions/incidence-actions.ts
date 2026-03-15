@@ -12,6 +12,51 @@ import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 
 const DISMISSED_INCIDENCE_ERROR = 'No puede modificar una incidencia desestimada'
 
+async function syncAssignments(
+    client: Prisma.TransactionClient,
+    incidenceId: number,
+    assignees: AssigneeWithHours[]
+) {
+    const currentAssignments = await client.assignment.findMany({
+        where: { incidenceId }
+    })
+
+    const currentUserIds = currentAssignments.map(a => a.userId)
+    const nextUserIds = assignees.map(a => a.userId)
+    const toDeactivate = currentUserIds.filter(uid => !nextUserIds.includes(uid))
+
+    if (toDeactivate.length > 0) {
+        await client.assignment.updateMany({
+            where: {
+                incidenceId,
+                userId: { in: toDeactivate }
+            },
+            data: { isAssigned: false }
+        })
+    }
+
+    for (const assignee of assignees) {
+        await client.assignment.upsert({
+            where: {
+                incidenceId_userId: {
+                    incidenceId,
+                    userId: assignee.userId
+                }
+            },
+            update: {
+                assignedHours: assignee.assignedHours,
+                isAssigned: true
+            },
+            create: {
+                incidenceId,
+                userId: assignee.userId,
+                assignedHours: assignee.assignedHours,
+                isAssigned: true
+            }
+        })
+    }
+}
+
 function isDismissedIncidenceStatus(status: TaskStatus) {
     return status === TaskStatus.DISMISSED
 }
@@ -239,16 +284,7 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             })
 
             if (data.assignees && data.assignees.length > 0) {
-                for (const assignee of data.assignees) {
-                    await tx.assignment.create({
-                        data: {
-                            incidenceId: incidence.id,
-                            userId: assignee.userId,
-                            assignedHours: assignee.assignedHours ?? null,
-                            isAssigned: true,
-                        }
-                    })
-                }
+                await syncAssignments(tx, incidence.id, data.assignees)
             }
 
             await ensureSystemScriptsPage(tx, incidence.id, authorId)
@@ -711,48 +747,8 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             technology: techConnect,
         }
 
-        // Si se proporcionan asignados, manejar la creación/actualización de assignments
         if (data.assignees) {
-            const currentAssignments = await db.assignment.findMany({
-                where: { incidenceId: id }
-            })
-            
-            const currentUserIds = currentAssignments.map(a => a.userId)
-            const newUserIds = data.assignees.map(a => a.userId)
-            
-            // Desactivar assignments que ya no están seleccionados (isAssigned: false)
-            const toDeactivate = currentUserIds.filter(uid => !newUserIds.includes(uid))
-            if (toDeactivate.length > 0) {
-                await db.assignment.updateMany({
-                    where: {
-                        incidenceId: id,
-                        userId: { in: toDeactivate }
-                    },
-                    data: { isAssigned: false }
-                })
-            }
-            
-            // Crear o actualizar assignments
-            for (const assignee of data.assignees) {
-                await db.assignment.upsert({
-                    where: {
-                        incidenceId_userId: {
-                            incidenceId: id,
-                            userId: assignee.userId
-                        }
-                    },
-                    update: {
-                        assignedHours: assignee.assignedHours,
-                        isAssigned: true
-                    },
-                    create: {
-                        incidenceId: id,
-                        userId: assignee.userId,
-                        assignedHours: assignee.assignedHours,
-                        isAssigned: true
-                    }
-                })
-            }
+            await syncAssignments(db, id, data.assignees)
         }
 
         await db.incidence.update({
@@ -901,44 +897,7 @@ export async function saveIncidenceTaskChanges(
 
         const txResult = await db.$transaction(async (tx) => {
             if (input.assignees) {
-                const currentAssignments = await tx.assignment.findMany({
-                    where: { incidenceId: input.incidenceId }
-                })
-
-                const currentUserIds = currentAssignments.map((assignment) => assignment.userId)
-                const nextUserIds = input.assignees!.map((assignee) => assignee.userId)
-                const toDeactivate = currentUserIds.filter((assignmentUserId) => !nextUserIds.includes(assignmentUserId))
-
-                if (toDeactivate.length > 0) {
-                    await tx.assignment.updateMany({
-                        where: {
-                            incidenceId: input.incidenceId,
-                            userId: { in: toDeactivate }
-                        },
-                        data: { isAssigned: false }
-                    })
-                }
-
-                for (const assignee of input.assignees) {
-                    await tx.assignment.upsert({
-                        where: {
-                            incidenceId_userId: {
-                                incidenceId: input.incidenceId,
-                                userId: assignee.userId
-                            }
-                        },
-                        update: {
-                            assignedHours: assignee.assignedHours,
-                            isAssigned: true
-                        },
-                        create: {
-                            incidenceId: input.incidenceId,
-                            userId: assignee.userId,
-                            assignedHours: assignee.assignedHours,
-                            isAssigned: true
-                        }
-                    })
-                }
+                await syncAssignments(tx, input.incidenceId, input.assignees)
             }
 
             const currentStatus = currentIncidence.status

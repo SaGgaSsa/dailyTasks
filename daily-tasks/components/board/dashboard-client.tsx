@@ -135,10 +135,6 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         }
     }, [view, params])
 
-    const handleIncidenceCreated = useCallback(async () => {
-        await handleTaskUpdate()
-    }, [handleTaskUpdate])
-
     const handleKanbanCardClick = useCallback((task: IncidenceWithDetails) => {
         setSelectedTask(task)
         setIsSheetOpen(true)
@@ -390,7 +386,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                 type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
                 externalId={selectedTask?.externalWorkItem?.externalId}
                 onTaskUpdate={handleTaskUpdate}
-                onIncidenceCreated={handleIncidenceCreated}
+                onIncidenceCreated={handleTaskUpdate}
                 isDev={!isAdmin}
             />
         </div>
