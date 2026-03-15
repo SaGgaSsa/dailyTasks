@@ -42,6 +42,9 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# prisma seeds (only track the main seed.ts)
+/prisma/seed-*
 /public/uploads
 /backups
 !/backups/
