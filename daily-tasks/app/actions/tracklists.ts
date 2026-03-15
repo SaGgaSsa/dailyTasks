@@ -714,6 +714,68 @@ export async function archiveTracklist(id: number, locale: Locale = 'es') {
     }
 }
 
+export async function getGanttData() {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: 'No autorizado' } as const
+
+    try {
+        const tracklists = await db.tracklist.findMany({
+            orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }],
+            select: {
+                id: true, title: true, description: true, dueDate: true, status: true,
+                externalWorkItems: {
+                    select: {
+                        incidences: {
+                            where: { status: { notIn: [TaskStatus.DISMISSED, TaskStatus.BACKLOG] } },
+                            select: {
+                                id: true, description: true, status: true, priority: true,
+                                startedAt: true, completedAt: true, estimatedTime: true, createdAt: true,
+                                externalWorkItem: { select: { id: true, type: true, externalId: true } },
+                                assignments: {
+                                    where: { isAssigned: true },
+                                    select: { user: { select: { id: true, name: true, username: true } } }
+                                },
+                                qaTickets: {
+                                    select: { id: true, ticketNumber: true, createdAt: true },
+                                    take: 1,
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        const data = tracklists.map((tl) => {
+            const seen = new Set<number>()
+            const incidences = tl.externalWorkItems.flatMap((ewi) =>
+                ewi.incidences.filter((inc) => {
+                    if (seen.has(inc.id)) return false
+                    seen.add(inc.id)
+                    return true
+                }).map((inc) => ({
+                    ...inc,
+                    status: inc.status as import('@/types/enums').TaskStatus,
+                    ticket: inc.qaTickets[0] ?? null,
+                }))
+            )
+            return {
+                id: tl.id,
+                title: tl.title,
+                description: tl.description,
+                dueDate: tl.dueDate,
+                status: tl.status,
+                incidences,
+            }
+        })
+
+        return { success: true, data } as const
+    } catch (error) {
+        console.error('Error fetching gantt data:', error)
+        return { success: false, error: 'Error al obtener datos del Gantt' } as const
+    }
+}
+
 export async function uncompleteTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
     const session = await auth()
     if (!session?.user) {

@@ -73,6 +73,29 @@ export type TracklistWithDetails = Tracklist & {
   createdBy: Pick<User, 'id' | 'name' | 'username'>
 }
 
+export interface GanttIncidence {
+  id: number
+  description: string
+  status: TaskStatus
+  priority: string
+  startedAt: Date | null
+  completedAt: Date | null
+  estimatedTime: number | null
+  createdAt: Date
+  externalWorkItem: { id: number; type: string; externalId: number }
+  assignments: { user: Pick<User, 'id' | 'name' | 'username'> }[]
+  ticket: { id: number; ticketNumber: number; createdAt: Date } | null
+}
+
+export interface GanttTracklist {
+  id: number
+  title: string
+  description: string | null
+  dueDate: Date | null
+  status: string
+  incidences: GanttIncidence[]
+}
+
 export interface IncidenceGanttData {
   id: number
   status: TaskStatus

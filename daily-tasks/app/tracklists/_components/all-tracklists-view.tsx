@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, Pencil, ClipboardList, CheckCircle2, Archive, ListTodo, GanttChart } from 'lucide-react'
+import { Eye, Pencil, ClipboardList, CheckCircle2, Archive, ListTodo, GanttChart as GanttChartIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -17,10 +17,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
 import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
+import { GanttChart } from './gantt/gantt-chart'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
-import { TicketQAWithDetails } from '@/types'
+import { TicketQAWithDetails, GanttTracklist } from '@/types'
 import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
 import { TracklistStatus, TRACKLIST_STATUS_LABELS } from '@/types/enums'
 import { toast } from 'sonner'
@@ -52,15 +53,16 @@ interface TracklistExternalWorkItem {
 
 interface Props {
   tracklists: TracklistWithTickets[]
+  ganttData: GanttTracklist[]
   assignableUsers: AssignableUser[]
 }
 
 const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
   { value: 'list', icon: <ListTodo className="h-4 w-4" /> },
-  { value: 'gantt', icon: <GanttChart className="h-4 w-4" /> },
+  { value: 'gantt', icon: <GanttChartIcon className="h-4 w-4" /> },
 ]
 
-export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
+export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Props) {
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
@@ -151,10 +153,7 @@ export function AllTracklistsView({ tracklists, assignableUsers }: Props) {
 
       {/* Tracklists */}
       {view === 'gantt' ? (
-        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-          <GanttChart className="h-10 w-10 opacity-30" />
-          <p className="text-sm">Vista Gantt (próximamente)</p>
-        </div>
+        <GanttChart tracklists={ganttData} />
       ) : tracklists.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
           <ClipboardList className="h-10 w-10 opacity-30" />

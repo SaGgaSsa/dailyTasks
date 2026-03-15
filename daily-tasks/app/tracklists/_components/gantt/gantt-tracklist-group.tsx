@@ -1,0 +1,78 @@
+import { cn } from '@/lib/utils'
+import { GanttTracklist } from '@/types'
+import { GanttRow } from './gantt-row'
+import { getBarPosition } from '@/lib/gantt-utils'
+
+interface Props {
+  tracklist: GanttTracklist
+  weekStart: Date
+  weekEnd: Date
+  weekDays: Date[]
+  nonWorkingDays: Date[]
+}
+
+export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, nonWorkingDays }: Props) {
+  const dueDatePosition = tracklist.dueDate
+    ? getBarPosition(tracklist.dueDate, tracklist.dueDate, weekStart, weekEnd)
+    : null
+
+  const isDuePast = tracklist.dueDate ? tracklist.dueDate < new Date() : false
+
+  return (
+    <div className="flex flex-col">
+      {/* Tracklist header */}
+      <div className="flex items-center h-7 border-b border-border/40 bg-muted/30">
+        <div className="w-[280px] shrink-0 px-3 sticky left-0 z-20 bg-muted/30">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold truncate">{tracklist.title}</span>
+            {tracklist.dueDate && (
+              <span className={cn(
+                'text-[10px] shrink-0',
+                isDuePast ? 'text-red-400' : 'text-muted-foreground'
+              )}>
+                {tracklist.dueDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 relative min-w-[600px] h-full">
+          {/* Day grid lines */}
+          <div className="absolute inset-0 flex">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className={cn('flex-1', i < 4 && 'border-r border-border/30')} />
+            ))}
+          </div>
+          {/* Due date marker */}
+          {dueDatePosition && (
+            <div
+              className={cn(
+                'absolute top-0 bottom-0 w-0.5 border-l-2 border-dashed z-10',
+                isDuePast ? 'border-red-500/60' : 'border-orange-400/60'
+              )}
+              style={{ left: `${dueDatePosition.leftPercent}%` }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Incidence rows */}
+      {tracklist.incidences.length === 0 ? (
+        <div className="flex items-center h-8">
+          <div className="w-[280px] shrink-0 px-3 sticky left-0 z-20 bg-background">
+            <span className="text-xs text-muted-foreground italic">Sin incidencias activas</span>
+          </div>
+        </div>
+      ) : (
+        tracklist.incidences.map((inc) => (
+          <GanttRow
+            key={inc.id}
+            incidence={inc}
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+            nonWorkingDays={nonWorkingDays}
+          />
+        ))
+      )}
+    </div>
+  )
+}
