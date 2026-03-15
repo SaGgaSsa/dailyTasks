@@ -278,3 +278,12 @@ model TicketQA {
   @@unique([tracklistId, ticketNumber])
   @@map("tickets_qa")
 }
+
+model NonWorkingDay {
+  id          Int       @id @default(autoincrement())
+  date        DateTime  @unique @db.Date
+  description String?
+  createdAt   DateTime  @default(now())
+
+  @@map("non_working_days")
+}

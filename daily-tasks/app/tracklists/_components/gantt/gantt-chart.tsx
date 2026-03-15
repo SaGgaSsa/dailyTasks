@@ -64,7 +64,7 @@ export function GanttChart({ tracklists, nonWorkingDays = [], referenceDate }: P
             <div className="flex sticky top-0 z-30 bg-background border-b border-border/50">
               <div className="w-[280px] shrink-0 h-8 sticky left-0 z-30 bg-background border-r border-border/50" />
               <div className="flex-1 min-w-[600px]">
-                <GanttTimelineHeader weekDays={weekDays} weekStart={weekStart} weekEnd={weekEnd} />
+                <GanttTimelineHeader weekDays={weekDays} weekStart={weekStart} weekEnd={weekEnd} nonWorkingDays={nonWorkingDays} />
               </div>
             </div>
 

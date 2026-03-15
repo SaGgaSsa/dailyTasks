@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
-import { computeGanttDates, getBarPosition, isDelayed } from '@/lib/gantt-utils'
+import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, type BarSegment } from '@/lib/gantt-utils'
 import { getBarColorClasses, STATUS_STYLES } from './gantt-status-colors'
 import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
@@ -15,6 +15,7 @@ interface Props {
   incidence: GanttIncidence
   weekStart: Date
   weekEnd: Date
+  weekDays: Date[]
   nonWorkingDays: Date[]
 }
 
@@ -22,23 +23,25 @@ function formatDate(d: Date): string {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
 }
 
-export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
+export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDays }: Props) {
   const { startDate, endDate, isEstimated } = computeGanttDates({
     startedAt: incidence.startedAt,
     completedAt: incidence.completedAt,
     estimatedTime: incidence.estimatedTime,
     ticketCreatedAt: incidence.ticket?.createdAt ?? incidence.createdAt,
+    nonWorkingDays,
   })
 
-  const position = getBarPosition(startDate, endDate, weekStart, weekEnd)
+  const segments = getBarSegments(startDate, endDate, weekDays, nonWorkingDays, isEstimated)
   const delayed = isDelayed(endDate, incidence.status, isEstimated)
 
   const isBefore = endDate < weekStart
   const isAfter = startDate > weekEnd
+  const hasSegments = segments.length > 0
 
   // Bar continuation arrows
-  const continuesLeft = position && startDate < weekStart
-  const continuesRight = position && endDate > weekEnd
+  const continuesLeft = hasSegments && startDate < weekStart
+  const continuesRight = hasSegments && endDate > weekEnd
 
   // Task counts
   const allTasks = incidence.assignments.flatMap((a) => a.tasks)
@@ -48,6 +51,14 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
   // Tramite info
   const ewi = incidence.externalWorkItem
   const trámite = `${ewi.type} ${ewi.externalId}`
+
+  // Find the widest segment for placing bar content
+  const widestIdx = segments.reduce(
+    (best, seg, i) => (seg.widthPercent > (segments[best]?.widthPercent ?? 0) ? i : best),
+    0,
+  )
+
+  const barColorClasses = getBarColorClasses(incidence.status, delayed)
 
   return (
     <div className="flex items-center h-10 group hover:bg-muted/40 transition-colors">
@@ -85,50 +96,66 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
       <div className="flex-1 relative min-w-[600px] h-full">
         {/* Day grid lines */}
         <div className="absolute inset-0 flex">
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className={cn('flex-1', i < 4 && 'border-r-2 border-border/60')} />
+          {weekDays.map((d, i) => (
+            <div key={i} className={cn(
+              'flex-1',
+              i < 4 && 'border-r-2 border-border/60',
+              !isBusinessDay(d, nonWorkingDays) && 'bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--color-muted)_4px,var(--color-muted)_8px)]'
+            )} />
           ))}
         </div>
 
-        {position ? (
+        {hasSegments ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div
-                className={cn(
-                  'absolute top-2 h-6 rounded-r-md transition-opacity overflow-hidden flex items-center px-1.5 gap-1.5',
-                  getBarColorClasses(incidence.status, delayed),
-                  isEstimated && 'border-r-2 border-dashed border-foreground/20'
-                )}
-                style={{
-                  left: `${position.leftPercent}%`,
-                  width: `${position.widthPercent}%`,
-                }}
-              >
-                {/* Left arrow if continues before week */}
-                {continuesLeft && (
-                  <span className="text-[10px] opacity-70 shrink-0">←</span>
-                )}
+              <div className="absolute inset-0">
+                {segments.map((seg, idx) => {
+                  const isFirst = idx === 0
+                  const isLast = idx === segments.length - 1
+                  const isWidest = idx === widestIdx
 
-                {/* Bar content */}
-                {position.widthPercent > 8 && (
-                  <span className="text-[9px] font-medium truncate opacity-80">
-                    {formatDate(endDate)}
-                  </span>
-                )}
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'absolute top-2 h-6 transition-opacity overflow-hidden flex items-center px-1.5 gap-1.5',
+                        barColorClasses,
+                        isLast && 'rounded-r-md',
+                        isLast && isEstimated && 'border-r-2 border-dashed border-foreground/20'
+                      )}
+                      style={{
+                        left: `${seg.leftPercent}%`,
+                        width: `${seg.widthPercent}%`,
+                      }}
+                    >
+                      {/* Left arrow on first segment */}
+                      {isFirst && continuesLeft && (
+                        <span className="text-[10px] opacity-70 shrink-0">←</span>
+                      )}
 
-                {totalTasks > 0 && position.widthPercent > 12 && (
-                  <span className="text-[9px] flex items-center gap-0.5 opacity-80 shrink-0 ml-auto">
-                    {completedTasks === totalTasks
-                      ? <CheckSquare className="h-2.5 w-2.5" />
-                      : <Square className="h-2.5 w-2.5" />}
-                    {completedTasks}/{totalTasks}
-                  </span>
-                )}
+                      {/* Bar content on widest segment */}
+                      {isWidest && seg.widthPercent > 8 && (
+                        <span className="text-[9px] font-medium truncate opacity-80">
+                          {formatDate(endDate)}
+                        </span>
+                      )}
 
-                {/* Right arrow if continues after week */}
-                {continuesRight && (
-                  <span className="text-[10px] opacity-70 shrink-0 ml-auto">→</span>
-                )}
+                      {isWidest && totalTasks > 0 && seg.widthPercent > 12 && (
+                        <span className="text-[9px] flex items-center gap-0.5 opacity-80 shrink-0 ml-auto">
+                          {completedTasks === totalTasks
+                            ? <CheckSquare className="h-2.5 w-2.5" />
+                            : <Square className="h-2.5 w-2.5" />}
+                          {completedTasks}/{totalTasks}
+                        </span>
+                      )}
+
+                      {/* Right arrow on last segment */}
+                      {isLast && continuesRight && (
+                        <span className="text-[10px] opacity-70 shrink-0 ml-auto">→</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">

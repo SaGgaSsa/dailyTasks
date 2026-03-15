@@ -13,6 +13,7 @@ interface ComputeGanttDatesParams {
   completedAt: Date | null
   estimatedTime: number | null
   ticketCreatedAt: Date
+  nonWorkingDays?: Date[]
 }
 
 // --- Business day helpers ---
@@ -21,10 +22,14 @@ export function isBusinessDay(date: Date, nonWorkingDays: Date[] = []): boolean 
   const day = date.getDay()
   if (day === 0 || day === 6) return false
   return !nonWorkingDays.some(
-    (nwd) =>
-      nwd.getFullYear() === date.getFullYear() &&
-      nwd.getMonth() === date.getMonth() &&
-      nwd.getDate() === date.getDate()
+    (nwd) => {
+      const d = nwd instanceof Date ? nwd : new Date(nwd)
+      return (
+        d.getUTCFullYear() === date.getFullYear() &&
+        d.getUTCMonth() === date.getMonth() &&
+        d.getUTCDate() === date.getDate()
+      )
+    }
   )
 }
 
@@ -45,6 +50,7 @@ export function computeGanttDates({
   completedAt,
   estimatedTime,
   ticketCreatedAt,
+  nonWorkingDays = [],
 }: ComputeGanttDatesParams): GanttBarDates {
   const startDate = startedAt ?? ticketCreatedAt
 
@@ -56,7 +62,7 @@ export function computeGanttDates({
   const days = Math.ceil(hours / HOURS_PER_DAY)
   const endDate = days <= 1
     ? new Date(startDate)
-    : addBusinessDays(startDate, days - 1)
+    : addBusinessDays(startDate, days - 1, nonWorkingDays)
   endDate.setHours(23, 59, 59, 999)
 
   return { startDate, endDate, isEstimated: true }
@@ -128,6 +134,88 @@ export function getBarPosition(
   return { leftPercent, widthPercent }
 }
 
+// --- Bar segments (non-working day gaps) ---
+
+export interface BarSegment {
+  leftPercent: number
+  widthPercent: number
+}
+
+function isSameDate(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+/**
+ * Splits a bar into segments that skip non-working days.
+ * Each day slot = 20% width (5 equal flex-1 columns).
+ *
+ * If `isEstimated` is false and `barEnd` falls on a non-working day,
+ * that day is still rendered (respects actual completedAt).
+ */
+export function getBarSegments(
+  barStart: Date,
+  barEnd: Date,
+  weekDays: Date[],
+  nonWorkingDays: Date[],
+  isEstimated: boolean,
+): BarSegment[] {
+  const slotWidth = 100 / weekDays.length // 20% per day
+  const normalizedStart = startOfDay(barStart)
+  const normalizedEnd = endOfDay(barEnd)
+
+  // Determine which day slots the bar covers and are renderable
+  const renderableIndices: number[] = []
+  for (let i = 0; i < weekDays.length; i++) {
+    const dayStart = startOfDay(weekDays[i])
+    const dayEnd = endOfDay(weekDays[i])
+
+    // Does the bar overlap this day?
+    if (normalizedEnd < dayStart || normalizedStart > dayEnd) continue
+
+    const isNonWorking = !isBusinessDay(weekDays[i], nonWorkingDays)
+
+    // If non-working: skip, unless it's a completed bar ending on this day
+    if (isNonWorking) {
+      if (!isEstimated && isSameDate(barEnd, weekDays[i])) {
+        renderableIndices.push(i)
+      }
+      continue
+    }
+
+    renderableIndices.push(i)
+  }
+
+  if (renderableIndices.length === 0) return []
+
+  // Group consecutive indices into segments
+  const segments: BarSegment[] = []
+  let segStart = renderableIndices[0]
+  let segEnd = renderableIndices[0]
+
+  for (let j = 1; j < renderableIndices.length; j++) {
+    if (renderableIndices[j] === segEnd + 1) {
+      segEnd = renderableIndices[j]
+    } else {
+      segments.push({
+        leftPercent: segStart * slotWidth,
+        widthPercent: (segEnd - segStart + 1) * slotWidth,
+      })
+      segStart = renderableIndices[j]
+      segEnd = renderableIndices[j]
+    }
+  }
+  segments.push({
+    leftPercent: segStart * slotWidth,
+    widthPercent: (segEnd - segStart + 1) * slotWidth,
+  })
+
+  return segments
+}
+
 export function getTodayPosition(weekStart: Date, weekEnd: Date): number | null {
   const now = new Date()
   if (now < weekStart || now > weekEnd) return null
@@ -143,7 +231,7 @@ export function isDelayed(endDate: Date, status: string, isEstimated: boolean): 
 
 // --- Date bounds ---
 
-export function getGanttDateBounds(tracklists: GanttTracklist[]): { earliest: Date | null; latest: Date | null } {
+export function getGanttDateBounds(tracklists: GanttTracklist[], nonWorkingDays: Date[] = []): { earliest: Date | null; latest: Date | null } {
   let earliest: Date | null = null
   let latest: Date | null = null
 
@@ -163,6 +251,7 @@ export function getGanttDateBounds(tracklists: GanttTracklist[]): { earliest: Da
         completedAt: inc.completedAt,
         estimatedTime: inc.estimatedTime,
         ticketCreatedAt: inc.ticket?.createdAt ?? inc.createdAt,
+        nonWorkingDays,
       })
       if (latest === null || endDate > latest) {
         latest = endDate

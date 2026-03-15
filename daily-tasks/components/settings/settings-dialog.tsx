@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { User, FileText } from 'lucide-react'
+import { User, FileText, CalendarDays } from 'lucide-react'
 import { ExternalWorkItem } from '@prisma/client'
 import { getExternalWorkItems } from '@/app/actions/external-work-items'
 import {
@@ -13,10 +13,12 @@ import {
 import { SettingsNav, type SettingsSection } from '@/components/settings/settings-nav'
 import { AccountProfileSection } from '@/components/settings/account-profile-section'
 import { ExternalWorkItemsSection } from '@/components/settings/external-work-items-section'
+import { CalendarSection } from '@/components/settings/calendar-section'
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'profile', label: 'Perfil', icon: User, groupLabel: 'Cuenta' },
   { id: 'external-work-items', label: 'Trámites', icon: FileText, groupLabel: 'Integraciones' },
+  { id: 'calendar', label: 'Calendario', icon: CalendarDays, groupLabel: 'Administración' },
 ]
 
 interface SettingsDialogProps {
@@ -31,6 +33,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const userRole = session?.user?.role
   const isAdmin = userRole === 'ADMIN'
   const canManageWorkItems = userRole === 'ADMIN' || userRole === 'QA'
+  const canManageCalendar = userRole === 'ADMIN' || userRole === 'QA'
 
   const visibleSections = SETTINGS_SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
@@ -54,6 +57,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return <AccountProfileSection />
       case 'external-work-items':
         return <ExternalWorkItemsSection items={workItems} onRefresh={loadWorkItems} canManage={canManageWorkItems} />
+      case 'calendar':
+        return <CalendarSection readOnly={!canManageCalendar} />
       default:
         return null
     }

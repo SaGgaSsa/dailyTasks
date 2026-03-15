@@ -57,6 +57,7 @@ interface Props {
   tracklists: TracklistWithTickets[]
   ganttData: GanttTracklist[]
   assignableUsers: AssignableUser[]
+  nonWorkingDays: Date[]
 }
 
 const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
@@ -64,7 +65,7 @@ const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
   { value: 'gantt', icon: <GanttChartIcon className="h-4 w-4" /> },
 ]
 
-export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Props) {
+export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonWorkingDays }: Props) {
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
@@ -87,11 +88,11 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
     return d
   }, [weekOffset])
 
-  const { earliest, latest } = useMemo(() => getGanttDateBounds(ganttData), [ganttData])
+  const { earliest, latest } = useMemo(() => getGanttDateBounds(ganttData, nonWorkingDays), [ganttData, nonWorkingDays])
   const weekStart = useMemo(() => getWeekRange(referenceDate).weekStart, [referenceDate])
 
-  const canGoPrev = earliest !== null && weekStart > getWeekRange(earliest).weekStart
-  const canGoNext = latest !== null && weekStart < getWeekRange(latest).weekStart
+  const canGoPrev = earliest !== null && weekStart.getTime() > getWeekRange(earliest).weekStart.getTime()
+  const canGoNext = latest !== null && weekStart.getTime() < getWeekRange(latest).weekStart.getTime()
 
   const handleCompleteTracklist = () => {
     if (!completeTarget) return
@@ -178,7 +179,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers }: Pr
 
       {/* Tracklists */}
       {view === 'gantt' ? (
-        <GanttChart tracklists={ganttData} referenceDate={referenceDate} />
+        <GanttChart tracklists={ganttData} referenceDate={referenceDate} nonWorkingDays={nonWorkingDays} />
       ) : tracklists.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
           <ClipboardList className="h-10 w-10 opacity-30" />
