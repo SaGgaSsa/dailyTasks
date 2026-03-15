@@ -19,9 +19,20 @@ export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, nonWorkingD
   const isDuePast = tracklist.dueDate ? tracklist.dueDate < new Date() : false
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col relative">
+      {/* Due date line spanning all rows */}
+      {dueDatePosition && (
+        <div
+          className={cn(
+            'absolute top-0 bottom-0 border-l-2 border-dashed z-10 pointer-events-none',
+            isDuePast ? 'border-red-500/60' : 'border-orange-400/60'
+          )}
+          style={{ left: `calc(280px + (100% - 280px) * ${dueDatePosition.leftPercent / 100})` }}
+        />
+      )}
+
       {/* Tracklist header */}
-      <div className="flex items-center h-7 border-b border-border/40 bg-muted/30">
+      <div className="flex items-center h-9 border-b border-border/40 bg-muted/30">
         <div className="w-[280px] shrink-0 px-3 sticky left-0 z-20 bg-muted/30">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold truncate">{tracklist.title}</span>
@@ -39,25 +50,15 @@ export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, nonWorkingD
           {/* Day grid lines */}
           <div className="absolute inset-0 flex">
             {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className={cn('flex-1', i < 4 && 'border-r border-border/30')} />
+              <div key={i} className={cn('flex-1', i < 4 && 'border-r-2 border-border/60')} />
             ))}
           </div>
-          {/* Due date marker */}
-          {dueDatePosition && (
-            <div
-              className={cn(
-                'absolute top-0 bottom-0 w-0.5 border-l-2 border-dashed z-10',
-                isDuePast ? 'border-red-500/60' : 'border-orange-400/60'
-              )}
-              style={{ left: `${dueDatePosition.leftPercent}%` }}
-            />
-          )}
         </div>
       </div>
 
       {/* Incidence rows */}
       {tracklist.incidences.length === 0 ? (
-        <div className="flex items-center h-8">
+        <div className="flex items-center h-10">
           <div className="w-[280px] shrink-0 px-3 sticky left-0 z-20 bg-background">
             <span className="text-xs text-muted-foreground italic">Sin incidencias activas</span>
           </div>

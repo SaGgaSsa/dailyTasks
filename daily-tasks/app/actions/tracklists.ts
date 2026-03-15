@@ -731,9 +731,13 @@ export async function getGanttData() {
                                 id: true, description: true, status: true, priority: true,
                                 startedAt: true, completedAt: true, estimatedTime: true, createdAt: true,
                                 externalWorkItem: { select: { id: true, type: true, externalId: true } },
+                                technology: { select: { name: true } },
                                 assignments: {
                                     where: { isAssigned: true },
-                                    select: { user: { select: { id: true, name: true, username: true } } }
+                                    select: {
+                                        user: { select: { id: true, name: true, username: true } },
+                                        tasks: { select: { id: true, isCompleted: true } }
+                                    }
                                 },
                                 qaTickets: {
                                     select: { id: true, ticketNumber: true, createdAt: true },

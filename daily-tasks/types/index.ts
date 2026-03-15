@@ -83,7 +83,11 @@ export interface GanttIncidence {
   estimatedTime: number | null
   createdAt: Date
   externalWorkItem: { id: number; type: string; externalId: number }
-  assignments: { user: Pick<User, 'id' | 'name' | 'username'> }[]
+  technology: { name: string }
+  assignments: {
+    user: Pick<User, 'id' | 'name' | 'username'>
+    tasks: { id: number; isCompleted: boolean }[]
+  }[]
   ticket: { id: number; ticketNumber: number; createdAt: Date } | null
 }
 

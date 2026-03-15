@@ -32,15 +32,14 @@ export function GanttChart({ tracklists, nonWorkingDays = [] }: Props) {
         <div className="min-w-[880px]">
           {/* Header */}
           <div className="flex sticky top-0 z-30 bg-background border-b border-border/50">
-            <div className="w-[280px] shrink-0 flex items-center px-3 h-8 sticky left-0 z-30 bg-background border-r border-border/50">
-              <span className="text-xs font-medium text-muted-foreground">Incidencia</span>
-            </div>
+            <div className="w-[280px] shrink-0 h-8 sticky left-0 z-30 bg-background border-r border-border/50" />
             <div className="flex-1 min-w-[600px]">
               <GanttTimelineHeader weekDays={weekDays} weekStart={weekStart} weekEnd={weekEnd} />
             </div>
           </div>
 
           {/* Tracklist groups */}
+          <div className="flex flex-col gap-2">
           {tracklists.map((tl) => (
             <GanttTracklistGroup
               key={tl.id}
@@ -51,6 +50,7 @@ export function GanttChart({ tracklists, nonWorkingDays = [] }: Props) {
               nonWorkingDays={nonWorkingDays}
             />
           ))}
+          </div>
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>

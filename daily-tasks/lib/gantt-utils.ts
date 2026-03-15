@@ -52,7 +52,10 @@ export function computeGanttDates({
 
   const hours = estimatedTime ?? HOURS_PER_DAY
   const days = Math.ceil(hours / HOURS_PER_DAY)
-  const endDate = addBusinessDays(startDate, days)
+  const endDate = days <= 1
+    ? new Date(startDate)
+    : addBusinessDays(startDate, days - 1)
+  endDate.setHours(23, 59, 59, 999)
 
   return { startDate, endDate, isEstimated: true }
 }

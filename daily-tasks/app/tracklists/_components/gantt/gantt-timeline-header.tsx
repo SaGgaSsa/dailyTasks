@@ -23,7 +23,7 @@ export function GanttTimelineHeader({ weekDays, weekStart, weekEnd }: Props) {
           key={i}
           className={cn(
             'flex-1 flex items-center justify-center text-xs font-medium text-muted-foreground',
-            i < 4 && 'border-r border-border/50',
+            i < 4 && 'border-r-2 border-border/60',
             i === todayIndex && 'bg-blue-500/5'
           )}
         >
