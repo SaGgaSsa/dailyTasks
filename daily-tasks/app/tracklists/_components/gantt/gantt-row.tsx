@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
 import { computeGanttDates, getBarPosition, isDelayed } from '@/lib/gantt-utils'
 import { getBarColorClasses } from './gantt-status-colors'
-import { ChevronLeft, ChevronRight, CheckSquare, User } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -124,7 +124,9 @@ export function GanttRow({ incidence, weekStart, weekEnd }: Props) {
 
                 {totalTasks > 0 && position.widthPercent > 12 && (
                   <span className="text-[9px] flex items-center gap-0.5 opacity-80 shrink-0 ml-auto">
-                    <CheckSquare className="h-2.5 w-2.5" />
+                    {completedTasks === totalTasks
+                      ? <CheckSquare className="h-2.5 w-2.5" />
+                      : <Square className="h-2.5 w-2.5" />}
                     {completedTasks}/{totalTasks}
                   </span>
                 )}

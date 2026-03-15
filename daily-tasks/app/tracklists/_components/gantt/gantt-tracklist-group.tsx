@@ -12,8 +12,10 @@ interface Props {
 }
 
 export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, nonWorkingDays }: Props) {
-  const dueDatePosition = tracklist.dueDate
-    ? getBarPosition(tracklist.dueDate, tracklist.dueDate, weekStart, weekEnd)
+  const dueDateEnd = tracklist.dueDate ? new Date(tracklist.dueDate) : null
+  if (dueDateEnd) dueDateEnd.setHours(23, 59, 59, 999)
+  const dueDatePosition = dueDateEnd
+    ? getBarPosition(dueDateEnd, dueDateEnd, weekStart, weekEnd)
     : null
 
   const isDuePast = tracklist.dueDate ? tracklist.dueDate < new Date() : false

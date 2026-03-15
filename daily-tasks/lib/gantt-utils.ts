@@ -90,17 +90,32 @@ export interface BarPosition {
   widthPercent: number
 }
 
+function startOfDay(d: Date): Date {
+  const r = new Date(d)
+  r.setHours(0, 0, 0, 0)
+  return r
+}
+
+function endOfDay(d: Date): Date {
+  const r = new Date(d)
+  r.setHours(23, 59, 59, 999)
+  return r
+}
+
 export function getBarPosition(
   barStart: Date,
   barEnd: Date,
   weekStart: Date,
   weekEnd: Date
 ): BarPosition | null {
-  if (barEnd < weekStart || barStart > weekEnd) return null
+  const normalizedStart = startOfDay(barStart)
+  const normalizedEnd = endOfDay(barEnd)
+
+  if (normalizedEnd < weekStart || normalizedStart > weekEnd) return null
 
   const totalMs = weekEnd.getTime() - weekStart.getTime()
-  const clampedStart = barStart < weekStart ? weekStart : barStart
-  const clampedEnd = barEnd > weekEnd ? weekEnd : barEnd
+  const clampedStart = normalizedStart < weekStart ? weekStart : normalizedStart
+  const clampedEnd = normalizedEnd > weekEnd ? weekEnd : normalizedEnd
 
   const leftPercent = ((clampedStart.getTime() - weekStart.getTime()) / totalMs) * 100
   const widthPercent = Math.max(
