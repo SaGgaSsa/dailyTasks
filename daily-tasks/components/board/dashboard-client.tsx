@@ -7,7 +7,6 @@ import { KanbanBoard } from '@/components/board/kanban-board'
 import { Backlog } from '@/components/board/backlog'
 import { IncidenceWithDetails } from '@/types'
 import { SquircleDashed, LayoutDashboard, ListTodo, Plus, BrainCircuit, User, Loader2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -170,14 +169,6 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
             <div className="flex flex-col h-full space-y-4">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-primary"></span>
-                            Kanban
-                            <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border font-mono">
-                                {kanbanTasksState.length}
-                            </Badge>
-                        </h2>
-
                         <SearchBar
                             value={params.search || ''}
                             onChange={updateSearch}
@@ -247,14 +238,6 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
         <div className="flex flex-col h-full space-y-4">
             <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary"></span>
-                        {view === 'BACKLOG' ? 'Backlog' : 'Kanban'}
-                        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border font-mono">
-                            {view === 'BACKLOG' ? backlogTasksState.length : kanbanTasksState.length}
-                        </Badge>
-                    </h2>
-
                     <SearchBar
                         value={params.search || ''}
                         onChange={updateSearch}
