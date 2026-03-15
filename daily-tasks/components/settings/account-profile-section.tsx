@@ -26,12 +26,12 @@ export function AccountProfileSection() {
 
       <div className="space-y-3">
         {fields.map((field) => (
-          <div key={field.label} className="bg-zinc-900/50 rounded-lg p-3">
+          <div key={field.label} className="bg-muted dark:bg-zinc-900/50 rounded-lg p-3">
             <div className="text-xs text-muted-foreground mb-1">{field.label}</div>
             <div className="text-sm">{field.value || '—'}</div>
           </div>
         ))}
-        <div className="bg-zinc-900/50 rounded-lg p-3">
+        <div className="bg-muted dark:bg-zinc-900/50 rounded-lg p-3">
           <div className="text-xs text-muted-foreground mb-1">Rol</div>
           <Badge variant="secondary">{user?.role || '—'}</Badge>
         </div>

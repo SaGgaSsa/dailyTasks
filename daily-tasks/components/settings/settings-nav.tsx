@@ -28,7 +28,7 @@ export function SettingsNav({ sections, activeSection, onSelect }: SettingsNavPr
     <nav className="py-4 space-y-4">
       {Object.entries(groups).map(([groupLabel, groupSections]) => (
         <div key={groupLabel} className="px-3">
-          <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+          <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {groupLabel}
           </div>
           <div className="space-y-0.5">

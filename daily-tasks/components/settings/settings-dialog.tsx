@@ -64,7 +64,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       <DialogContent className="sm:max-w-7xl h-[90vh] p-0" showCloseButton>
         <DialogTitle className="sr-only">Configuración</DialogTitle>
         <div className="flex h-full overflow-hidden">
-          <div className="w-56 border-r border-border bg-zinc-900/30 flex-shrink-0 overflow-y-auto">
+          <div className="w-56 border-r border-border bg-muted/50 dark:bg-zinc-900/30 flex-shrink-0 overflow-y-auto">
             <SettingsNav
               sections={visibleSections}
               activeSection={activeSection}
