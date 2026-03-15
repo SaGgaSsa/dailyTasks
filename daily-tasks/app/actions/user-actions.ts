@@ -52,7 +52,9 @@ export async function upsertUser(data: UpsertUserData) {
                     name: data.name,
                     email: data.email,
                     role: data.role,
-                    technologies: data.technologies as never,
+                    ...(data.technologies.length > 0
+                        ? { technologies: { set: data.technologies.map(t => ({ name: t.connect.name })) } }
+                        : { technologies: { set: [] } }),
                 }
             })
             revalidatePath('/dashboard')
@@ -65,7 +67,9 @@ export async function upsertUser(data: UpsertUserData) {
                     email: data.email,
                     password: data.password,
                     role: data.role,
-                    technologies: data.technologies as never,
+                    ...(data.technologies.length > 0 && {
+                        technologies: { connect: data.technologies.map(t => ({ name: t.connect.name })) },
+                    }),
                 }
             })
             revalidatePath('/dashboard')
