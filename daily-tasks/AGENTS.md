@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# AGENTS.md
 
 ## Workflow
 
@@ -14,10 +12,13 @@ Daily Tasks is a Jira-like incident/ticket management app for teams. Built with 
 
 ```bash
 npm run dev          # Dev server (port 3000)
+npm run build        # prisma generate + next build
 npm run lint         # ESLint
 npm run seed         # Seed database (then sign out/in to sync session user id)
+npm run db:reset     # Reset DB: prisma generate + push --force-reset + seed
+npm run test:integration  # Run integration tests (vitest)
 
-npx tsc --noEmit     # Type-check only
+npx tsc --noEmit     # Type-check only (preferred for quick verification)
 npx prisma db push   # Push schema changes
 npx prisma generate  # Regenerate Prisma client
 npx prisma studio    # DB GUI (port 5555)
@@ -25,7 +26,7 @@ npx prisma studio    # DB GUI (port 5555)
 docker-compose up -d # Start PostgreSQL
 ```
 
-No test framework is configured.
+Integration tests use **vitest** and live in `tests/integration/`. No unit or E2E test frameworks are configured.
 
 ## Architecture
 
@@ -34,27 +35,45 @@ app/
   actions/          # Server Actions ('use server') — all mutations live here
   api/              # API routes (auth, attachments, external integrations)
   dashboard/        # Main incidence tracking UI
-  tracklists/       # QA ticket management
+    incidences/[id]/ # Incidence detail (tabs: general, assets, tasks, pages)
+  tracklists/       # QA ticket management (includes Gantt chart)
   analytics/        # Charts/analytics page
+  auth/login/       # Login page (credentials-based, NextAuth v5 + bcryptjs)
 components/
   ui/               # Atomic components (shadcn/ui + custom)
   board/            # Kanban/backlog views
   incidences/       # Incidence management components
+  incidence-detail/ # Incidence detail view sub-components
   tracklists/       # QA tracklist components
 lib/
   db.ts             # Singleton Prisma client — always import from here
-  queries/          # Reusable database query functions
-  i18n/             # Spanish/English translations
+  queries/          # Reusable database query functions (currently minimal; most queries in actions)
+  i18n/             # Spanish/English translations (next-intl, defaults to 'es')
 types/
   enums.ts          # All app enums (must mirror Prisma schema exactly)
   index.ts          # Shared TypeScript types
 prisma/
   schema.prisma     # Data model
+tests/
+  integration/      # Vitest integration tests
 ```
 
-## Core Rules
+### Key Domain Models (Prisma)
 
-See `AGENTS.md` for the full rules. Key points:
+- **Incidence** — main work item with statuses: BACKLOG/TODO/IN_PROGRESS/REVIEW/DONE/DISMISSED
+- **Assignment** — links users to incidences with hours and task tracking
+- **Task** — sub-tasks under assignments
+- **IncidencePage** — rich-text documentation pages (BlockNote JSON content)
+- **Tracklist / TicketQA** — QA ticket lists with types: BUG/CAMBIO/CONSULTA
+- **ExternalWorkItem / WorkItemType** — external system integration (Jira)
+- **Technology / Module** — tech stack and module organization
+- **NonWorkingDay** — holidays for scheduling
+
+### Rich Text
+
+Incidence pages use **BlockNote** editor (built on TipTap). Content is stored as JSON in `IncidencePage.content`.
+
+## Core Rules
 
 1. **No `any`** — use explicit types or `unknown` with type guards.
 2. **All mutations** must be Server Actions (`'use server'`) in `app/actions/`.
