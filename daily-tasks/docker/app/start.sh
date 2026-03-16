@@ -2,10 +2,10 @@
 set -eu
 
 echo "[app] Esperando base de datos..."
-until ./node_modules/.bin/prisma db push >/tmp/prisma-start.log 2>&1; do
+until ./node_modules/.bin/prisma migrate deploy >/tmp/prisma-start.log 2>&1; do
   cat /tmp/prisma-start.log
   sleep 3
 done
 
-echo "[app] Esquema sincronizado"
+echo "[app] Migraciones aplicadas"
 exec node server.js
