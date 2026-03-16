@@ -1,208 +1,130 @@
-# Daily Tasks – AI Development Rules
+# CLAUDE.md
 
-## Stack
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Next.js 16 + TypeScript (strict) + Prisma + PostgreSQL + Tailwind v4 + Radix UI + dnd-kit + NextAuth v5
+## Workflow
 
----
+When implementing new features, always implement the code directly rather than stopping at a plan and waiting for confirmation. Only create plans when explicitly asked to plan.
+
+## Project
+
+Daily Tasks is a Jira-like incident/ticket management app for teams. Built with Next.js 16, TypeScript (strict), Prisma 7 + PostgreSQL, Tailwind CSS v4, Radix UI, dnd-kit, and NextAuth v5.
 
 ## Commands
 
 ```bash
-# Development
-npm run dev                    # Dev server (port 3000)
-npm run build                  # Prisma generate + Next.js build
-npm run start                  # Production server
-npm run seed                   # Seed database
+npm run dev          # Dev server (port 3000)
+npm run build        # prisma generate + next build
+npm run lint         # ESLint
+npm run seed         # Seed database (then sign out/in to sync session user id)
 
-# Linting
-npm run lint                   # Run ESLint on codebase
-npx eslint <file>              # Lint specific file
-npx eslint --fix <file>        # Auto-fix linting issues
+npx prisma db push   # Push schema changes
+npx prisma generate  # Regenerate Prisma client
+npx prisma studio    # DB GUI (port 5555)
 
-# Database
-npx prisma generate            # Generate Prisma client (before build)
-npx prisma db push             # Push schema changes
-npx prisma studio              # Open Prisma GUI (port 5555)
-npx prisma migrate dev         # Run migrations
-
-# Docker
-docker-compose up -d           # Start PostgreSQL
-docker-compose down            # Remove containers
+docker-compose up -d # Start PostgreSQL
 ```
 
-**Testing:** No test framework configured. Add Jest/Vitest when needed.
+No test framework is configured.
 
----
+## Architecture
 
-## Core Rules (MANDATORY)
-
-1. Never use `any`. Use explicit types or `unknown` with type guards.
-2. All mutations must use `'use server'`.
-3. Never use Prisma on client-side (only in Server Actions/API routes).
-4. UI text must be in Spanish.
-5. All forms MUST use `FormSheet` from `@/components/ui/form-sheet`.
-6. Server action return pattern: `{ success: boolean, error?: string, data?: T }`
-7. Do NOT reprint full files unless explicitly requested.
-8. Show minimal diffs only - focus on changed lines.
-9. Do not modify unrelated files.
-10. Do not refactor unless explicitly requested.
-
----
-
-## TypeScript
-
-- Strict mode enabled.
-- Use `interface` for object shapes, `type` for unions/intersections.
-- Import Prisma types from `@prisma/client` (e.g., `User`, `Incidence`).
-- Define shared types in `types/index.ts`.
-- Define all enums in `types/enums.ts` matching Prisma schema exactly.
-
----
-
-## Import Order
-
-External packages → `@/*` alias → relative imports
-
-```typescript
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Check, Plus, Trash2 } from 'lucide-react'
-import { db } from '@/lib/db'
-import { Button } from '@/components/ui/button'
-import { IncidenceForm } from './incidence-form'
+```
+app/
+  actions/          # Server Actions ('use server') — all mutations live here
+  api/              # API routes (auth, attachments, external integrations)
+  dashboard/        # Main incidence tracking UI
+  tracklists/       # QA ticket management
+  analytics/        # Charts/analytics page
+components/
+  ui/               # Atomic components (shadcn/ui + custom)
+  board/            # Kanban/backlog views
+  incidences/       # Incidence management components
+  tracklists/       # QA tracklist components
+lib/
+  db.ts             # Singleton Prisma client — always import from here
+  queries/          # Reusable database query functions
+  i18n/             # Spanish/English translations
+types/
+  enums.ts          # All app enums (must mirror Prisma schema exactly)
+  index.ts          # Shared TypeScript types
+prisma/
+  schema.prisma     # Data model
 ```
 
----
+## Core Rules
 
-## Naming Conventions
+See `AGENTS.md` for the full rules. Key points:
 
-| Pattern | Convention | Example |
-|---------|------------|---------|
-| Components/Files | PascalCase | `UserTable.tsx`, `TaskCard` |
-| Directories | kebab-case | `components/ui/`, `app/actions/` |
-| Functions/variables | camelCase | `getUsers()`, `isLoading` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| Database columns | snake_case | `created_at`, `user_id` |
-| Types/Interfaces | PascalCase | `IncidenceWithDetails` |
+1. **No `any`** — use explicit types or `unknown` with type guards.
+2. **All mutations** must be Server Actions (`'use server'`) in `app/actions/`.
+3. **Never use Prisma on the client** — only in Server Actions and API routes.
+4. **UI text in Spanish.**
+5. **All create/edit forms** must use `FormSheet` from `@/components/ui/form-sheet`.
+6. **Server action return type**: `{ success: boolean, error?: string, data?: T }` — always include try/catch and handle Prisma P2002 (unique constraint).
+7. **Show minimal diffs** — do not reprint full files unless explicitly asked.
+8. **Do not refactor** unrelated code.
 
----
+## Key Patterns
 
-## Server Action Pattern
-
+**Server Action:**
 ```typescript
 'use server'
-
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
-export async function upsertUser(data: UpsertUserData) {
-    try {
-        if (data.id) {
-            await db.user.update({ where: { id: data.id }, data: { ...data } })
-        } else {
-            await db.user.create({ data })
-        }
-        revalidatePath('/dashboard')
-        return { success: true }
-    } catch (error) {
-        console.error('Error:', error)
-        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'El registro ya existe' }
-        }
-        return { success: false, error: 'Error al guardar' }
+export async function upsertFoo(data: UpsertFooData) {
+  try {
+    // ... db operation
+    revalidatePath('/dashboard')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2002') {
+      return { success: false, error: 'El registro ya existe' }
     }
+    return { success: false, error: 'Error al guardar' }
+  }
 }
 ```
 
-**Required:** try/catch block, handle P2002 unique constraint violations, `revalidatePath()`, return `{ success, error?, data? }`.
-
----
-
-## Client Components
-
+**Client component** — use `isPending` state + `sonner` toasts:
 ```typescript
-'use client'
-
-import { useState } from 'react'
-import { toast } from 'sonner'
-
-export function MyForm({ onSubmit }: MyFormProps) {
-    const [isPending, setIsPending] = useState(false)
-
-    async function handleSubmit() {
-        setIsPending(true)
-        const result = await onSubmit(formData)
-        if (result.success) {
-            toast.success('Guardado correctamente')
-        } else {
-            toast.error(result.error || 'Error')
-        }
-        setIsPending(false)
-    }
-
-    return <form onSubmit={handleSubmit}>...</form>
-}
+const result = await serverAction(data)
+if (result.success) toast.success('Guardado correctamente')
+else toast.error(result.error || 'Error')
 ```
 
----
+## Code Conventions
 
-## FormSheet Components
+- When adding UI features like modals or dialogs, always reuse existing components rather than creating new separate ones. Check for existing similar components first.
+- When renaming fields or modifying schema, grep the entire codebase for ALL references before making changes. Be careful not to change similarly-named fields on different models.
 
-**ALWAYS use** `FormSheet` from `@/components/ui/form-sheet` for create/edit forms and detail panels.
+## Build & Verification
 
-| Component | Purpose |
-|-----------|---------|
-| `FormSheet` | Main wrapper with header, save/close buttons |
-| `FormInput` | Labeled input with dark theme styles |
-| `FormSelect` | Labeled select dropdown |
-| `FormTextarea` | Labeled textarea |
-| `FormRow` | Two-column grid |
-| `FormRow3` | Three-column grid |
+- After every edit, verify imports are still valid — never remove an import without checking all files that use it. Run the build after removing any import.
+- Always run `npm run build` after multi-file changes to catch errors before committing.
 
----
+## Naming Conventions
 
-## Database (Prisma)
+| Item | Convention |
+|------|------------|
+| Components / files | PascalCase |
+| Directories | kebab-case |
+| Functions / variables | camelCase |
+| Constants | UPPER_SNAKE_CASE |
+| DB columns | snake_case |
 
-- Models: `User`, `Incidence`, `Assignment`, `Task`
-- Use `@map("table_name")` for snake_case columns
-- Singleton client: `import { db } from '@/lib/db'`
-- Enums in Prisma schema match `types/enums.ts`
-- After running `npm run seed` or resetting the database, always sign out and sign in again so the session user id matches the `users` table.
+## Styling
 
----
+- Tailwind v4, dark theme by default (`dark` class on `<html>`).
+- Use `cn()` from `lib/utils.ts` for conditional classes.
+- Color palette: `zinc-100` through `zinc-900`.
 
-## Enums
+## Git
 
-```typescript
-TaskStatus: BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
-TaskType: I_MODAPL, I_CASO, I_CONS
-TechStack: SISA, WEB, ANDROID, ANGULAR, SPRING
-Priority: LOW, MEDIUM, HIGH
-UserRole: ADMIN, DEV
-```
+Conventional Commits: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`.
 
----
+## Pre-commit
 
-## Tailwind CSS v4
-
-- Dark theme default (`dark` class on html)
-- CSS variables in `globals.css` for theming
-- Use `cn()` utility from `lib/utils.ts` for conditional classes
-- Color palette: `zinc-100` through `zinc-900`
-
----
-
-## Git Commits
-
-Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
-
-Group commits by theme/category, not individual file changes.
-
----
-
-## Pre-commit Checklist
-
-1. `npm run lint` - Fix all linting errors
-2. `npm run build` - Verify build succeeds
-3. `npx prisma generate` - Generate Prisma client
+1. `npm run lint` — fix all errors
+2. `npm run build` — must succeed
