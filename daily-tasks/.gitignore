@@ -45,6 +45,7 @@ next-env.d.ts
 
 # prisma seeds (only track the main seed.ts)
 /prisma/seed-*
+/prisma/test/
 /public/uploads
 /backups
 !/backups/
