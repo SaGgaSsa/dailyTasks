@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { User, FileText, CalendarDays, Blocks, Layers } from 'lucide-react'
-import { ExternalWorkItem, Module, Technology } from '@prisma/client'
-import { getExternalWorkItems } from '@/app/actions/external-work-items'
+import { Module, Technology } from '@prisma/client'
+import { getExternalWorkItems, getWorkItemTypes } from '@/app/actions/external-work-items'
 import { getTechsAndModulesForSettings } from '@/app/actions/tech'
 import {
   Dialog,
@@ -16,9 +16,12 @@ import { AccountProfileSection } from '@/components/settings/account-profile-sec
 import { ExternalWorkItemsSection } from '@/components/settings/external-work-items-section'
 import { CalendarSection } from '@/components/settings/calendar-section'
 import { TechModulesSection } from '@/components/settings/tech-modules-section'
+import { WorkItemTypesSection } from '@/components/settings/work-item-types-section'
+import type { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'profile', label: 'Perfil', icon: User, groupLabel: 'Cuenta' },
+  { id: 'work-item-types', label: 'Tipos de trámite', icon: FileText, groupLabel: 'Integraciones' },
   { id: 'external-work-items', label: 'Trámites', icon: FileText, groupLabel: 'Integraciones' },
   { id: 'calendar', label: 'Calendario', icon: CalendarDays, groupLabel: 'Administración' },
   { id: 'technologies', label: 'Tecnologías', icon: Layers, groupLabel: 'Administración' },
@@ -36,7 +39,8 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = useState('profile')
-  const [workItems, setWorkItems] = useState<ExternalWorkItem[]>([])
+  const [workItems, setWorkItems] = useState<ExternalWorkItemSummary[]>([])
+  const [workItemTypes, setWorkItemTypes] = useState<WorkItemTypeOption[]>([])
   const [techs, setTechs] = useState<TechnologyWithModules[]>([])
   const { data: session } = useSession()
   const userRole = session?.user?.role
@@ -54,6 +58,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setWorkItems(data)
   }, [])
 
+  const loadWorkItemTypes = useCallback(async () => {
+    const data = await getWorkItemTypes()
+    setWorkItemTypes(data)
+  }, [])
+
   const loadTechsAndModules = useCallback(async () => {
     const result = await getTechsAndModulesForSettings()
     if (result.success && result.data) {
@@ -63,20 +72,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleSectionSelect = useCallback(async (id: string) => {
     setActiveSection(id)
-    if (id === 'external-work-items') {
-      await loadWorkItems()
+    if (id === 'work-item-types' || id === 'external-work-items') {
+      await Promise.all([loadWorkItemTypes(), id === 'external-work-items' ? loadWorkItems() : Promise.resolve()])
     }
     if (id === 'technologies' || id === 'modules') {
       await loadTechsAndModules()
     }
-  }, [loadTechsAndModules, loadWorkItems])
+  }, [loadTechsAndModules, loadWorkItemTypes, loadWorkItems])
 
   const renderSection = () => {
     switch (activeSection) {
       case 'profile':
         return <AccountProfileSection />
+      case 'work-item-types':
+        return <WorkItemTypesSection items={workItemTypes} onRefresh={loadWorkItemTypes} canManage={canManageWorkItems} />
       case 'external-work-items':
-        return <ExternalWorkItemsSection items={workItems} onRefresh={loadWorkItems} canManage={canManageWorkItems} />
+        return <ExternalWorkItemsSection items={workItems} workItemTypes={workItemTypes} onRefresh={async () => {
+          await Promise.all([loadWorkItems(), loadWorkItemTypes()])
+        }} canManage={canManageWorkItems} />
       case 'calendar':
         return <CalendarSection readOnly={!canManageCalendar} />
       case 'technologies':

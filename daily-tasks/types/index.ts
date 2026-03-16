@@ -1,10 +1,10 @@
-import { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, ExternalWorkItem, IncidencePageType } from '@prisma/client'
+import { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, IncidencePageType } from '@prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
 export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
-export type { Technology }
-export type { Task, Attachment, IncidencePage, ExternalWorkItem, IncidencePageType }
+export type { Technology, WorkItemType }
+export type { Task, Attachment, IncidencePage, IncidencePageType }
 
 export type ModuleWithTech = ModulePrisma & { technology: Technology }
 
@@ -49,7 +49,21 @@ export type AttachmentWithDetails = Attachment & {
   uploadedBy: User
 }
 
-export type ExternalWorkItemWithAttachments = ExternalWorkItem & {
+export interface WorkItemTypeOption {
+  id: number
+  name: string
+}
+
+export interface ExternalWorkItemSummary {
+  id: number
+  externalId: number
+  title: string | null
+  workItemTypeId: number
+  workItemType: WorkItemTypeOption
+  type: string
+}
+
+export type ExternalWorkItemWithAttachments = ExternalWorkItemSummary & {
   attachments: AttachmentWithDetails[]
 }
 
@@ -112,7 +126,7 @@ export interface IncidenceGanttData {
 export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
-  externalWorkItem: Pick<ExternalWorkItem, 'id' | 'type' | 'externalId'> | null
+  externalWorkItem: Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean

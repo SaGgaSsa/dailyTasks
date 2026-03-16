@@ -5,6 +5,7 @@ import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistViewClient } from './_components/tracklist-view-client'
 import { IncidencePageType } from '@prisma/client'
 import { pageHasMeaningfulContent } from '@/lib/incidence-pages'
+import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 interface Props {
   params: Promise<{ tracklistId: string }>
@@ -24,7 +25,7 @@ export default async function TracklistDetailPage({ params }: Props) {
       include: {
         reportedBy: { select: { id: true, name: true, username: true } },
         assignedTo: { select: { id: true, name: true, username: true } },
-        externalWorkItem: { select: { id: true, type: true, externalId: true } },
+        externalWorkItem: { select: externalWorkItemBaseSelect },
         dismissedBy: { select: { id: true, name: true, username: true } },
         module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
         incidence: {
@@ -52,6 +53,7 @@ export default async function TracklistDetailPage({ params }: Props) {
 
       return {
         ...ticket,
+        externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
         scriptPageId: scriptPage?.id ?? null,
         hasScriptsContent: pageHasMeaningfulContent(scriptPage?.content ?? null),
         incidenceGantt: inc ? {

@@ -18,7 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { IncidenceWithDetails, Task } from '@/types'
+import { IncidenceWithDetails, Task, ExternalWorkItemSummary } from '@/types'
 import { TaskType, TaskStatus, Priority } from '@/types/enums'
 import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
@@ -29,7 +29,7 @@ import { TaskItemRow } from '@/components/board/task-item-row'
 import { createIncidence, getIncidenceWithUsers, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
-import { User, ExternalWorkItem } from '@prisma/client'
+import { User } from '@prisma/client'
 import { toast } from 'sonner'
 
 interface IncidenceFormProps {
@@ -98,7 +98,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
 
     const [users, setUsers] = useState<User[]>([])
     const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
-    const [externalWorkItems, setExternalWorkItems] = useState<ExternalWorkItem[]>([])
+    const [externalWorkItems, setExternalWorkItems] = useState<ExternalWorkItemSummary[]>([])
     const [isDescriptionManuallyEdited, setIsDescriptionManuallyEdited] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)

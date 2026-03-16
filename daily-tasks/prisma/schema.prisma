@@ -76,6 +76,14 @@ model Module {
   @@map("modules")
 }
 
+model WorkItemType {
+  id                Int                @id @default(autoincrement())
+  name              String             @unique
+  externalWorkItems ExternalWorkItem[]
+
+  @@map("work_item_types")
+}
+
 enum Priority {
   LOW
   MEDIUM
@@ -104,17 +112,18 @@ enum TicketType {
 }
 
 model ExternalWorkItem {
-  id         Int        @id @default(autoincrement())
-  type       TaskType
-  externalId Int
-  title      String?
+  id             Int          @id @default(autoincrement())
+  workItemTypeId Int
+  workItemType   WorkItemType @relation(fields: [workItemTypeId], references: [id])
+  externalId     Int
+  title          String?
 
   incidences   Incidence[]
   attachments  Attachment[]
   qaTickets    TicketQA[]
   tracklists   Tracklist[]
 
-  @@unique([type, externalId])
+  @@unique([workItemTypeId, externalId])
   @@map("external_work_items")
 }
 

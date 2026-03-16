@@ -9,6 +9,7 @@ import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput 
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
+import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 const DISMISSED_INCIDENCE_ERROR = 'No puede modificar una incidencia desestimada'
 
@@ -83,6 +84,7 @@ async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
 const incidenceDetailsInclude = {
     externalWorkItem: {
         include: {
+            workItemType: true,
             attachments: {
                 include: {
                     uploadedBy: true
@@ -121,11 +123,22 @@ type IncidenceDetailsPayload = Prisma.IncidenceGetPayload<{
     include: typeof incidenceDetailsInclude
 }>
 
+function serializeIncidence(incidence: IncidenceDetailsPayload): IncidenceWithDetails {
+    return {
+        ...incidence,
+        status: incidence.status as import('@/types/enums').TaskStatus,
+        priority: incidence.priority as import('@/types/enums').Priority,
+        externalWorkItem: serializeExternalWorkItem(incidence.externalWorkItem),
+    }
+}
+
 const getIncidenceCached = cache(async (id: number) => {
-    return db.incidence.findUnique({
+    const incidence = await db.incidence.findUnique({
         where: { id },
         include: incidenceDetailsInclude
     })
+
+    return incidence ? serializeIncidence(incidence) : null
 })
 
 const getUsersCached = cache(async () => {
@@ -254,8 +267,16 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             return { success: false, error: 'Tecnología no válida' }
         }
 
+        const workItemType = await db.workItemType.findUnique({
+            where: { name: data.type },
+            select: { id: true },
+        })
+        if (!workItemType) {
+            return { success: false, error: 'Tipo de trámite no válido' }
+        }
+
         const workItem = await db.externalWorkItem.findUnique({
-            where: { type_externalId: { type: data.type, externalId: data.externalId } },
+            where: { workItemTypeId_externalId: { workItemTypeId: workItemType.id, externalId: data.externalId } },
         })
         if (!workItem) {
             return { success: false, error: 'El trámite externo no existe. Debe crearse primero por API externa.' }
@@ -437,7 +458,7 @@ export async function getIncidences({ viewType, search, tech, status, assignee, 
             })
         }
 
-        return { data: filteredIncidences as IncidenceWithDetails[] }
+        return { data: filteredIncidences.map(serializeIncidence) }
     } catch (error) {
         console.error('Error getting incidences:', error)
         return { data: [], error: t(locale as Locale, 'errors.fetchError') }
@@ -448,7 +469,7 @@ export async function getIncidence(id: number): Promise<IncidenceWithDetails | n
     try {
         await new Promise(resolve => setTimeout(resolve, 50))
         const incidence = await getIncidenceCached(id)
-        return incidence as IncidenceWithDetails | null
+        return incidence
     } catch (error) {
         console.error('Error getting incidence:', error)
         return null
@@ -471,7 +492,7 @@ export async function getIncidencePageData(id: number): Promise<{
         ])
 
         return {
-            incidence: incidence as IncidenceWithDetails | null,
+            incidence,
             users
         }
     } catch (error) {
@@ -482,10 +503,19 @@ export async function getIncidencePageData(id: number): Promise<{
 
 export async function getIncidenceWithUsers(type: TaskType, externalId: number): Promise<GetIncidenceWithUsersResult> {
     try {
+        const workItemType = await db.workItemType.findUnique({
+            where: { name: type },
+            select: { id: true },
+        })
+
+        if (!workItemType) {
+            return { incidence: null, users: await getUsersCached() }
+        }
+
         const [incidence, users] = await Promise.all([
             db.incidence.findFirst({
                 where: {
-                    externalWorkItem: { type, externalId }
+                    externalWorkItem: { workItemTypeId: workItemType.id, externalId }
                 },
                 include: incidenceDetailsInclude
             }),
@@ -493,7 +523,7 @@ export async function getIncidenceWithUsers(type: TaskType, externalId: number):
         ])
 
         return {
-            incidence: incidence as IncidenceWithDetails | null,
+            incidence: incidence ? serializeIncidence(incidence) : null,
             users
         }
     } catch (error) {
@@ -819,7 +849,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
 
         revalidatePath('/dashboard')
         revalidatePath('/tracklists')
-        return { success: true, data: finalIncidence as IncidenceWithDetails }
+        return { success: true, data: serializeIncidence(finalIncidence) }
     } catch (error) {
         console.error('Error updating incidence:', error)
         return { success: false, error: 'Error al actualizar.' }
@@ -1104,7 +1134,7 @@ export async function saveIncidenceTaskChanges(
             autoTransitionedToReview: txResult.autoTransitionedToReview,
             reopened: txResult.reopened,
             message,
-            data: finalIncidence as IncidenceWithDetails
+            data: serializeIncidence(finalIncidence)
         }
     } catch (error) {
         console.error('Error saving incidence task changes:', error)
@@ -1674,17 +1704,12 @@ export async function searchActiveIncidences(query: string, selectedIncidences: 
 
         const workItems = await db.externalWorkItem.findMany({
             where,
-            select: {
-                id: true,
-                type: true,
-                externalId: true,
-                title: true
-            },
+            select: externalWorkItemBaseSelect,
             take: 10,
-            orderBy: { externalId: 'asc' }
+            orderBy: [{ workItemType: { name: 'asc' } }, { externalId: 'asc' }]
         })
 
-        return { success: true, data: workItems }
+        return { success: true, data: workItems.map(serializeExternalWorkItem) }
     } catch (error) {
         console.error('Error searching incidences:', error)
         return { success: false, error: 'Error al buscar incidencias' }

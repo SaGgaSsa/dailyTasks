@@ -11,6 +11,7 @@ import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/e
 import { TaskStatus, Priority as PrismaPriority, Prisma, IncidencePageType } from '@prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { ensureSystemScriptsPage, pageHasMeaningfulContent } from '@/lib/incidence-pages'
+import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 interface CreateTracklistData {
     title: string
@@ -40,7 +41,7 @@ interface CreateTicketData {
 const ticketDetailsInclude = {
     reportedBy: { select: { id: true, name: true, username: true } },
     assignedTo: { select: { id: true, name: true, username: true } },
-    externalWorkItem: { select: { id: true, type: true, externalId: true } },
+    externalWorkItem: { select: externalWorkItemBaseSelect },
     dismissedBy: { select: { id: true, name: true, username: true } },
     module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
     incidence: {
@@ -80,6 +81,7 @@ function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
 
     return {
         ...ticket,
+        externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
         scriptPageId: scriptPage?.id ?? null,
         hasScriptsContent: pageHasMeaningfulContent((scriptPage?.content ?? null) as Prisma.JsonValue | null),
         incidenceGantt,
@@ -123,14 +125,18 @@ async function runAssignmentTransaction(
         const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
 
         const workItem = ticket.externalWorkItemId
-            ? await db.externalWorkItem.findUnique({ where: { id: ticket.externalWorkItemId } })
+            ? await db.externalWorkItem.findUnique({
+                where: { id: ticket.externalWorkItemId },
+                select: externalWorkItemBaseSelect,
+            })
             : null
 
         if (!workItem) {
             return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
         }
 
-        const title = workItem.title || `${titlePrefix} – ${workItem.type} ${workItem.externalId}`
+        const serializedWorkItem = workItem ? serializeExternalWorkItem(workItem) : null
+        const title = serializedWorkItem?.title || `${titlePrefix} – ${serializedWorkItem?.type ?? ''} ${serializedWorkItem?.externalId ?? ''}`
 
         await db.$transaction(async (tx) => {
             const newIncidence = await tx.incidence.create({
@@ -335,7 +341,7 @@ export async function getTracklistForEdit(tracklistId: number) {
             where: { id: tracklistId },
             select: {
                 id: true, title: true, description: true, dueDate: true,
-                externalWorkItems: { select: { id: true, type: true, externalId: true } }
+                externalWorkItems: { select: externalWorkItemBaseSelect }
             }
         })
         if (!tracklist) return { success: false, error: 'Tracklist no encontrado' }
@@ -351,7 +357,7 @@ export async function getTracklistForEdit(tracklistId: number) {
             success: true,
             data: {
                 ...tracklist,
-                externalWorkItems: tracklist.externalWorkItems.map(w => ({ ...w, title: null as string | null })),
+                externalWorkItems: tracklist.externalWorkItems.map(w => ({ ...serializeExternalWorkItem(w), title: null as string | null })),
                 lockedWorkItemIds
             }
         }
@@ -450,13 +456,13 @@ export async function getTracklistExternalWorkItems(tracklistId: number) {
                 description: true,
                 dueDate: true,
                 externalWorkItems: {
-                    select: { id: true, type: true, externalId: true, title: true }
+                    select: externalWorkItemBaseSelect
                 }
             }
         })
         return {
             success: true,
-            data: tracklist?.externalWorkItems ?? [],
+            data: tracklist?.externalWorkItems.map(serializeExternalWorkItem) ?? [],
             tracklistDetails: tracklist ? { description: tracklist.description, dueDate: tracklist.dueDate } : null
         }
     } catch (error) {
@@ -736,7 +742,7 @@ export async function getGanttData() {
                             select: {
                                 id: true, description: true, status: true, priority: true,
                                 startedAt: true, completedAt: true, estimatedTime: true, createdAt: true,
-                                externalWorkItem: { select: { id: true, type: true, externalId: true } },
+                                externalWorkItem: { select: externalWorkItemBaseSelect },
                                 technology: { select: { name: true } },
                                 assignments: {
                                     where: { isAssigned: true },
@@ -765,6 +771,7 @@ export async function getGanttData() {
                     return true
                 }).map((inc) => ({
                     ...inc,
+                    externalWorkItem: serializeExternalWorkItem(inc.externalWorkItem),
                     status: inc.status as import('@/types/enums').TaskStatus,
                     ticket: inc.qaTickets[0] ?? null,
                 }))

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { db } from '@/lib/db'
-import { TaskType } from '@/types/enums'
 
 interface CreateExternalWorkItemRequest {
   type?: string
@@ -24,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CreateExternalWorkItemRequest = await request.json()
-    const type = body.type as TaskType | undefined
+    const type = body.type?.trim()
     const title = body.title?.trim()
     const parsedExternalId = Number(body.externalId)
 
@@ -42,7 +41,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!Object.values(TaskType).includes(type)) {
+    const workItemType = await db.workItemType.findUnique({
+      where: { name: type },
+      select: { id: true, name: true },
+    })
+
+    if (!workItemType) {
       return NextResponse.json(
         { error: `Tipo inválido: ${body.type}` },
         { status: 400 }
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingWorkItem = await db.externalWorkItem.findUnique({
-      where: { type_externalId: { type, externalId: parsedExternalId } },
+      where: { workItemTypeId_externalId: { workItemTypeId: workItemType.id, externalId: parsedExternalId } },
       select: { id: true },
     })
 
@@ -63,9 +67,14 @@ export async function POST(request: NextRequest) {
 
     const workItem = await db.externalWorkItem.create({
       data: {
-        type,
+        workItemTypeId: workItemType.id,
         externalId: parsedExternalId,
         title,
+      },
+      include: {
+        workItemType: {
+          select: { name: true },
+        },
       },
     })
 
@@ -75,7 +84,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         id: workItem.id,
-        type: workItem.type,
+        type: workItem.workItemType.name,
         externalId: workItem.externalId,
         title: workItem.title,
       },

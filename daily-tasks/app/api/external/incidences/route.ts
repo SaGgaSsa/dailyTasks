@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { TaskType, Priority, TaskStatus } from '@/types/enums'
+import { Priority, TaskStatus } from '@/types/enums'
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
@@ -109,9 +109,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const taskType = type as TaskType
+    const normalizedType = type.trim()
+    const workItemType = await db.workItemType.findUnique({
+      where: { name: normalizedType },
+      select: { id: true, name: true },
+    })
 
-    if (!Object.values(TaskType).includes(taskType)) {
+    if (!workItemType) {
       return NextResponse.json(
         { success: false, error: `Tipo inválido: ${type}` },
         { status: 400 }
@@ -135,13 +139,13 @@ export async function POST(request: NextRequest) {
     }
 
     const workItem = await db.externalWorkItem.findUnique({
-      where: { type_externalId: { type: taskType, externalId: parsedExternalId } },
+      where: { workItemTypeId_externalId: { workItemTypeId: workItemType.id, externalId: parsedExternalId } },
     })
     if (!workItem) {
       return NextResponse.json(
         {
           success: false,
-          error: `No existe ExternalWorkItem para type=${taskType} y externalId=${parsedExternalId}`,
+          error: `No existe ExternalWorkItem para type=${workItemType.name} y externalId=${parsedExternalId}`,
         },
         { status: 400 }
       )

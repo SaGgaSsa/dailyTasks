@@ -6,13 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { searchActiveIncidences } from '@/app/actions/incidence-actions'
+import type { ExternalWorkItemSummary } from '@/types'
 
-interface IncidenceQueryResult {
-    id: number
-    type: string
-    externalId: number
-    title: string | null
-}
+type IncidenceQueryResult = Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'title'>
 
 interface IncidenceQueryProps {
     selectedIncidences: IncidenceQueryResult[]
@@ -29,6 +25,7 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const selectedIdsRef = useRef<number[]>([])
+    const popoverOpen = isOpen && query.length >= 3 && !isSearching && isDebounced
 
     // Keep selectedIdsRef in sync with selectedIncidences
     useEffect(() => {
@@ -44,7 +41,8 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
 
         setIsSearching(true)
         const result = await searchActiveIncidences(searchQuery, selectedIdsRef.current)
-        setResults(result.success ? (result.data as IncidenceQueryResult[]) : [])
+        setResults(result.success ? (result.data ?? []) : [])
+        setIsOpen(true)
         setIsSearching(false)
     }, [])
 
@@ -74,14 +72,6 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
         }
     }, [query, performSearch])
 
-    useEffect(() => {
-        if (query.length >= 3 && !isSearching && isDebounced) {
-            setIsOpen(true)
-        } else if (query.length < 3) {
-            setIsOpen(false)
-        }
-    }, [results, query, isSearching, isDebounced])
-
     const handleSelect = (incidence: IncidenceQueryResult) => {
         const newSelected = [...selectedIncidences, incidence]
         onChange(newSelected)
@@ -103,7 +93,7 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
 
     return (
         <div className="space-y-3">
-            <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <Popover open={popoverOpen} onOpenChange={setIsOpen}>
                 <PopoverTrigger asChild>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

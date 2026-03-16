@@ -57,9 +57,15 @@ export async function createTechnologyModule() {
 }
 
 export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
+  const workItemType = await db.workItemType.upsert({
+    where: { name: type },
+    update: {},
+    create: { name: type },
+  })
+
   return db.externalWorkItem.create({
     data: {
-      type,
+      workItemTypeId: workItemType.id,
       externalId: sequence * 100,
       title: nextValue('work-item'),
     },

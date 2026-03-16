@@ -3,10 +3,10 @@
 import { unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { TaskStatus, TaskType, Priority } from '@/types/enums'
 import { User, UserRole } from '@prisma/client'
 import { createUserSchema, updateUserSchema } from '@/types'
 import bcrypt from 'bcryptjs'
+import { serializeExternalWorkItem } from '@/lib/work-item-types'
 
 interface GetUsersResult {
     data: User[]
@@ -214,7 +214,7 @@ export async function getUserDetails(userId: number) {
       include: {
         assignments: {
           include: {
-            incidence: { include: { externalWorkItem: true } },
+            incidence: { include: { externalWorkItem: { include: { workItemType: true } } } },
           },
           orderBy: { incidence: { updatedAt: 'desc' } },
           take: 5,
@@ -231,7 +231,10 @@ export async function getUserDetails(userId: number) {
       return null
     }
 
-    const assignedIncidences = user.assignments.map(a => a.incidence)
+    const assignedIncidences = user.assignments.map((a) => ({
+      ...a.incidence,
+      externalWorkItem: a.incidence.externalWorkItem ? serializeExternalWorkItem(a.incidence.externalWorkItem) : null,
+    }))
     const totalTasks = user._count.assignments
     const pendingTasks = assignedIncidences.filter(
       (i) => i.status !== 'DONE' && i.status !== 'DISMISSED'

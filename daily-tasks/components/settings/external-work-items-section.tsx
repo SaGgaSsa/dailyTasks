@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalWorkItem, TaskType } from '@prisma/client'
 import { createExternalWorkItem, deleteExternalWorkItem } from '@/app/actions/external-work-items'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,28 +31,24 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Trash2, Save } from 'lucide-react'
 import { toast } from 'sonner'
-
-const TASK_TYPES: { value: TaskType; label: string }[] = [
-  { value: 'I_CASO', label: 'I_CASO' },
-  { value: 'I_CONS', label: 'I_CONS' },
-  { value: 'I_MODAPL', label: 'I_MODAPL' },
-]
+import type { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
 
 interface NewRow {
-  type: TaskType | ''
+  workItemTypeId: string
   externalId: string
   title: string
 }
 
-const EMPTY_ROW: NewRow = { type: '', externalId: '', title: '' }
+const EMPTY_ROW: NewRow = { workItemTypeId: '', externalId: '', title: '' }
 
 interface ExternalWorkItemsSectionProps {
-  items: ExternalWorkItem[]
+  items: ExternalWorkItemSummary[]
+  workItemTypes: WorkItemTypeOption[]
   onRefresh: () => Promise<void>
   canManage: boolean
 }
 
-export function ExternalWorkItemsSection({ items, onRefresh, canManage }: ExternalWorkItemsSectionProps) {
+export function ExternalWorkItemsSection({ items, workItemTypes, onRefresh, canManage }: ExternalWorkItemsSectionProps) {
   const [newRow, setNewRow] = useState<NewRow>({ ...EMPTY_ROW })
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,14 +56,14 @@ export function ExternalWorkItemsSection({ items, onRefresh, canManage }: Extern
 
   const handleCreate = async () => {
     setError(null)
-    if (!newRow.type || !newRow.externalId || !newRow.title.trim()) {
+    if (!newRow.workItemTypeId || !newRow.externalId || !newRow.title.trim()) {
       setError('Todos los campos son requeridos')
       return
     }
 
     setIsPending(true)
     const result = await createExternalWorkItem({
-      type: newRow.type as TaskType,
+      workItemTypeId: parseInt(newRow.workItemTypeId, 10),
       externalId: parseInt(newRow.externalId, 10),
       title: newRow.title.trim(),
     })
@@ -144,16 +139,16 @@ export function ExternalWorkItemsSection({ items, onRefresh, canManage }: Extern
               <TableRow>
                 <TableCell className="py-1.5 px-2">
                   <Select
-                    value={newRow.type}
-                    onValueChange={(value) => setNewRow({ ...newRow, type: value as TaskType })}
+                    value={newRow.workItemTypeId}
+                    onValueChange={(value) => setNewRow({ ...newRow, workItemTypeId: value })}
                   >
                     <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TASK_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
+                      {workItemTypes.map((itemType) => (
+                        <SelectItem key={itemType.id} value={String(itemType.id)}>
+                          {itemType.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
