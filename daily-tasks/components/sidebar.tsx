@@ -92,10 +92,10 @@ export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
                 Administration
               </div>
             )}
-            <Link href="/dashboard/users">
+            <Link href="/users">
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/users' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/users' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
               >
                 <Users className="h-4 w-4" />
                 {isOpen && <span>{t.users.title}</span>}

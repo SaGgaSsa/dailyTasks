@@ -12,6 +12,33 @@ interface CalendarSectionProps {
   readOnly?: boolean
 }
 
+let cachedNonWorkingDays: Date[] | null = null
+let nonWorkingDaysRequest: Promise<{ success: boolean; data?: Date[]; error?: string }> | null = null
+
+async function loadNonWorkingDays() {
+  if (cachedNonWorkingDays) {
+    return { success: true as const, data: cachedNonWorkingDays }
+  }
+
+  if (!nonWorkingDaysRequest) {
+    nonWorkingDaysRequest = getNonWorkingDays()
+  }
+
+  const result = await nonWorkingDaysRequest
+
+  if (result.success && result.data) {
+    cachedNonWorkingDays = result.data.map((d) => new Date(d))
+  }
+
+  nonWorkingDaysRequest = null
+
+  if (cachedNonWorkingDays) {
+    return { success: true as const, data: cachedNonWorkingDays }
+  }
+
+  return result
+}
+
 export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
@@ -21,14 +48,23 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    let isMounted = true
+
     async function load() {
-      const result = await getNonWorkingDays()
-      if (result.success && result.data) {
+      const result = await loadNonWorkingDays()
+      if (isMounted && result.success && result.data) {
         setSelected(result.data.map((d) => new Date(d)))
       }
-      setLoading(false)
+      if (isMounted) {
+        setLoading(false)
+      }
     }
+
     load()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const handleSave = async () => {
@@ -36,6 +72,7 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
     const result = await syncNonWorkingDays(selected)
     setSaving(false)
     if (result.success) {
+      cachedNonWorkingDays = selected.map((d) => new Date(d))
       toast.success('Días no laborables guardados')
     } else {
       toast.error(result.error || 'Error al guardar')
