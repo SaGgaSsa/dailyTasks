@@ -17,12 +17,14 @@ export interface IncidenceTaskCreateInput {
   userId: number
   title: string
   isCompleted: boolean
+  isPinned?: boolean
 }
 
 export interface IncidenceTaskUpdateInput {
   taskId: number
   title: string
   isCompleted: boolean
+  isPinned?: boolean
 }
 
 export interface SaveIncidenceTaskChangesInput {

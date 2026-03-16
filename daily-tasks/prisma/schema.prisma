@@ -175,6 +175,7 @@ model Task {
   description String?   @db.Text
   isQaReported Boolean  @default(false)
   isCompleted Boolean   @default(false)
+  isPinned    Boolean   @default(false)
   completedAt DateTime?
 
   assignmentId Int

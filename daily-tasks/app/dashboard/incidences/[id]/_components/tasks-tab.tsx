@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
 import { saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
-import { Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
-import { TaskItemRow } from '@/components/board/task-item-row'
+import { TaskListSection } from '@/components/board/task-list-section'
 import { IncidencePageType } from '@prisma/client'
 
 interface TasksTabProps {
@@ -46,6 +46,8 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     )
     const [draftAssignees, setDraftAssignees] = useState<Set<number>>(new Set())
     const [draftRemovedAssignees, setDraftRemovedAssignees] = useState<Set<number>>(new Set())
+    const [tasksToPinToggle, setTasksToPinToggle] = useState<Set<number>>(new Set())
+    const [pinnedDraftIds, setPinnedDraftIds] = useState<Set<string>>(new Set())
 
     const assignedUserIds = new Set(incidence.assignments.map(a => a.userId))
     const scriptPage = incidence.pages.find((page) => page.pageType === IncidencePageType.SYSTEM_SCRIPTS) ?? null
@@ -61,8 +63,8 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const newAssignees = allUsers.filter(u => draftAssignees.has(u.id))
 
     const unassignedUsers = allUsers
-        .filter(u => 
-            (!assignedUserIds.has(u.id) || draftRemovedAssignees.has(u.id)) && 
+        .filter(u =>
+            (!assignedUserIds.has(u.id) || draftRemovedAssignees.has(u.id)) &&
             !draftAssignees.has(u.id)
         )
         .sort((a, b) => {
@@ -102,12 +104,26 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
     const handleRemoveDraftTask = (tempId: string) => {
         setDraftTasks(prev => prev.filter(t => t.tempId !== tempId))
+        setPinnedDraftIds(prev => {
+            const next = new Set(prev)
+            next.delete(tempId)
+            return next
+        })
     }
 
     const handleToggleDraftTask = (tempId: string) => {
         setDraftTasks(prev => prev.map(t =>
             t.tempId === tempId ? { ...t, isCompleted: !t.isCompleted } : t
         ))
+        // Auto-unpin when completing a draft
+        const draft = draftTasks.find(t => t.tempId === tempId)
+        if (draft && !draft.isCompleted) {
+            setPinnedDraftIds(prev => {
+                const next = new Set(prev)
+                next.delete(tempId)
+                return next
+            })
+        }
     }
 
     const handleToggleTask = (taskId: number) => {
@@ -120,6 +136,23 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             }
             return next
         })
+        // Auto-unpin when completing a task
+        const task = incidence.assignments.flatMap(a => a.tasks).find(t => t.id === taskId)
+        if (task) {
+            const willBeCompleted = !tasksToToggle.has(taskId) ? !task.isCompleted : task.isCompleted
+            if (willBeCompleted) {
+                setTasksToPinToggle(prev => {
+                    const next = new Set(prev)
+                    // Ensure pinned state is off for completed tasks
+                    if (task.isPinned && !next.has(taskId)) {
+                        next.add(taskId) // toggle off
+                    } else if (!task.isPinned && next.has(taskId)) {
+                        next.delete(taskId) // was toggled on, remove
+                    }
+                    return next
+                })
+            }
+        }
     }
 
     const handleDeleteTask = (taskId: number) => {
@@ -129,6 +162,30 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 next.delete(taskId)
             } else {
                 next.add(taskId)
+            }
+            return next
+        })
+    }
+
+    const handleTogglePin = (taskId: number) => {
+        setTasksToPinToggle(prev => {
+            const next = new Set(prev)
+            if (next.has(taskId)) {
+                next.delete(taskId)
+            } else {
+                next.add(taskId)
+            }
+            return next
+        })
+    }
+
+    const handleToggleDraftPin = (tempId: string) => {
+        setPinnedDraftIds(prev => {
+            const next = new Set(prev)
+            if (next.has(tempId)) {
+                next.delete(tempId)
+            } else {
+                next.add(tempId)
             }
             return next
         })
@@ -228,6 +285,21 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
         })
     }
 
+    const getEffectivePinned = (task: { id: number; isPinned: boolean }) => {
+        const toggled = tasksToPinToggle.has(task.id)
+        return toggled ? !task.isPinned : task.isPinned
+    }
+
+    const getEffectivePinnedIds = (tasks: { id: number; isPinned: boolean }[]): Set<number> => {
+        const ids = new Set<number>()
+        for (const task of tasks) {
+            if (getEffectivePinned(task)) {
+                ids.add(task.id)
+            }
+        }
+        return ids
+    }
+
     const handleSaveChanges = useCallback(async () => {
         try {
             const updatedTasks = incidence.assignments
@@ -236,8 +308,11 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 .map((task) => {
                     const nextTitle = taskEdits[task.id] ?? task.title
                     const nextIsCompleted = tasksToToggle.has(task.id) ? !task.isCompleted : task.isCompleted
+                    const pinToggled = tasksToPinToggle.has(task.id)
+                    const nextIsPinned = pinToggled ? !task.isPinned : task.isPinned
+                    const finalIsPinned = nextIsCompleted ? false : nextIsPinned
 
-                    if (nextTitle === task.title && nextIsCompleted === task.isCompleted) {
+                    if (nextTitle === task.title && nextIsCompleted === task.isCompleted && finalIsPinned === task.isPinned) {
                         return null
                     }
 
@@ -245,6 +320,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                         taskId: task.id,
                         title: nextTitle,
                         isCompleted: nextIsCompleted,
+                        isPinned: finalIsPinned,
                     }
                 })
                 .filter((task): task is NonNullable<typeof task> => task !== null)
@@ -279,6 +355,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                     userId: draft.userId,
                     title: draft.title,
                     isCompleted: draft.isCompleted,
+                    isPinned: draft.isCompleted ? false : pinnedDraftIds.has(draft.tempId),
                 })),
                 updatedTasks,
                 deletedTaskIds: [...tasksToDelete],
@@ -298,9 +375,11 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             setTasksToToggle(new Set())
             setTasksToDelete(new Set())
             setTaskEdits({})
+            setTasksToPinToggle(new Set())
+            setPinnedDraftIds(new Set())
 
             if (result.autoTransitionedToReview) {
-                toast.success('Todas las tareas completadas. Incidencia en revisión.')
+                toast.success('Todas las tareas completadas. Incidencia en revision.')
             } else {
                 toast.success(`${incidence.externalWorkItem.type} ${incidence.externalWorkItem.externalId} actualizada`)
             }
@@ -309,12 +388,14 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             toast.error('Error al guardar cambios')
             throw error
         }
-    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, assigneeHours, draftAssignees, draftRemovedAssignees, incidence, onIncidenceUpdate])
+    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, tasksToPinToggle, pinnedDraftIds, assigneeHours, draftAssignees, draftRemovedAssignees, incidence, onIncidenceUpdate])
 
-    const hasChanges = draftTasks.length > 0 
-        || tasksToToggle.size > 0 
-        || tasksToDelete.size > 0 
+    const hasChanges = draftTasks.length > 0
+        || tasksToToggle.size > 0
+        || tasksToDelete.size > 0
         || Object.keys(taskEdits).length > 0
+        || tasksToPinToggle.size > 0
+        || pinnedDraftIds.size > 0
         || draftAssignees.size > 0
         || draftRemovedAssignees.size > 0
         || Object.keys(assigneeHours).some(uid => {
@@ -347,8 +428,8 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 const realUserId = isNewAssignee ? -assignment.userId : assignment.userId
                 const user = isNewAssignee ? (assignment as { user: typeof allUsers[0] }).user : assignment.user
 
-                const allUserTasks = isNewAssignee 
-                    ? [] 
+                const allUserTasks = isNewAssignee
+                    ? []
                     : assignment.tasks.filter(t => !tasksToDelete.has(t.id))
                 const pendingTasks = allUserTasks.filter(t => {
                     const isToggled = tasksToToggle.has(t.id)
@@ -372,7 +453,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 return (
                     <div key={assignment.id} className="border-b border-border last:border-b-0">
                         <div
-                            className={`flex items-center gap-3 px-3 py-2 ${isExpanded ? 'cursor-pointer hover:bg-accent/30' : 'cursor-pointer hover:bg-accent/30'}`}
+                            className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent/30"
                             onClick={() => toggleAssigneeExpanded(realUserId)}
                         >
                             <Checkbox
@@ -446,170 +527,55 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
 
                         {isExpanded && (
                             <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                                {pendingTasks.map(task => {
-                                    const isToggled = tasksToToggle.has(task.id)
-                                    const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted
-
-                                    return (
-                                        <TaskItemRow
-                                            key={task.id}
-                                            task={task}
-                                            incidenceId={incidence.id}
-                                            scriptPageId={scriptPage?.id ?? null}
-                                            onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
-                                            checked={displayCompleted}
-                                            isEditing={editingTaskId === task.id}
-                                            editValue={taskEdits[task.id] || ''}
-                                            onToggle={() => handleToggleTask(task.id)}
-                                            onEditChange={(value) => setTaskEdits(prev => ({ ...prev, [task.id]: value }))}
-                                            onEditKeyDown={(e) => {
-                                                if (e.key === 'Enter') handleSaveEditTask(task.id)
-                                                if (e.key === 'Escape') handleCancelEditTask(task.id)
-                                            }}
-                                            onEditBlur={() => handleSaveEditTask(task.id)}
-                                            onStartEdit={() => handleStartEditTask(task.id, task.title)}
-                                            onDelete={() => handleDeleteTask(task.id)}
-                                            canToggle={canEditTasks}
-                                            canEdit={canEditTasks}
-                                            canDelete={canEditTasks}
-                                        />
-                                    )
-                                })}
-
-                                {pendingDrafts.map(draft => (
-                                    <div
-                                        key={draft.tempId}
-                                        className="flex items-center gap-2 px-2 py-1 bg-accent/50 rounded group"
-                                    >
-                                        <Checkbox
-                                            checked={draft.isCompleted}
-                                            onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
-                                            className="border-input"
-                                        />
-                                        {editingDraftTaskId === draft.tempId ? (
-                                            <Input
-                                                value={draftTaskEdits[draft.tempId] || ''}
-                                                onChange={(e) => setDraftTaskEdits(prev => ({ ...prev, [draft.tempId]: e.target.value }))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') handleSaveEditDraftTask(draft.tempId)
-                                                    if (e.key === 'Escape') handleCancelEditDraftTask(draft.tempId)
-                                                }}
-                                                onBlur={() => handleSaveEditDraftTask(draft.tempId)}
-                                                className="flex-1 bg-input border-border text-foreground h-6 text-sm"
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <span className={`text-sm text-card-foreground/80 flex-1 ${draft.isCompleted ? 'line-through text-muted-foreground/70' : ''}`}>
-                                                {draftTaskEdits[draft.tempId] || draft.title}
-                                            </span>
-                                        )}
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleStartEditDraftTask(draft.tempId, draft.title)}
-                                                className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
-                                            >
-                                                <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                className="h-5 w-5 text-muted-foreground/70 hover:text-red-400"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {canEditTasks && (
-                                    <Input
-                                        data-assignment-id={realUserId}
-                                        value={newTaskInputs[realUserId] || ''}
-                                        onChange={(e) => {
-                                            const value = e.target.value
-                                            setNewTaskInputs(prev => ({ ...prev, [realUserId]: value }))
-                                            if (value.length >= 3) {
-                                                setTaskInputErrors(prev => ({ ...prev, [assignment.id]: false }))
-                                            }
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                const value = newTaskInputs[realUserId] || ''
-                                                if (value.length >= 3) {
-                                                    handleAddTask(assignment.id, realUserId, value)
-                                                } else {
-                                                    setTaskInputErrors(prev => ({ ...prev, [assignment.id]: true }))
-                                                }
-                                            }
-                                        }}
-                                        className={`bg-background text-foreground text-sm w-full ${taskInputErrors[assignment.id] ? 'border-red-500' : 'border-border'}`}
-                                        placeholder={`Nueva tarea para ${user.name || user.username}...`}
-                                    />
-                                )}
-
-                                {completedTasks.length > 0 && (
-                                    <div className="pt-2 space-y-1">
-                                        {completedTasks.map(task => {
-                                            const isToggled = tasksToToggle.has(task.id)
-                                            const displayCompleted = isToggled ? !task.isCompleted : task.isCompleted
-
-                                            return (
-                                                <TaskItemRow
-                                                    key={task.id}
-                                                    task={task}
-                                                    incidenceId={incidence.id}
-                                                    scriptPageId={scriptPage?.id ?? null}
-                                                    onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
-                                                    checked={displayCompleted}
-                                                    isEditing={false}
-                                                    editValue={taskEdits[task.id] || task.title}
-                                                    onToggle={() => handleToggleTask(task.id)}
-                                                    onEditChange={() => {}}
-                                                    onEditKeyDown={() => {}}
-                                                    onEditBlur={() => {}}
-                                                    canToggle={canEditTasks}
-                                                    canEdit={false}
-                                                    canDelete={false}
-                                                    className="flex items-center gap-2 px-2 py-1 rounded group opacity-60"
-                                                />
-                                            )
-                                        })}
-                                    </div>
-                                )}
-
-                                {completedDrafts.length > 0 && (
-                                    <div className="space-y-1">
-                                        {completedDrafts.map(draft => (
-                                            <div
-                                                key={draft.tempId}
-                                                className="flex items-center gap-2 px-2 py-1 bg-accent/50 rounded group opacity-60"
-                                            >
-                                                <Checkbox
-                                                    checked={draft.isCompleted}
-                                                    onCheckedChange={() => handleToggleDraftTask(draft.tempId)}
-                                                    className="border-input"
-                                                />
-                                                <span className="text-sm line-through text-muted-foreground/70 flex-1">
-                                                    {draftTaskEdits[draft.tempId] || draft.title}
-                                                </span>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleRemoveDraftTask(draft.tempId)}
-                                                    className="h-5 w-5 text-muted-foreground/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                <TaskListSection
+                                    pendingTasks={pendingTasks}
+                                    completedTasks={completedTasks}
+                                    pendingDrafts={pendingDrafts}
+                                    completedDrafts={completedDrafts}
+                                    pinnedTaskIds={getEffectivePinnedIds(pendingTasks)}
+                                    pinnedDraftIds={pinnedDraftIds}
+                                    tasksToToggle={tasksToToggle}
+                                    taskEdits={taskEdits}
+                                    editingTaskId={editingTaskId}
+                                    editingDraftTaskId={editingDraftTaskId}
+                                    draftTaskEdits={draftTaskEdits}
+                                    incidenceId={incidence.id}
+                                    scriptPageId={scriptPage?.id ?? null}
+                                    canEditTasks={canEditTasks}
+                                    newTaskValue={newTaskInputs[realUserId] || ''}
+                                    taskInputError={taskInputErrors[assignment.id] || false}
+                                    assignmentId={assignment.id}
+                                    userId={realUserId}
+                                    onToggleTask={handleToggleTask}
+                                    onDeleteTask={handleDeleteTask}
+                                    onStartEditTask={handleStartEditTask}
+                                    onSaveEditTask={handleSaveEditTask}
+                                    onCancelEditTask={handleCancelEditTask}
+                                    onEditChange={(taskId, value) => setTaskEdits(prev => ({ ...prev, [taskId]: value }))}
+                                    onTogglePin={handleTogglePin}
+                                    onToggleDraftPin={handleToggleDraftPin}
+                                    onToggleDraftTask={handleToggleDraftTask}
+                                    onRemoveDraftTask={handleRemoveDraftTask}
+                                    onStartEditDraftTask={handleStartEditDraftTask}
+                                    onSaveEditDraftTask={handleSaveEditDraftTask}
+                                    onCancelEditDraftTask={handleCancelEditDraftTask}
+                                    onDraftEditChange={(tempId, value) => setDraftTaskEdits(prev => ({ ...prev, [tempId]: value }))}
+                                    onNewTaskChange={(value) => {
+                                        setNewTaskInputs(prev => ({ ...prev, [realUserId]: value }))
+                                        if (value.length >= 3) {
+                                            setTaskInputErrors(prev => ({ ...prev, [assignment.id]: false }))
+                                        }
+                                    }}
+                                    onNewTaskSubmit={() => {
+                                        const value = newTaskInputs[realUserId] || ''
+                                        if (value.length >= 3) {
+                                            handleAddTask(assignment.id, realUserId, value)
+                                        } else {
+                                            setTaskInputErrors(prev => ({ ...prev, [assignment.id]: true }))
+                                        }
+                                    }}
+                                    onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
+                                />
                             </div>
                         )}
                     </div>

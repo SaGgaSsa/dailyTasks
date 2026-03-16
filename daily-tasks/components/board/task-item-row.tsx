@@ -1,7 +1,7 @@
 'use client'
 
 import { KeyboardEvent } from 'react'
-import { FileText, Pencil, Trash2 } from 'lucide-react'
+import { FileText, Pencil, Pin, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -29,9 +29,12 @@ interface TaskItemRowProps {
   onEditBlur: () => void
   onStartEdit?: () => void
   onDelete?: () => void
+  onTogglePin?: () => void
+  isPinned?: boolean
   canToggle?: boolean
   canEdit?: boolean
   canDelete?: boolean
+  canPin?: boolean
   className?: string
 }
 
@@ -49,9 +52,12 @@ export function TaskItemRow({
   onEditBlur,
   onStartEdit,
   onDelete,
+  onTogglePin,
+  isPinned = false,
   canToggle = true,
   canEdit = true,
   canDelete = true,
+  canPin = false,
   className = 'flex items-center gap-2 px-2 py-1 bg-accent/30 rounded group',
 }: TaskItemRowProps) {
   const isQaReported = task.isQaReported === true
@@ -82,6 +88,18 @@ export function TaskItemRow({
         </div>
       )}
       <div className="ml-auto flex items-center gap-1">
+        {canPin && onTogglePin && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onTogglePin}
+            className={`h-5 w-5 ${isPinned ? 'text-amber-400' : 'text-muted-foreground/70 hover:text-card-foreground/80 opacity-0 group-hover:opacity-100 transition-opacity'}`}
+            title={isPinned ? 'Desfijar tarea' : 'Fijar tarea'}
+          >
+            <Pin className="h-3 w-3" />
+          </Button>
+        )}
         {hasDescription && (
           <LongTextSheet
             title="Descripción de la tarea"

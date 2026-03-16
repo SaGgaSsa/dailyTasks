@@ -103,6 +103,7 @@ const incidenceDetailsInclude = {
             tasks: {
                 orderBy: [
                     { isCompleted: 'asc' as const },
+                    { isPinned: 'desc' as const },
                     { completedAt: 'desc' as const }
                 ]
             }
@@ -992,11 +993,14 @@ export async function saveIncidenceTaskChanges(
                     throw new Error('No puede editar tareas completadas')
                 }
 
+                const nextIsPinned = taskChange.isCompleted ? false : (taskChange.isPinned ?? task.isPinned)
+
                 await tx.task.update({
                     where: { id: task.id },
                     data: {
                         title: taskChange.title,
                         isCompleted: taskChange.isCompleted,
+                        isPinned: nextIsPinned,
                         completedAt: taskChange.isCompleted ? (task.completedAt ?? new Date()) : null
                     }
                 })
@@ -1026,6 +1030,7 @@ export async function saveIncidenceTaskChanges(
                         title: draft.title,
                         assignmentId: assignment.id,
                         isCompleted: draft.isCompleted,
+                        isPinned: draft.isCompleted ? false : (draft.isPinned ?? false),
                         completedAt: draft.isCompleted ? new Date() : null,
                         isQaReported: false
                     }
