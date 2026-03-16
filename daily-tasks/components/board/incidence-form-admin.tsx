@@ -814,6 +814,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         <div className="flex items-center gap-2">
                             <IncidenceBadge
                                 type={initialData.externalWorkItem?.type ?? ''}
+                                color={initialData.externalWorkItem?.color}
                                 externalId={initialData.externalWorkItem?.externalId ?? ''}
                                 className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight"
                             />

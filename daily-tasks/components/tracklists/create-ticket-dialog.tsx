@@ -52,6 +52,7 @@ interface ExternalWorkItem {
   id: number
   type: string
   externalId: number
+  color: string | null
 }
 
 interface Props {
@@ -522,7 +523,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                   disabled={!!rejectMode || !!viewMode}
                 >
                   {selectedWorkItem ? (
-                    <IncidenceBadge type={selectedWorkItem.type} externalId={selectedWorkItem.externalId} className="text-xs" />
+                    <IncidenceBadge type={selectedWorkItem.type} color={selectedWorkItem.color} externalId={selectedWorkItem.externalId} className="text-xs" />
                   ) : (
                     <span className="text-xs text-muted-foreground">+ Trámite</span>
                   )}
@@ -560,7 +561,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                               selectedWorkItem?.id === item.id ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <IncidenceBadge type={item.type} externalId={item.externalId} className="text-xs" />
+                          <IncidenceBadge type={item.type} color={item.color} externalId={item.externalId} className="text-xs" />
                         </CommandItem>
                       ))}
                     </CommandGroup>

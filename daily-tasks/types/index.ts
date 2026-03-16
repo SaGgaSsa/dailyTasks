@@ -52,6 +52,7 @@ export type AttachmentWithDetails = Attachment & {
 export interface WorkItemTypeOption {
   id: number
   name: string
+  color: string | null
 }
 
 export interface ExternalWorkItemSummary {
@@ -61,6 +62,7 @@ export interface ExternalWorkItemSummary {
   workItemTypeId: number
   workItemType: WorkItemTypeOption
   type: string
+  color: string | null
 }
 
 export type ExternalWorkItemWithAttachments = ExternalWorkItemSummary & {
@@ -96,7 +98,7 @@ export interface GanttIncidence {
   completedAt: Date | null
   estimatedTime: number | null
   createdAt: Date
-  externalWorkItem: { id: number; type: string; externalId: number }
+  externalWorkItem: { id: number; type: string; externalId: number; color: string | null }
   technology: { name: string }
   assignments: {
     user: Pick<User, 'id' | 'name' | 'username'>
@@ -126,7 +128,7 @@ export interface IncidenceGanttData {
 export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
-  externalWorkItem: Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId'> | null
+  externalWorkItem: Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'color'> | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean

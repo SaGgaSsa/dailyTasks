@@ -160,6 +160,7 @@ const columns: ColumnDef<IncidenceWithDetails>[] = [
             <div className="flex justify-center">
                 <IncidenceBadge
                     type={row.original.externalWorkItem?.type ?? ''}
+                    color={row.original.externalWorkItem?.color}
                     externalId={row.original.externalWorkItem?.externalId ?? ''}
                     className="text-[10px] font-mono leading-none py-1 whitespace-nowrap"
                 />

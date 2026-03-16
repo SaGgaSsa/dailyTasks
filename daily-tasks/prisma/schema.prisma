@@ -79,6 +79,7 @@ model Module {
 model WorkItemType {
   id                Int                @id @default(autoincrement())
   name              String             @unique
+  color             String?            @unique
   externalWorkItems ExternalWorkItem[]
 
   @@map("work_item_types")

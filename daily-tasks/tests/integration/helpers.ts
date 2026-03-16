@@ -1,6 +1,7 @@
 import type { Priority, TaskStatus, TaskType, TicketQAStatus, TicketType } from '@prisma/client'
 
 import { db } from '@/lib/db'
+import { type WorkItemTypeColor } from '@/lib/work-item-color-options'
 import { setMockSession } from '@/tests/integration/setup'
 
 type UserRole = 'ADMIN' | 'DEV' | 'QA'
@@ -57,10 +58,16 @@ export async function createTechnologyModule() {
 }
 
 export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
+  const typeColors: Record<TaskType, WorkItemTypeColor> = {
+    I_MODAPL: 'blue',
+    I_CASO: 'orange',
+    I_CONS: 'purple',
+  }
+
   const workItemType = await db.workItemType.upsert({
     where: { name: type },
-    update: {},
-    create: { name: type },
+    update: { color: typeColors[type] },
+    create: { name: type, color: typeColors[type] },
   })
 
   return db.externalWorkItem.create({

@@ -35,6 +35,7 @@ interface TracklistExternalWorkItem {
   type: string
   externalId: number
   title: string | null
+  color: string | null
 }
 
 interface TracklistForEdit {

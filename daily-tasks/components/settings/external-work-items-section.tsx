@@ -32,6 +32,7 @@ import {
 import { Trash2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
+import { getWorkItemTypeColorOption } from '@/lib/work-item-color-options'
 
 interface NewRow {
   workItemTypeId: string
@@ -115,7 +116,14 @@ export function ExternalWorkItemsSection({ items, workItemTypes, onRefresh, canM
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="py-1.5 px-2 font-mono text-xs">{item.type}</TableCell>
+                <TableCell className="py-1.5 px-2">
+                  <div className="flex items-center gap-2 font-mono text-xs">
+                    {getWorkItemTypeColorOption(item.color) ? (
+                      <span className={`h-2.5 w-2.5 rounded-full ${getWorkItemTypeColorOption(item.color)!.indicatorClassName}`} />
+                    ) : null}
+                    <span>{item.type}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="py-1.5 px-2">{item.externalId}</TableCell>
                 <TableCell className="py-1.5 px-2">{item.title || '—'}</TableCell>
                 {canManage && (
@@ -148,7 +156,12 @@ export function ExternalWorkItemsSection({ items, workItemTypes, onRefresh, canM
                     <SelectContent>
                       {workItemTypes.map((itemType) => (
                         <SelectItem key={itemType.id} value={String(itemType.id)}>
-                          {itemType.name}
+                          <span className="flex items-center gap-2">
+                            {getWorkItemTypeColorOption(itemType.color) ? (
+                              <span className={`h-2.5 w-2.5 rounded-full ${getWorkItemTypeColorOption(itemType.color)!.indicatorClassName}`} />
+                            ) : null}
+                            <span>{itemType.name}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>

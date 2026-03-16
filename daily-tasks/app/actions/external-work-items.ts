@@ -2,13 +2,17 @@
 
 import { unstable_cache, revalidateTag } from 'next/cache'
 import { db } from '@/lib/db'
-import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
+import { WORK_ITEM_TYPE_COLOR_LIMIT, WORK_ITEM_TYPE_COLOR_OPTIONS, type WorkItemTypeColor } from '@/lib/work-item-color-options'
+import { externalWorkItemBaseSelect, serializeExternalWorkItem, serializeWorkItemType } from '@/lib/work-item-types'
 import { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
 
 const workItemTypeSelect = {
   id: true,
   name: true,
+  color: true,
 } as const
+
+const allowedColors = new Set<string>(WORK_ITEM_TYPE_COLOR_OPTIONS.map((option) => option.value))
 
 export const getCachedExternalWorkItems = unstable_cache(
   async (): Promise<ExternalWorkItemSummary[]> => {
@@ -25,10 +29,12 @@ export const getCachedExternalWorkItems = unstable_cache(
 
 export const getCachedWorkItemTypes = unstable_cache(
   async (): Promise<WorkItemTypeOption[]> => {
-    return db.workItemType.findMany({
+    const workItemTypes = await db.workItemType.findMany({
       select: workItemTypeSelect,
       orderBy: { name: 'asc' },
     })
+
+    return workItemTypes.map(serializeWorkItemType)
   },
   ['work-item-types-cache-key'],
   { tags: ['work-item-types'] }
@@ -44,10 +50,12 @@ export async function getExternalWorkItems(): Promise<ExternalWorkItemSummary[]>
 }
 
 export async function getWorkItemTypes(): Promise<WorkItemTypeOption[]> {
-  return db.workItemType.findMany({
+  const workItemTypes = await db.workItemType.findMany({
     select: workItemTypeSelect,
     orderBy: { name: 'asc' },
   })
+
+  return workItemTypes.map(serializeWorkItemType)
 }
 
 interface CreateExternalWorkItemData {
@@ -109,24 +117,40 @@ export async function deleteExternalWorkItem(id: number) {
   }
 }
 
-export async function createWorkItemType(name: string) {
+interface CreateWorkItemTypeData {
+  name: string
+  color?: WorkItemTypeColor | null
+}
+
+export async function createWorkItemType(data: CreateWorkItemTypeData) {
   try {
-    const normalizedName = name.trim()
+    const normalizedName = data.name.trim()
     if (!normalizedName) {
       return { success: false, error: 'El nombre es requerido' }
     }
 
+    const selectedColor = data.color ?? null
+
+    if (selectedColor && !allowedColors.has(selectedColor)) {
+      return { success: false, error: 'El color seleccionado no es válido' }
+    }
+
+    const totalTypes = await db.workItemType.count()
+    if (totalTypes >= WORK_ITEM_TYPE_COLOR_LIMIT) {
+      return { success: false, error: 'Solo se permiten 5 tipos de trámite' }
+    }
+
     const workItemType = await db.workItemType.create({
-      data: { name: normalizedName },
+      data: { name: normalizedName, color: selectedColor },
       select: workItemTypeSelect,
     })
 
     revalidateTag('work-item-types', 'default')
     revalidateTag('external-work-items', 'default')
-    return { success: true, data: workItemType }
+    return { success: true, data: serializeWorkItemType(workItemType) }
   } catch (error) {
     if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2002') {
-      return { success: false, error: 'El tipo de trámite ya existe' }
+      return { success: false, error: 'El nombre o color del tipo de trámite ya existe' }
     }
     return { success: false, error: 'Error al crear el tipo de trámite' }
   }

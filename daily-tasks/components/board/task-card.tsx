@@ -69,6 +69,7 @@ export function TaskCard({ task, onClick, canDrag = true, isDev = false }: TaskC
                 <div className="flex items-center justify-between">
                     <IncidenceBadge
                         type={task.externalWorkItem?.type ?? ''}
+                        color={task.externalWorkItem?.color}
                         externalId={task.externalWorkItem?.externalId ?? ''}
                         className="text-[9px] font-semibold px-1.5 py-0 uppercase tracking-tight flex-shrink-0"
                     />

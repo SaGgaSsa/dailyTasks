@@ -26,7 +26,7 @@ export function TicketKanbanCard({ ticket, assignableUsers, readOnly = false }: 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {ticket.externalWorkItem ? (
-              <IncidenceBadge type={ticket.externalWorkItem.type} externalId={ticket.externalWorkItem.externalId} />
+              <IncidenceBadge type={ticket.externalWorkItem.type} color={ticket.externalWorkItem.color} externalId={ticket.externalWorkItem.externalId} />
             ) : (
               <span className="text-xs text-muted-foreground">—</span>
             )}

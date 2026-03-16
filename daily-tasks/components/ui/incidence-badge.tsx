@@ -1,25 +1,31 @@
 import { Badge } from '@/components/ui/badge'
+import { getWorkItemTypeColorOption, workItemTypeColorMap } from '@/lib/work-item-color-options'
 
-const typeColors: Record<string, string> = {
-    BUG: 'bg-red-500/10 text-red-400 border-red-500/20',
-    FEATURE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    I_MODAPL: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    I_CASO: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    I_CONS: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+const legacyTypeColors: Record<string, string> = {
+    BUG: workItemTypeColorMap.red.badgeClassName,
+    FEATURE: workItemTypeColorMap.green.badgeClassName,
+    I_MODAPL: workItemTypeColorMap.blue.badgeClassName,
+    I_CASO: workItemTypeColorMap.orange.badgeClassName,
+    I_CONS: workItemTypeColorMap.purple.badgeClassName,
 }
 
 interface IncidenceBadgeProps {
     type: string
     externalId: number | string
+    color?: string | null
     className?: string
     variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link'
 }
 
-export function IncidenceBadge({ type, externalId, className = '', variant = 'outline' }: IncidenceBadgeProps) {
+export function IncidenceBadge({ type, externalId, color, className = '', variant = 'outline' }: IncidenceBadgeProps) {
+    const colorClassName = color && getWorkItemTypeColorOption(color)
+        ? getWorkItemTypeColorOption(color)!.badgeClassName
+        : legacyTypeColors[type] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+
     return (
         <Badge
             variant={variant}
-            className={`${typeColors[type] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'} ${className}`}
+            className={`${colorClassName} ${className}`}
         >
             {type} {externalId}
         </Badge>

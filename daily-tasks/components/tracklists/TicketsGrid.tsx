@@ -110,6 +110,7 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                     {ticket.externalWorkItem ? (
                       <IncidenceBadge
                         type={ticket.externalWorkItem.type}
+                        color={ticket.externalWorkItem.color}
                         externalId={ticket.externalWorkItem.externalId}
                         className="text-[10px] font-mono"
                       />

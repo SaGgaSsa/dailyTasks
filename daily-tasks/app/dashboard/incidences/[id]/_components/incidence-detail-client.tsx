@@ -88,6 +88,7 @@ export function IncidenceDetailClient({
                 <div className="flex items-center gap-3">
                     <IncidenceBadge
                         type={incidenceData.externalWorkItem.type}
+                        color={incidenceData.externalWorkItem.color}
                         externalId={incidenceData.externalWorkItem.externalId}
                         className="text-sm font-medium"
                     />

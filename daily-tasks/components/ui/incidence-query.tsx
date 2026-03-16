@@ -8,7 +8,7 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { searchActiveIncidences } from '@/app/actions/incidence-actions'
 import type { ExternalWorkItemSummary } from '@/types'
 
-type IncidenceQueryResult = Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'title'>
+type IncidenceQueryResult = Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'title' | 'color'>
 
 interface IncidenceQueryProps {
     selectedIncidences: IncidenceQueryResult[]
@@ -122,7 +122,7 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
                                             onClick={() => handleSelect(incidence)}
                                             className="w-full text-left px-3 py-2 hover:bg-accent text-sm cursor-pointer whitespace-nowrap flex items-center gap-2"
                                         >
-                                            <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs shrink-0" />
+                                            <IncidenceBadge type={incidence.type} color={incidence.color} externalId={incidence.externalId} className="text-xs shrink-0" />
                                             <span className="text-muted-foreground truncate">{incidence.title}</span>
                                         </button>
                                     ))}
@@ -145,7 +145,7 @@ export function IncidenceQuery({ selectedIncidences, onChange, lockedIds }: Inci
                             className="flex items-center justify-between bg-secondary rounded-md px-3 py-2 text-sm"
                         >
                             <span className="flex items-center gap-2 min-w-0">
-                                <IncidenceBadge type={incidence.type} externalId={incidence.externalId} className="text-xs shrink-0" />
+                                <IncidenceBadge type={incidence.type} color={incidence.color} externalId={incidence.externalId} className="text-xs shrink-0" />
                                 <span className="text-muted-foreground truncate">{incidence.title}</span>
                             </span>
                             {!lockedIds?.includes(incidence.id) && (
