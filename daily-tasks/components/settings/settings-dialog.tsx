@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { User, FileText, CalendarDays } from 'lucide-react'
-import { ExternalWorkItem } from '@prisma/client'
+import { User, FileText, CalendarDays, Blocks, Layers } from 'lucide-react'
+import { ExternalWorkItem, Module, Technology } from '@prisma/client'
 import { getExternalWorkItems } from '@/app/actions/external-work-items'
+import { getTechsAndModulesForSettings } from '@/app/actions/tech'
 import {
   Dialog,
   DialogContent,
@@ -14,12 +15,19 @@ import { SettingsNav, type SettingsSection } from '@/components/settings/setting
 import { AccountProfileSection } from '@/components/settings/account-profile-section'
 import { ExternalWorkItemsSection } from '@/components/settings/external-work-items-section'
 import { CalendarSection } from '@/components/settings/calendar-section'
+import { TechModulesSection } from '@/components/settings/tech-modules-section'
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'profile', label: 'Perfil', icon: User, groupLabel: 'Cuenta' },
   { id: 'external-work-items', label: 'Trámites', icon: FileText, groupLabel: 'Integraciones' },
   { id: 'calendar', label: 'Calendario', icon: CalendarDays, groupLabel: 'Administración' },
+  { id: 'technologies', label: 'Tecnologías', icon: Layers, groupLabel: 'Administración' },
+  { id: 'modules', label: 'Módulos', icon: Blocks, groupLabel: 'Administración' },
 ]
+
+interface TechnologyWithModules extends Technology {
+  modules: Module[]
+}
 
 interface SettingsDialogProps {
   open: boolean
@@ -29,11 +37,13 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = useState('profile')
   const [workItems, setWorkItems] = useState<ExternalWorkItem[]>([])
+  const [techs, setTechs] = useState<TechnologyWithModules[]>([])
   const { data: session } = useSession()
   const userRole = session?.user?.role
   const isAdmin = userRole === 'ADMIN'
   const canManageWorkItems = userRole === 'ADMIN' || userRole === 'QA'
   const canManageCalendar = userRole === 'ADMIN' || userRole === 'QA'
+  const canManageTechModules = userRole === 'ADMIN' || userRole === 'QA'
 
   const visibleSections = SETTINGS_SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
@@ -44,12 +54,22 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setWorkItems(data)
   }, [])
 
+  const loadTechsAndModules = useCallback(async () => {
+    const result = await getTechsAndModulesForSettings()
+    if (result.success && result.data) {
+      setTechs(result.data.techs)
+    }
+  }, [])
+
   const handleSectionSelect = useCallback(async (id: string) => {
     setActiveSection(id)
     if (id === 'external-work-items') {
       await loadWorkItems()
     }
-  }, [loadWorkItems])
+    if (id === 'technologies' || id === 'modules') {
+      await loadTechsAndModules()
+    }
+  }, [loadTechsAndModules, loadWorkItems])
 
   const renderSection = () => {
     switch (activeSection) {
@@ -59,6 +79,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return <ExternalWorkItemsSection items={workItems} onRefresh={loadWorkItems} canManage={canManageWorkItems} />
       case 'calendar':
         return <CalendarSection readOnly={!canManageCalendar} />
+      case 'technologies':
+        return <TechModulesSection techs={techs} onRefresh={loadTechsAndModules} canManage={canManageTechModules} mode="technologies" />
+      case 'modules':
+        return <TechModulesSection techs={techs} onRefresh={loadTechsAndModules} canManage={canManageTechModules} mode="modules" />
       default:
         return null
     }

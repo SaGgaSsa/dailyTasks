@@ -22,12 +22,17 @@ export type MockSession = {
 
 let currentSession: MockSession = null
 
+export const revalidatePathMock = vi.fn()
+export const revalidateTagMock = vi.fn()
+
 vi.mock('@/auth', () => ({
   auth: vi.fn(async () => currentSession),
 }))
 
 vi.mock('next/cache', () => ({
-  revalidatePath: vi.fn(),
+  revalidatePath: revalidatePathMock,
+  revalidateTag: revalidateTagMock,
+  unstable_cache: <T extends (...args: never[]) => Promise<unknown>>(callback: T) => callback,
 }))
 
 export function setMockSession(session: MockSession) {
@@ -45,6 +50,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   clearMockSession()
+  revalidatePathMock.mockClear()
+  revalidateTagMock.mockClear()
 
   const { db } = await import('@/lib/db')
   await db.$executeRawUnsafe(`

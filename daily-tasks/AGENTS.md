@@ -14,10 +14,10 @@ Daily Tasks is a Jira-like incident/ticket management app for teams. Built with 
 
 ```bash
 npm run dev          # Dev server (port 3000)
-npm run build        # prisma generate + next build
 npm run lint         # ESLint
 npm run seed         # Seed database (then sign out/in to sync session user id)
 
+npx tsc --noEmit     # Type-check only
 npx prisma db push   # Push schema changes
 npx prisma generate  # Regenerate Prisma client
 npx prisma studio    # DB GUI (port 5555)
@@ -101,8 +101,8 @@ else toast.error(result.error || 'Error')
 
 ## Build & Verification
 
-- After every edit, verify imports are still valid — never remove an import without checking all files that use it. Run the build after removing any import.
-- Always run `npm run build` after multi-file changes to catch errors before committing.
+- After every edit, verify imports are still valid — never remove an import without checking all files that use it. If you need to validate types, run `npx tsc --noEmit`.
+- Do not run `npm run build` to verify changes. The full production build is handled by the deploy pipeline.
 
 ## Naming Conventions
 
@@ -127,4 +127,4 @@ Conventional Commits: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`.
 ## Pre-commit
 
 1. `npm run lint` — fix all errors
-2. `npm run build` — must succeed
+2. `npx tsc --noEmit` — must succeed

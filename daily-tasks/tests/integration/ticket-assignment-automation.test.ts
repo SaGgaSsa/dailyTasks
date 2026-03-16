@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { TaskStatus, TicketQAStatus, TicketType } from '@prisma/client'
+import { TaskStatus, TicketQAStatus } from '@prisma/client'
 
 import { createTicket, updateTicket } from '@/app/actions/tracklists'
 import { db } from '@/lib/db'
+import { Priority, TicketType } from '@/types/enums'
 import {
   actAs,
   createExternalWorkItem,
@@ -24,7 +25,7 @@ describe('ticket assignment automation integration', () => {
       type: TicketType.BUG,
       moduleId: moduleRecord.id,
       description: 'Error en produccion',
-      priority: 'HIGH',
+      priority: Priority.HIGH,
       externalWorkItemId: workItem.id,
       assignedToId: dev.id,
       observations: 'Detalle',
@@ -71,7 +72,7 @@ describe('ticket assignment automation integration', () => {
         type: TicketType.CAMBIO,
         moduleId: moduleRecord.id,
         description: 'Cambio pendiente',
-        priority: 'MEDIUM',
+        priority: Priority.MEDIUM,
         externalWorkItemId: workItem.id,
         reportedById: qa.id,
         status: TicketQAStatus.NEW,
@@ -83,7 +84,7 @@ describe('ticket assignment automation integration', () => {
       type: TicketType.CAMBIO,
       moduleId: moduleRecord.id,
       description: 'Cambio pendiente',
-      priority: 'MEDIUM',
+      priority: Priority.MEDIUM,
       externalWorkItemId: workItem.id,
       assignedToId: dev.id,
       observations: 'Asignado',
