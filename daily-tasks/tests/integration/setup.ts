@@ -1,0 +1,72 @@
+import { afterAll, beforeAll, beforeEach, vi } from 'vitest'
+
+const databaseUrlTest = process.env.DATABASE_URL_TEST
+
+if (!databaseUrlTest) {
+  throw new Error('DATABASE_URL_TEST is required for integration tests')
+}
+
+process.env.DATABASE_URL = databaseUrlTest
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'integration-test-secret'
+process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+export type MockSession = {
+  user: {
+    id: string
+    email: string
+    name: string
+    username: string
+    role: string
+  }
+} | null
+
+let currentSession: MockSession = null
+
+vi.mock('@/auth', () => ({
+  auth: vi.fn(async () => currentSession),
+}))
+
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}))
+
+export function setMockSession(session: MockSession) {
+  currentSession = session
+}
+
+export function clearMockSession() {
+  currentSession = null
+}
+
+beforeAll(async () => {
+  const { db } = await import('@/lib/db')
+  await db.$connect()
+})
+
+beforeEach(async () => {
+  clearMockSession()
+
+  const { db } = await import('@/lib/db')
+  await db.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "tickets_qa",
+      "tasks",
+      "assignments",
+      "incidence_pages",
+      "incidences",
+      "tracklists",
+      "attachments",
+      "external_work_items",
+      "modules",
+      "technologies",
+      "users",
+      "non_working_days"
+    RESTART IDENTITY CASCADE
+  `)
+})
+
+afterAll(async () => {
+  clearMockSession()
+  const { db } = await import('@/lib/db')
+  await db.$disconnect()
+})
