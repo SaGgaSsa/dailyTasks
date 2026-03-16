@@ -447,12 +447,18 @@ export async function getTracklistExternalWorkItems(tracklistId: number) {
         const tracklist = await db.tracklist.findUnique({
             where: { id: tracklistId },
             select: {
+                description: true,
+                dueDate: true,
                 externalWorkItems: {
-                    select: { id: true, type: true, externalId: true }
+                    select: { id: true, type: true, externalId: true, title: true }
                 }
             }
         })
-        return { success: true, data: tracklist?.externalWorkItems ?? [] }
+        return {
+            success: true,
+            data: tracklist?.externalWorkItems ?? [],
+            tracklistDetails: tracklist ? { description: tracklist.description, dueDate: tracklist.dueDate } : null
+        }
     } catch (error) {
         console.error('Error fetching tracklist external work items:', error)
         return { success: false, error: 'Error al obtener trámites' }

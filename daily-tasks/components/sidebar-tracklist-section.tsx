@@ -75,8 +75,14 @@ export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Prop
 
   const handleEdit = async (tl: Tracklist) => {
     const result = await getTracklistExternalWorkItems(tl.id)
-    const workItems = result.success && result.data ? result.data.map(w => ({ ...w, title: null as string | null })) : []
-    setEditingTracklist({ id: tl.id, title: tl.title, description: null, dueDate: null })
+    const workItems = result.success && result.data ? result.data.map(w => ({ ...w, title: w.title ?? null })) : []
+    const details = result.tracklistDetails
+    setEditingTracklist({
+      id: tl.id,
+      title: tl.title,
+      description: details?.description ?? null,
+      dueDate: details?.dueDate ?? null,
+    })
     setEditWorkItems(workItems)
     setEditOpen(true)
   }
@@ -162,7 +168,7 @@ export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Prop
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                    className="h-6 w-6 ml-auto opacity-0 group-hover:opacity-100 flex-shrink-0"
                   >
                     <EllipsisVertical className="h-3 w-3" />
                   </Button>
