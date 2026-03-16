@@ -104,7 +104,8 @@ const incidenceDetailsInclude = {
                 orderBy: [
                     { isCompleted: 'asc' as const },
                     { isPinned: 'desc' as const },
-                    { completedAt: 'desc' as const }
+                    { completedAt: 'desc' as const },
+                    { createdAt: 'asc' as const }
                 ]
             }
         }

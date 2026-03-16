@@ -943,8 +943,15 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                             const userTasks = userAssignment?.tasks || []
                             const userDraftTasks = draftTasks.filter(t => t.assignmentId === userAssignment?.id || t.assignmentId === user.id)
                             const pendingUserDraftTasks = userDraftTasks.filter(t => !t.isCompleted)
-                            const pendingTasks = userTasks.filter((t: Task) => !t.isCompleted && !tasksToDelete.has(t.id))
-                            const completedTasks = userTasks.filter((t: Task) => t.isCompleted && !tasksToDelete.has(t.id))
+                            const visibleTasks = userTasks.filter((t: Task) => !tasksToDelete.has(t.id))
+                            const pendingTasks = visibleTasks.filter((t: Task) => {
+                                const isToggled = tasksToToggle.has(t.id)
+                                return isToggled ? t.isCompleted : !t.isCompleted
+                            })
+                            const completedTasks = visibleTasks.filter((t: Task) => {
+                                const isToggled = tasksToToggle.has(t.id)
+                                return isToggled ? !t.isCompleted : t.isCompleted
+                            })
                             const isExpanded = expandedAssignees.has(user.id)
 
                             return (
@@ -963,7 +970,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                         <span className={`text-card-foreground/80 text-sm ${!isSelected ? 'opacity-60' : ''}`}>{user.name}</span>
                                         {(userTasks.length > 0 || userDraftTasks.length > 0) && (
                                             <span className={`text-muted-foreground/70 text-xs ${!isSelected ? 'opacity-60' : ''}`}>
-                                                {pendingTasks.length + pendingUserDraftTasks.length}/{userTasks.length + userDraftTasks.length} pendientes
+                                                {pendingTasks.length + pendingUserDraftTasks.length}/{visibleTasks.length + userDraftTasks.length} pendientes
                                             </span>
                                         )}
                                         <div className="flex-1" />
@@ -1022,9 +1029,9 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                         <div className="px-8 pb-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                             <TaskListSection
                                                 pendingTasks={pendingTasks}
-                                                completedTasks={completedTasks}
+                                                completedTasks={[]}
                                                 pendingDrafts={userDraftTasks.filter(t => !t.isCompleted)}
-                                                completedDrafts={userDraftTasks.filter(t => t.isCompleted)}
+                                                completedDrafts={[]}
                                                 pinnedTaskIds={getEffectivePinnedIds(pendingTasks)}
                                                 pinnedDraftIds={pinnedDraftIds}
                                                 tasksToToggle={tasksToToggle}
@@ -1068,8 +1075,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                                         setTaskInputErrors(prev => ({ ...prev, [assignmentId]: true }))
                                                     }
                                                 }}
-                                                showCompletedTasks={showCompletedTasksByUser[user.id] || false}
-                                                onToggleShowCompleted={() => toggleShowCompletedForUser(user.id)}
+                                                showCompletedTasks={false}
                                             />
                                         </div>
                                     )}
@@ -1125,24 +1131,17 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         <div className="flex items-center justify-between">
                             <h3 className="text-zinc-100 font-medium">Tareas pendientes</h3>
                             {totalTasks > 0 && (
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <span className="text-xs text-muted-foreground">
-                                        {totalPending}/{totalTasks} pendientes
-                                    </span>
-                                    <Checkbox
-                                        checked={showCompletedTasks}
-                                        onCheckedChange={(checked) => setShowCompletedTasks(checked === true)}
-                                        className="border-input"
-                                    />
-                                </label>
+                                <span className="text-xs text-muted-foreground">
+                                    {totalPending}/{totalTasks} pendientes
+                                </span>
                             )}
                         </div>
 
                         <TaskListSection
                             pendingTasks={pendingTasks}
-                            completedTasks={completedTasks}
+                            completedTasks={[]}
                             pendingDrafts={pendingDrafts}
-                            completedDrafts={completedDrafts}
+                            completedDrafts={[]}
                             pinnedTaskIds={getEffectivePinnedIds(pendingTasks)}
                             pinnedDraftIds={pinnedDraftIds}
                             tasksToToggle={tasksToToggle}
@@ -1187,8 +1186,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                                     }
                                 }
                             }}
-                            showCompletedTasks={showCompletedTasks}
-                            onToggleShowCompleted={() => setShowCompletedTasks(prev => !prev)}
+                            showCompletedTasks={false}
                         />
                     </div>
                 )
