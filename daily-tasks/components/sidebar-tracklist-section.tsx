@@ -69,7 +69,7 @@ export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Prop
 
   const handleEdit = async (tl: Tracklist) => {
     const result = await getTracklistExternalWorkItems(tl.id)
-    const workItems = result.success && result.data ? result.data.map(w => ({ ...w, title: w.title ?? null })) : []
+    const workItems = result.success && result.data ? result.data.map((w) => ({ ...w, title: w.title ?? null })) : []
     const details = result.tracklistDetails
     setEditingTracklist({
       id: tl.id,

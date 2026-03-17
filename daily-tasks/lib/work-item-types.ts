@@ -1,10 +1,11 @@
-import { Prisma } from '@prisma/client'
+import { Prisma } from '.prisma/client'
 import type { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
 
 export const externalWorkItemBaseSelect = {
   id: true,
   externalId: true,
   title: true,
+  status: true,
   workItemTypeId: true,
   workItemType: {
     select: {

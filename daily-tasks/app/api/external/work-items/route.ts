@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
+import { ExternalWorkItemStatus } from '.prisma/client'
 import { db } from '@/lib/db'
 
 interface CreateExternalWorkItemRequest {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
         workItemTypeId: workItemType.id,
         externalId: parsedExternalId,
         title,
+        status: ExternalWorkItemStatus.ACTIVE,
       },
       include: {
         workItemType: {

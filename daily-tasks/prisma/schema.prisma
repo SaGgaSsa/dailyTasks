@@ -112,12 +112,18 @@ enum TicketType {
   CONSULTA
 }
 
+enum ExternalWorkItemStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model ExternalWorkItem {
   id             Int          @id @default(autoincrement())
   workItemTypeId Int
   workItemType   WorkItemType @relation(fields: [workItemTypeId], references: [id])
   externalId     Int
   title          String?
+  status         ExternalWorkItemStatus @default(ACTIVE)
 
   incidences   Incidence[]
   attachments  Attachment[]

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { User, FileText, CalendarDays, Blocks, Layers } from 'lucide-react'
 import { Module, Technology } from '@prisma/client'
-import { getExternalWorkItems, getExternalWorkItemsSettingsData, getWorkItemTypes } from '@/app/actions/external-work-items'
+import { getExternalWorkItemsSettingsData, getWorkItemTypes } from '@/app/actions/external-work-items'
 import { getTechsAndModulesForSettings } from '@/app/actions/tech'
 import {
   Dialog,
@@ -42,7 +42,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [workItems, setWorkItems] = useState<ExternalWorkItemSummary[]>([])
   const [workItemTypes, setWorkItemTypes] = useState<WorkItemTypeOption[]>([])
   const [techs, setTechs] = useState<TechnologyWithModules[]>([])
-  const workItemsRequestRef = useRef<Promise<void> | null>(null)
   const workItemsSettingsRequestRef = useRef<Promise<void> | null>(null)
   const workItemTypesRequestRef = useRef<Promise<void> | null>(null)
   const techsRequestRef = useRef<Promise<void> | null>(null)
@@ -56,25 +55,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const visibleSections = SETTINGS_SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
   )
-
-  const loadWorkItems = useCallback(async () => {
-    if (workItemsRequestRef.current) {
-      return workItemsRequestRef.current
-    }
-
-    const request = (async () => {
-      const data = await getExternalWorkItems()
-      setWorkItems(data)
-    })()
-
-    workItemsRequestRef.current = request
-
-    try {
-      await request
-    } finally {
-      workItemsRequestRef.current = null
-    }
-  }, [])
 
   const loadWorkItemTypes = useCallback(async () => {
     if (workItemTypesRequestRef.current) {

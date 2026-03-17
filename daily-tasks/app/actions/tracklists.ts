@@ -8,7 +8,7 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority, Prisma, IncidencePageType } from '@prisma/client'
+import { TaskStatus, Priority as PrismaPriority, Prisma, IncidencePageType, ExternalWorkItemStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { ensureSystemScriptsPage, pageHasMeaningfulContent } from '@/lib/incidence-pages'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
@@ -456,6 +456,7 @@ export async function getTracklistExternalWorkItems(tracklistId: number) {
                 description: true,
                 dueDate: true,
                 externalWorkItems: {
+                    where: { status: ExternalWorkItemStatus.ACTIVE },
                     select: externalWorkItemBaseSelect
                 }
             }

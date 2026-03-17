@@ -1,4 +1,5 @@
 import type { Priority, TaskStatus, TaskType, TicketQAStatus, TicketType } from '@prisma/client'
+import { ExternalWorkItemStatus } from '.prisma/client'
 
 import { db } from '@/lib/db'
 import { type WorkItemTypeColor } from '@/lib/work-item-color-options'
@@ -75,6 +76,7 @@ export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
       workItemTypeId: workItemType.id,
       externalId: sequence * 100,
       title: nextValue('work-item'),
+      status: ExternalWorkItemStatus.ACTIVE,
     },
   })
 }

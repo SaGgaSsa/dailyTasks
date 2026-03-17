@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma } from '@prisma/client'
+import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
 import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
@@ -1701,7 +1701,8 @@ export async function searchActiveIncidences(query: string, selectedIncidences: 
         const escapedQuery = trimmedQuery.replace(/_/g, '\\_')
 
         const where: Record<string, unknown> = {
-            id: { notIn: selectedIncidences }
+            id: { notIn: selectedIncidences },
+            status: ExternalWorkItemStatus.ACTIVE,
         }
 
         where.OR = isValidNumber
