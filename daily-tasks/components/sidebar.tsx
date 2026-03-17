@@ -21,9 +21,10 @@ import { useSettingsDialog } from '@/components/providers/settings-dialog-provid
 interface SidebarProps {
   userId?: string
   initialTracklists?: { id: number; title: string }[]
+  initialIncidences?: { id: number; label: string }[]
 }
 
-export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
+export function Sidebar({ userId, initialTracklists = [], initialIncidences = [] }: SidebarProps) {
   const { data: session } = useSession()
   const { isOpen } = useSidebar()
   const { openSettings } = useSettingsDialog()
@@ -54,6 +55,13 @@ export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
             href="/dashboard"
             icon={Layers}
             isActive={pathname === '/dashboard'}
+            childrenItems={initialIncidences.map((incidence) => ({
+              id: incidence.id,
+              label: incidence.label,
+              href: `/dashboard/incidences/${incidence.id}#tasks`,
+              isActive: pathname === `/dashboard/incidences/${incidence.id}`,
+              showActions: false,
+            }))}
           />
 
           <TracklistSidebarSection isOpen={isOpen} initialTracklists={initialTracklists} />

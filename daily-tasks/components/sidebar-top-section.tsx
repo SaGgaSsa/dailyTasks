@@ -15,6 +15,7 @@ interface SidebarTopSectionChild {
   label: string
   href: string
   isActive: boolean
+  showActions?: boolean
 }
 
 interface SidebarTopSectionProps {
@@ -109,29 +110,31 @@ export function SidebarTopSection({
                 {child.label}
               </Link>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="mr-1 h-7 w-7 flex-shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                    aria-label={`Opciones de ${child.label}`}
-                  >
-                    <EllipsisVertical className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEditChild?.(child.id)}>
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => onDeleteChild?.(child.id)}
-                  >
-                    Eliminar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {child.showActions !== false ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="mr-1 h-7 w-7 flex-shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                      aria-label={`Opciones de ${child.label}`}
+                    >
+                      <EllipsisVertical className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => onEditChild?.(child.id)}>
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600"
+                      onClick={() => onDeleteChild?.(child.id)}
+                    >
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           ))}
         </div>
