@@ -58,6 +58,27 @@ export async function getWorkItemTypes(): Promise<WorkItemTypeOption[]> {
   return workItemTypes.map(serializeWorkItemType)
 }
 
+export async function getExternalWorkItemsSettingsData(): Promise<{
+  workItems: ExternalWorkItemSummary[]
+  workItemTypes: WorkItemTypeOption[]
+}> {
+  const [items, workItemTypes] = await Promise.all([
+    db.externalWorkItem.findMany({
+      select: externalWorkItemBaseSelect,
+      orderBy: [{ workItemType: { name: 'asc' } }, { externalId: 'asc' }],
+    }),
+    db.workItemType.findMany({
+      select: workItemTypeSelect,
+      orderBy: { name: 'asc' },
+    }),
+  ])
+
+  return {
+    workItems: items.map(serializeExternalWorkItem),
+    workItemTypes: workItemTypes.map(serializeWorkItemType),
+  }
+}
+
 interface CreateExternalWorkItemData {
   workItemTypeId: number
   externalId: number

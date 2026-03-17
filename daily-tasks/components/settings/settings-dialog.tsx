@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { User, FileText, CalendarDays, Blocks, Layers } from 'lucide-react'
 import { Module, Technology } from '@prisma/client'
-import { getExternalWorkItems, getWorkItemTypes } from '@/app/actions/external-work-items'
+import { getExternalWorkItems, getExternalWorkItemsSettingsData, getWorkItemTypes } from '@/app/actions/external-work-items'
 import { getTechsAndModulesForSettings } from '@/app/actions/tech'
 import {
   Dialog,
@@ -42,6 +42,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [workItems, setWorkItems] = useState<ExternalWorkItemSummary[]>([])
   const [workItemTypes, setWorkItemTypes] = useState<WorkItemTypeOption[]>([])
   const [techs, setTechs] = useState<TechnologyWithModules[]>([])
+  const workItemsRequestRef = useRef<Promise<void> | null>(null)
+  const workItemsSettingsRequestRef = useRef<Promise<void> | null>(null)
+  const workItemTypesRequestRef = useRef<Promise<void> | null>(null)
+  const techsRequestRef = useRef<Promise<void> | null>(null)
   const { data: session } = useSession()
   const userRole = session?.user?.role
   const isAdmin = userRole === 'ADMIN'
@@ -54,31 +58,100 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   )
 
   const loadWorkItems = useCallback(async () => {
-    const data = await getExternalWorkItems()
-    setWorkItems(data)
+    if (workItemsRequestRef.current) {
+      return workItemsRequestRef.current
+    }
+
+    const request = (async () => {
+      const data = await getExternalWorkItems()
+      setWorkItems(data)
+    })()
+
+    workItemsRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      workItemsRequestRef.current = null
+    }
   }, [])
 
   const loadWorkItemTypes = useCallback(async () => {
-    const data = await getWorkItemTypes()
-    setWorkItemTypes(data)
+    if (workItemTypesRequestRef.current) {
+      return workItemTypesRequestRef.current
+    }
+
+    const request = (async () => {
+      const data = await getWorkItemTypes()
+      setWorkItemTypes(data)
+    })()
+
+    workItemTypesRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      workItemTypesRequestRef.current = null
+    }
+  }, [])
+
+  const loadWorkItemsSettingsData = useCallback(async () => {
+    if (workItemsSettingsRequestRef.current) {
+      return workItemsSettingsRequestRef.current
+    }
+
+    const request = (async () => {
+      const data = await getExternalWorkItemsSettingsData()
+      setWorkItems(data.workItems)
+      setWorkItemTypes(data.workItemTypes)
+    })()
+
+    workItemsSettingsRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      workItemsSettingsRequestRef.current = null
+    }
   }, [])
 
   const loadTechsAndModules = useCallback(async () => {
-    const result = await getTechsAndModulesForSettings()
-    if (result.success && result.data) {
-      setTechs(result.data.techs)
+    if (techsRequestRef.current) {
+      return techsRequestRef.current
+    }
+
+    const request = (async () => {
+      const result = await getTechsAndModulesForSettings()
+      if (result.success && result.data) {
+        setTechs(result.data.techs)
+      }
+    })()
+
+    techsRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      techsRequestRef.current = null
     }
   }, [])
 
   const handleSectionSelect = useCallback(async (id: string) => {
+    if (id === activeSection) {
+      return
+    }
+
     setActiveSection(id)
-    if (id === 'work-item-types' || id === 'external-work-items') {
-      await Promise.all([loadWorkItemTypes(), id === 'external-work-items' ? loadWorkItems() : Promise.resolve()])
+    if (id === 'work-item-types') {
+      await loadWorkItemTypes()
+    }
+    if (id === 'external-work-items') {
+      await loadWorkItemsSettingsData()
     }
     if (id === 'technologies' || id === 'modules') {
       await loadTechsAndModules()
     }
-  }, [loadTechsAndModules, loadWorkItemTypes, loadWorkItems])
+  }, [activeSection, loadTechsAndModules, loadWorkItemTypes, loadWorkItemsSettingsData])
 
   const renderSection = () => {
     switch (activeSection) {
@@ -87,9 +160,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case 'work-item-types':
         return <WorkItemTypesSection items={workItemTypes} onRefresh={loadWorkItemTypes} canManage={canManageWorkItems} />
       case 'external-work-items':
-        return <ExternalWorkItemsSection items={workItems} workItemTypes={workItemTypes} onRefresh={async () => {
-          await Promise.all([loadWorkItems(), loadWorkItemTypes()])
-        }} canManage={canManageWorkItems} />
+        return <ExternalWorkItemsSection items={workItems} workItemTypes={workItemTypes} onRefresh={loadWorkItemsSettingsData} canManage={canManageWorkItems} />
       case 'calendar':
         return <CalendarSection readOnly={!canManageCalendar} />
       case 'technologies':

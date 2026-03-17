@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { es } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,20 @@ interface CalendarSectionProps {
 let cachedNonWorkingDays: Date[] | null = null
 let nonWorkingDaysRequest: Promise<{ success: boolean; data?: Date[]; error?: string }> | null = null
 
+function toLocalCalendarDate(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12)
+}
+
+function toLocalCalendarDateFromServer(date: Date): Date {
+  const parsedDate = new Date(date)
+  return new Date(
+    parsedDate.getUTCFullYear(),
+    parsedDate.getUTCMonth(),
+    parsedDate.getUTCDate(),
+    12
+  )
+}
+
 async function loadNonWorkingDays() {
   if (cachedNonWorkingDays) {
     return { success: true as const, data: cachedNonWorkingDays }
@@ -27,7 +41,7 @@ async function loadNonWorkingDays() {
   const result = await nonWorkingDaysRequest
 
   if (result.success && result.data) {
-    cachedNonWorkingDays = result.data.map((d) => new Date(d))
+    cachedNonWorkingDays = result.data.map(toLocalCalendarDateFromServer)
   }
 
   nonWorkingDaysRequest = null
@@ -46,6 +60,7 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
   const [year, setYear] = useState(currentYear)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const saveRequestRef = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -53,7 +68,7 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
     async function load() {
       const result = await loadNonWorkingDays()
       if (isMounted && result.success && result.data) {
-        setSelected(result.data.map((d) => new Date(d)))
+        setSelected(result.data.map(toLocalCalendarDate))
       }
       if (isMounted) {
         setLoading(false)
@@ -68,14 +83,28 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
   }, [])
 
   const handleSave = async () => {
-    setSaving(true)
-    const result = await syncNonWorkingDays(selected)
-    setSaving(false)
-    if (result.success) {
-      cachedNonWorkingDays = selected.map((d) => new Date(d))
-      toast.success('Días no laborables guardados')
-    } else {
-      toast.error(result.error || 'Error al guardar')
+    if (saveRequestRef.current) {
+      return saveRequestRef.current
+    }
+
+    const request = (async () => {
+      setSaving(true)
+      const result = await syncNonWorkingDays(selected)
+      setSaving(false)
+      if (result.success) {
+        cachedNonWorkingDays = selected.map(toLocalCalendarDate)
+        toast.success('Días no laborables guardados')
+      } else {
+        toast.error(result.error || 'Error al guardar')
+      }
+    })()
+
+    saveRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      saveRequestRef.current = null
     }
   }
 
@@ -101,7 +130,11 @@ export function CalendarSection({ readOnly = false }: CalendarSectionProps) {
       setSelected([])
       return
     }
-    setSelected(dates.filter((d) => !isDisabledDay(d)))
+    setSelected(
+      dates
+        .map(toLocalCalendarDate)
+        .filter((d) => !isDisabledDay(d))
+    )
   }
 
   if (loading) {
