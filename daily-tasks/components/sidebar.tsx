@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
+import { SidebarTopSection } from '@/components/sidebar-top-section'
 import { useSidebar } from '@/components/providers/sidebar-provider'
 import { useSettingsDialog } from '@/components/providers/settings-dialog-provider'
 
@@ -47,15 +48,13 @@ export function Sidebar({ userId, initialTracklists = [] }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-1 px-2">
-          <Link href="/dashboard">
-            <Button
-              variant="ghost"
-              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
-            >
-              <Layers className="h-4 w-4" />
-              {isOpen && <span>{t.incidences.title}</span>}
-            </Button>
-          </Link>
+          <SidebarTopSection
+            isOpen={isOpen}
+            label={t.incidences.title}
+            href="/dashboard"
+            icon={Layers}
+            isActive={pathname === '/dashboard'}
+          />
 
           <TracklistSidebarSection isOpen={isOpen} initialTracklists={initialTracklists} />
 

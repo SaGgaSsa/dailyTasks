@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { ClipboardList, Plus, EllipsisVertical } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { ClipboardList } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { CreateTracklistDialog } from '@/components/tracklists/create-tracklist-dialog'
+import { SidebarTopSection } from '@/components/sidebar-top-section'
 import { getTracklists, deleteTracklist, getTracklistExternalWorkItems } from '@/app/actions/tracklists'
 import { toast } from 'sonner'
 
@@ -107,90 +100,33 @@ export function TracklistSidebarSection({ isOpen, initialTracklists = [] }: Prop
     setDeleteTargetId(null)
   }
 
-  if (!isOpen) {
-    return (
-      <div className="flex justify-center px-0">
-        <Link href="/tracklists">
-          <Button
-            variant="ghost"
-            className={`w-full justify-center px-0 transition-colors ${
-              pathname.startsWith('/tracklists')
-                ? 'bg-sidebar-accent text-sidebar-foreground'
-                : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-            }`}
-          >
-            <ClipboardList className="h-4 w-4" />
-          </Button>
-        </Link>
-      </div>
-    )
-  }
-
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2">
-        <Link
-          href="/tracklists"
-          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/50"
-        >
-          <ClipboardList className="h-3 w-3" />
-          Tracklists
-        </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="h-3 w-3" />
-        </Button>
-      </div>
-
-      <div className="space-y-0.5 px-2">
-        {tracklists.map((tl) => {
-          const isActive = pathname === `/tracklists/${tl.id}`
-          return (
-            <div
-              key={tl.id}
-              className="group flex items-center gap-1 px-2 rounded-md hover:bg-sidebar-accent/50"
-            >
-              <Link
-                href={`/tracklists/${tl.id}`}
-                className={`flex-1 truncate text-sm py-1 ${
-                  isActive
-                    ? 'text-sidebar-foreground font-medium'
-                    : 'text-sidebar-foreground/70'
-                }`}
-              >
-                {tl.title}
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 ml-auto opacity-0 group-hover:opacity-100 flex-shrink-0"
-                  >
-                    <EllipsisVertical className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleEdit(tl)}>Editar</DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => {
-                      setDeleteTargetId(tl.id)
-                      setDeleteOpen(true)
-                    }}
-                  >
-                    Eliminar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )
-        })}
-      </div>
+      <SidebarTopSection
+        isOpen={isOpen}
+        label="Tracklists"
+        href="/tracklists"
+        icon={ClipboardList}
+        isActive={pathname.startsWith('/tracklists')}
+        showAddButton
+        onAdd={() => setCreateOpen(true)}
+        childrenItems={tracklists.map((tl) => ({
+          id: tl.id,
+          label: tl.title,
+          href: `/tracklists/${tl.id}`,
+          isActive: pathname === `/tracklists/${tl.id}`,
+        }))}
+        onEditChild={(childId) => {
+          const tracklist = tracklists.find((tl) => tl.id === childId)
+          if (tracklist) {
+            void handleEdit(tracklist)
+          }
+        }}
+        onDeleteChild={(childId) => {
+          setDeleteTargetId(Number(childId))
+          setDeleteOpen(true)
+        }}
+      />
 
       <CreateTracklistDialog
         open={createOpen}
