@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { GanttTracklist } from '@/types'
 import { GanttRow } from './gantt-row'
-import { getBarPosition, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG } from '@/lib/gantt-utils'
+import { getBarPosition, getTodayPosition, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG } from '@/lib/gantt-utils'
 
 interface Props {
   tracklist: GanttTracklist
@@ -18,11 +18,20 @@ export function GanttTracklistGroup({ tracklist, weekStart, weekEnd, weekDays, n
   const dueDatePosition = dueDateEnd
     ? getBarPosition(dueDateEnd, dueDateEnd, weekStart, weekEnd)
     : null
+  const todayPosition = getTodayPosition(weekStart, weekEnd)
 
   const isDuePast = tracklist.dueDate ? tracklist.dueDate < new Date() : false
 
   return (
     <div className="flex flex-col relative">
+      {/* Today line spanning all rows */}
+      {todayPosition !== null && (
+        <div
+          className="absolute top-0 bottom-0 border-l-2 border-dashed border-blue-400/60 z-10 pointer-events-none"
+          style={{ left: `calc(280px + (100% - 280px) * ${todayPosition / 100})` }}
+        />
+      )}
+
       {/* Due date line spanning all rows */}
       {dueDatePosition && (
         <div

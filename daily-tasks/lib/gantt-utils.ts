@@ -238,10 +238,10 @@ export function getBarSegments(
 }
 
 export function getTodayPosition(weekStart: Date, weekEnd: Date): number | null {
-  const now = new Date()
-  if (now < weekStart || now > weekEnd) return null
+  const today = startOfDay(new Date())
+  if (today < weekStart || today > weekEnd) return null
   const totalMs = weekEnd.getTime() - weekStart.getTime()
-  return ((now.getTime() - weekStart.getTime()) / totalMs) * 100
+  return ((today.getTime() - weekStart.getTime()) / totalMs) * 100
 }
 
 export function isDelayed(endDate: Date, status: string, isEstimated: boolean): boolean {
