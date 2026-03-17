@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Module, Technology } from '@prisma/client'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -10,10 +10,16 @@ import {
   createTechnology,
   deleteModule,
   deleteTechnology,
-  updateModule,
-  updateTechnology,
 } from '@/app/actions/tech'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,11 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  FormInput,
-  FormSelect,
-  FormSheet,
-} from '@/components/ui/form-sheet'
 import {
   Table,
   TableBody,
@@ -42,26 +43,6 @@ interface TechnologyWithModules extends Technology {
   modules: Module[]
 }
 
-type TechnologyFormState = {
-  id?: number
-  name: string
-}
-
-type ModuleFormState = {
-  id?: number
-  name: string
-  technologyId: string
-}
-
-const EMPTY_TECH_FORM: TechnologyFormState = {
-  name: '',
-}
-
-const EMPTY_MODULE_FORM: ModuleFormState = {
-  name: '',
-  technologyId: '',
-}
-
 interface TechModulesSectionProps {
   techs: TechnologyWithModules[]
   canManage: boolean
@@ -70,14 +51,10 @@ interface TechModulesSectionProps {
 }
 
 export function TechModulesSection({ techs, canManage, onRefresh, mode }: TechModulesSectionProps) {
-  const [technologyFormOpen, setTechnologyFormOpen] = useState(false)
-  const [moduleFormOpen, setModuleFormOpen] = useState(false)
-  const [technologyForm, setTechnologyForm] = useState<TechnologyFormState>(EMPTY_TECH_FORM)
-  const [moduleForm, setModuleForm] = useState<ModuleFormState>(EMPTY_MODULE_FORM)
-  const [isSavingTechnology, setIsSavingTechnology] = useState(false)
-  const [isSavingModule, setIsSavingModule] = useState(false)
-  const [technologyError, setTechnologyError] = useState<string | null>(null)
-  const [moduleError, setModuleError] = useState<string | null>(null)
+  const [name, setName] = useState('')
+  const [technologyId, setTechnologyId] = useState('')
+  const [isPending, setIsPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; type: 'technology' | 'module'; label: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -101,109 +78,55 @@ export function TechModulesSection({ techs, canManage, onRefresh, mode }: TechMo
     [techs]
   )
 
-  function resetTechnologyForm() {
-    setTechnologyForm(EMPTY_TECH_FORM)
-    setTechnologyError(null)
-  }
+  async function handleCreateTechnology() {
+    setError(null)
+    if (!name.trim()) {
+      setError('El nombre es requerido')
+      return
+    }
 
-  function resetModuleForm() {
-    setModuleForm({
-      ...EMPTY_MODULE_FORM,
-      technologyId: techs[0] ? String(techs[0].id) : '',
-    })
-    setModuleError(null)
-  }
-
-  function openCreateTechnology() {
-    resetTechnologyForm()
-    setTechnologyFormOpen(true)
-  }
-
-  function openEditTechnology(technology: Technology) {
-    setTechnologyError(null)
-    setTechnologyForm({
-      id: technology.id,
-      name: technology.name,
-    })
-    setTechnologyFormOpen(true)
-  }
-
-  function openCreateModule() {
-    resetModuleForm()
-    setModuleFormOpen(true)
-  }
-
-  function openEditModule(moduleRecord: Module) {
-    setModuleError(null)
-    setModuleForm({
-      id: moduleRecord.id,
-      name: moduleRecord.name,
-      technologyId: String(moduleRecord.technologyId),
-    })
-    setModuleFormOpen(true)
-  }
-
-  async function handleSaveTechnology() {
-    setTechnologyError(null)
-    setIsSavingTechnology(true)
-
-    const result = technologyForm.id
-      ? await updateTechnology({
-          id: technologyForm.id,
-          name: technologyForm.name,
-        })
-      : await createTechnology({
-          name: technologyForm.name,
-        })
-
-    setIsSavingTechnology(false)
+    setIsPending(true)
+    const result = await createTechnology({ name })
+    setIsPending(false)
 
     if (!result.success) {
-      setTechnologyError(result.error || 'Error al guardar la tecnología')
-      return false
+      setError(result.error || 'Error al crear la tecnología')
+      return
     }
 
-    toast.success(technologyForm.id ? 'Tecnología actualizada' : 'Tecnología creada')
-    setTechnologyFormOpen(false)
-    resetTechnologyForm()
+    setName('')
+    toast.success('Tecnología creada')
     await onRefresh()
-    return true
   }
 
-  async function handleSaveModule() {
-    setModuleError(null)
-    setIsSavingModule(true)
-
-    const payload = {
-      name: moduleForm.name,
-      technologyId: Number(moduleForm.technologyId),
+  async function handleCreateModule() {
+    setError(null)
+    if (!name.trim()) {
+      setError('El nombre es requerido')
+      return
+    }
+    if (!technologyId) {
+      setError('La tecnología es requerida')
+      return
     }
 
-    const result = moduleForm.id
-      ? await updateModule({
-          id: moduleForm.id,
-          ...payload,
-        })
-      : await createModule(payload)
-
-    setIsSavingModule(false)
+    setIsPending(true)
+    const result = await createModule({ name, technologyId: Number(technologyId) })
+    setIsPending(false)
 
     if (!result.success) {
-      setModuleError(result.error || 'Error al guardar el módulo')
-      return false
+      setError(result.error || 'Error al crear el módulo')
+      return
     }
 
-    toast.success(moduleForm.id ? 'Módulo actualizado' : 'Módulo creado')
-    setModuleFormOpen(false)
-    resetModuleForm()
+    setName('')
+    setTechnologyId('')
+    toast.success('Módulo creado')
     await onRefresh()
-    return true
   }
 
   async function handleDelete() {
-    if (!deleteTarget) {
-      return
-    }
+    if (!deleteTarget) return
 
     setIsDeleting(true)
 
@@ -238,61 +161,76 @@ export function TechModulesSection({ techs, canManage, onRefresh, mode }: TechMo
           </div>
 
           <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Listado corto de tecnologías disponibles en el sistema.</p>
-              </div>
-              {canManage && (
-                <Button onClick={openCreateTechnology}>
-                  <Plus className="h-4 w-4" />
-                  Nueva tecnología
-                </Button>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground">Listado corto de tecnologías disponibles en el sistema.</p>
 
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead className="w-[140px]">Módulos</TableHead>
-                    {canManage && <TableHead className="w-[120px]">Acciones</TableHead>}
+                    <TableHead className="h-9 px-2">Nombre</TableHead>
+                    <TableHead className="w-[140px] h-9 px-2">Módulos</TableHead>
+                    {canManage && <TableHead className="w-[60px] h-9 px-2">Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {techs.length === 0 && (
+                  {techs.length === 0 && !canManage && (
                     <TableRow>
-                      <TableCell colSpan={canManage ? 3 : 2} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={2} className="py-8 text-center text-muted-foreground">
                         No hay tecnologías cargadas.
                       </TableCell>
                     </TableRow>
                   )}
                   {techs.map((technology) => (
                     <TableRow key={technology.id}>
-                      <TableCell className="font-medium">{technology.name}</TableCell>
-                      <TableCell>{technology.modules.length}</TableCell>
+                      <TableCell className="py-1.5 px-2 font-medium">{technology.name}</TableCell>
+                      <TableCell className="py-1.5 px-2">{technology.modules.length}</TableCell>
                       {canManage && (
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditTechnology(technology)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteTarget({ id: technology.id, type: 'technology', label: technology.name })}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        <TableCell className="py-1.5 px-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteTarget({ id: technology.id, type: 'technology', label: technology.name })}
+                            disabled={isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       )}
                     </TableRow>
                   ))}
+
+                  {canManage && (
+                    <TableRow>
+                      <TableCell className="py-1.5 px-2">
+                        <Input
+                          type="text"
+                          placeholder="Nombre de la tecnología"
+                          className="h-8 text-xs"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          disabled={isPending}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1.5 px-2" />
+                      <TableCell className="py-1.5 px-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={handleCreateTechnology}
+                          disabled={isPending}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </section>
         </>
       )}
@@ -309,127 +247,96 @@ export function TechModulesSection({ techs, canManage, onRefresh, mode }: TechMo
           </div>
 
           <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Cada módulo pertenece a una tecnología y puede usarse en tickets QA.</p>
-              </div>
-              {canManage && (
-                <Button onClick={openCreateModule} disabled={techs.length === 0}>
-                  <Plus className="h-4 w-4" />
-                  Nuevo módulo
-                </Button>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground">Cada módulo pertenece a una tecnología y puede usarse en tickets QA.</p>
 
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Tecnología</TableHead>
-                    {canManage && <TableHead className="w-[120px]">Acciones</TableHead>}
+                    <TableHead className="h-9 px-2">Nombre</TableHead>
+                    <TableHead className="h-9 px-2">Tecnología</TableHead>
+                    {canManage && <TableHead className="w-[60px] h-9 px-2">Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {modules.length === 0 && (
+                  {modules.length === 0 && !canManage && (
                     <TableRow>
-                      <TableCell colSpan={canManage ? 3 : 2} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={2} className="py-8 text-center text-muted-foreground">
                         No hay módulos cargados.
                       </TableCell>
                     </TableRow>
                   )}
                   {modules.map((moduleRecord) => (
                     <TableRow key={moduleRecord.id}>
-                      <TableCell className="font-medium">{moduleRecord.name}</TableCell>
-                      <TableCell>{moduleRecord.technologyName}</TableCell>
+                      <TableCell className="py-1.5 px-2 font-medium">{moduleRecord.name}</TableCell>
+                      <TableCell className="py-1.5 px-2">{moduleRecord.technologyName}</TableCell>
                       {canManage && (
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditModule(moduleRecord)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteTarget({ id: moduleRecord.id, type: 'module', label: moduleRecord.name })}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        <TableCell className="py-1.5 px-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteTarget({ id: moduleRecord.id, type: 'module', label: moduleRecord.name })}
+                            disabled={isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       )}
                     </TableRow>
                   ))}
+
+                  {canManage && (
+                    <TableRow>
+                      <TableCell className="py-1.5 px-2">
+                        <Input
+                          type="text"
+                          placeholder="Nombre del módulo"
+                          className="h-8 text-xs"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          disabled={isPending || techs.length === 0}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1.5 px-2">
+                        <Select
+                          value={technologyId}
+                          onValueChange={setTechnologyId}
+                          disabled={isPending || techs.length === 0}
+                        >
+                          <SelectTrigger className="h-8 w-full text-xs">
+                            <SelectValue placeholder="Tecnología" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {technologyOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="py-1.5 px-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={handleCreateModule}
+                          disabled={isPending || techs.length === 0}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </section>
         </>
       )}
-
-      <FormSheet
-        open={technologyFormOpen}
-        onOpenChange={(open) => {
-          setTechnologyFormOpen(open)
-          if (!open) {
-            resetTechnologyForm()
-          }
-        }}
-        title={technologyForm.id ? 'Editar tecnología' : 'Nueva tecnología'}
-        isEditMode={Boolean(technologyForm.id)}
-        isSaving={isSavingTechnology}
-        onSave={handleSaveTechnology}
-        onClose={() => {
-          setTechnologyFormOpen(false)
-          resetTechnologyForm()
-        }}
-      >
-        <FormInput
-          id="technology-name"
-          label="Nombre"
-          value={technologyForm.name}
-          onChange={(event) => setTechnologyForm((current) => ({ ...current, name: event.target.value }))}
-          placeholder="Ej. SISA"
-        />
-        {technologyError && <p className="text-sm text-destructive">{technologyError}</p>}
-      </FormSheet>
-
-      <FormSheet
-        open={moduleFormOpen}
-        onOpenChange={(open) => {
-          setModuleFormOpen(open)
-          if (!open) {
-            resetModuleForm()
-          }
-        }}
-        title={moduleForm.id ? 'Editar módulo' : 'Nuevo módulo'}
-        isEditMode={Boolean(moduleForm.id)}
-        isSaving={isSavingModule}
-        onSave={handleSaveModule}
-        onClose={() => {
-          setModuleFormOpen(false)
-          resetModuleForm()
-        }}
-      >
-        <FormInput
-          id="module-name"
-          label="Nombre"
-          value={moduleForm.name}
-          onChange={(event) => setModuleForm((current) => ({ ...current, name: event.target.value }))}
-          placeholder="Ej. Serv"
-        />
-        <FormSelect
-          id="module-technology"
-          label="Tecnología"
-          value={moduleForm.technologyId}
-          onValueChange={(value) => setModuleForm((current) => ({ ...current, technologyId: value }))}
-          options={technologyOptions}
-          placeholder="Seleccioná una tecnología"
-          disabled={technologyOptions.length === 0}
-        />
-        {moduleError && <p className="text-sm text-destructive">{moduleError}</p>}
-      </FormSheet>
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
