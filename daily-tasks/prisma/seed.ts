@@ -24,14 +24,37 @@ async function main() {
   })
 
   const hashedPassword = await bcrypt.hash('1234', 10)
+
   await prisma.user.upsert({
-    where: { email: 'admin1@gmail.com' },
+    where: { email: 'admin@dailytasks.com' },
     update: {},
     create: {
-      email: 'admin1@gmail.com',
+      email: 'admin@dailytasks.com',
       password: hashedPassword,
-      username: 'admin1',
+      username: 'admin',
       role: 'ADMIN',
+    },
+  })
+
+  await prisma.user.upsert({
+    where: { email: 'dev@dailytasks.com' },
+    update: {},
+    create: {
+      email: 'dev@dailytasks.com',
+      password: hashedPassword,
+      username: 'dev',
+      role: 'DEV',
+    },
+  })
+
+  await prisma.user.upsert({
+    where: { email: 'qa@dailytasks.com' },
+    update: {},
+    create: {
+      email: 'qa@dailytasks.com',
+      password: hashedPassword,
+      username: 'qa',
+      role: 'QA',
     },
   })
 }
