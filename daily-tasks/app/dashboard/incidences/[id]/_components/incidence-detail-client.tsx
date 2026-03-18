@@ -163,6 +163,7 @@ export function IncidenceDetailClient({
                     <ScriptsTab
                         scripts={incidenceData.scripts}
                         incidenceId={incidenceData.id}
+                        sqlHeader={`--${incidenceData.externalWorkItem.type} ${incidenceData.externalWorkItem.externalId} ${incidenceData.description}`}
                         currentUserId={currentUserId}
                         isAdmin={isAdmin}
                         onRefresh={handleRefreshScripts}

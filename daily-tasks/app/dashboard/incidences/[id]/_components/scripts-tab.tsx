@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ArrowUp, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowUp, ClipboardCopy, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +31,7 @@ import type { ScriptWithCreator } from '@/types'
 interface ScriptsTabProps {
     scripts: ScriptWithCreator[]
     incidenceId: number
+    sqlHeader: string
     currentUserId: number
     isAdmin: boolean
     onRefresh?: () => void
@@ -53,7 +54,7 @@ function getRelevantDate(script: ScriptWithCreator): number {
     )
 }
 
-export function ScriptsTab({ scripts, incidenceId, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
+export function ScriptsTab({ scripts, incidenceId, sqlHeader, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
     const [content, setContent] = useState('')
     const [scriptType, setScriptType] = useState<ScriptType>('SQL')
     const [editingScript, setEditingScript] = useState<ScriptWithCreator | null>(null)
@@ -64,6 +65,12 @@ export function ScriptsTab({ scripts, incidenceId, currentUserId, isAdmin, onRef
     const initialScrollDone = useRef(false)
 
     const sortedScripts = [...scripts].sort((a, b) => getRelevantDate(a) - getRelevantDate(b))
+
+    const allSqlText = (() => {
+        const sqlScripts = sortedScripts.filter(s => s.type === 'SQL')
+        if (sqlScripts.length === 0) return ''
+        return sqlHeader + '\n\n' + sqlScripts.map(s => s.content).join('\n\n')
+    })()
 
     useEffect(() => {
         if (scripts.length > 0 && !initialScrollDone.current) {
@@ -287,6 +294,22 @@ export function ScriptsTab({ scripts, incidenceId, currentUserId, isAdmin, onRef
                             </div>
                         )}
                         <div className="flex-1" />
+                        {allSqlText && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleCopy(allSqlText)}
+                                    >
+                                        <ClipboardCopy className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copiar todos los SQL</TooltipContent>
+                            </Tooltip>
+                        )}
                         <Button
                             type="button"
                             size="icon"
