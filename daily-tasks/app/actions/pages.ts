@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
-import { IncidencePageType, Prisma, TaskStatus } from '@prisma/client'
+import { Prisma, TaskStatus } from '@prisma/client'
 
 export type PageContent = Prisma.InputJsonValue
 
@@ -45,7 +45,6 @@ export async function createPage(incidenceId: number, title: string) {
                 content: Prisma.JsonNull,
                 incidenceId,
                 authorId,
-                pageType: IncidencePageType.DEFAULT,
             }
         })
 
@@ -94,7 +93,7 @@ export async function updatePageContent(
 
         const updateData: Prisma.IncidencePageUpdateInput = {
             content: content as Prisma.InputJsonValue,
-            ...(title !== undefined && page.pageType === IncidencePageType.DEFAULT
+            ...(title !== undefined
                 ? { title: title.trim().slice(0, 60) }
                 : {})
         }
@@ -134,10 +133,6 @@ export async function deletePage(pageId: number) {
 
         const editabilityError = ensureIncidenceIsEditable(page.incidence.status)
         if (editabilityError) return editabilityError
-
-        if (page.pageType !== IncidencePageType.DEFAULT) {
-            return { success: false, error: 'No se puede eliminar una página especial' }
-        }
 
         await db.incidencePage.delete({
             where: { id: pageId }
@@ -199,4 +194,3 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
         return { success: false, error: 'Error al establecer la página principal' }
     }
 }
-

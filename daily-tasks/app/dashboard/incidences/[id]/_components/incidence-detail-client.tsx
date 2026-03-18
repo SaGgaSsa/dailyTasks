@@ -157,7 +157,6 @@ export function IncidenceDetailClient({
                     <PagesTab
                         incidenceId={incidenceData.id}
                         pages={incidenceData.pages}
-                        currentUserId={currentUserId}
                         onRefresh={handleRefresh}
                     />
                 </TabsContent>

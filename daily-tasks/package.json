@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:integration": "node scripts/run-integration-tests.mjs",
-    "db:reset": "npx prisma generate && npx prisma db push --force-reset && npm run seed",
+    "db:deploy": "npx prisma generate && npx prisma db push && npx prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed-test": "tsx prisma/test/seed-test.ts"
   },

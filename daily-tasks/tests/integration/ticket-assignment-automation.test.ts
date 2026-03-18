@@ -51,7 +51,7 @@ describe('ticket assignment automation integration', () => {
     expect(createdTicket.incidence?.status).toBe(TaskStatus.BACKLOG)
     expect(createdTicket.incidence?.assignments).toHaveLength(1)
     expect(createdTicket.incidence?.assignments[0]?.userId).toBe(dev.id)
-    expect(createdTicket.incidence?.pages.some((page) => page.pageType === 'SYSTEM_SCRIPTS')).toBe(true)
+    expect(createdTicket.incidence?.pages).toHaveLength(0)
 
     const assignment = createdTicket.incidence?.assignments[0]
     const tasks = await db.task.findMany({ where: { assignmentId: assignment?.id } })

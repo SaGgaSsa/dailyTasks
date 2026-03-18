@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { EditorWrapper } from '../editor-wrapper'
 
@@ -10,7 +10,6 @@ interface PageEditorContentProps {
     pageId: number
     incidenceId: number
     incidenceTitle: string
-    isSpecialPage?: boolean
 }
 
 export function PageEditorContent({ 
@@ -19,10 +18,8 @@ export function PageEditorContent({
     pageId, 
     incidenceId,
     incidenceTitle,
-    isSpecialPage = false,
 }: PageEditorContentProps) {
     const { setBreadcrumbs } = useNavbarBreadcrumbs()
-    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
         setBreadcrumbs([
@@ -30,16 +27,11 @@ export function PageEditorContent({
             { label: incidenceTitle, href: `/dashboard/incidences/${incidenceId}` },
             { label: initialTitle },
         ])
-        setMounted(true)
 
         return () => {
             setBreadcrumbs([])
         }
     }, [incidenceTitle, initialTitle, incidenceId, setBreadcrumbs])
-
-    if (!mounted) {
-        return null
-    }
 
     return (
         <div className="pt-4 px-8 max-w-4xl mx-auto">
@@ -49,7 +41,7 @@ export function PageEditorContent({
                 pageId={pageId}
                 incidenceId={incidenceId}
                 isEditor={true}
-                isTitleEditable={!isSpecialPage}
+                isTitleEditable={true}
             />
         </div>
     )

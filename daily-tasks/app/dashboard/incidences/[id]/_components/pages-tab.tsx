@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus, FileText, Calendar, MoreVertical, Trash2, Star, Link, Code2 } from 'lucide-react'
+import { FilePlus, FileText, Calendar, MoreVertical, Trash2, Star, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -21,12 +21,10 @@ import {
 import { IncidencePageWithAuthor } from '@/types'
 import { createPage, deletePage, setMainIncidencePage } from '@/app/actions/pages'
 import { toast } from 'sonner'
-import { IncidencePageType } from '@prisma/client'
 
 interface PagesTabProps {
     incidenceId: number
     pages: IncidencePageWithAuthor[]
-    currentUserId: number
     onRefresh?: () => void
 }
 
@@ -38,7 +36,7 @@ function formatDate(date: Date): string {
     })
 }
 
-export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: PagesTabProps) {
+export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -140,11 +138,7 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                             className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                         >
                             <div className="flex items-start gap-3">
-                                {page.pageType === IncidencePageType.SYSTEM_SCRIPTS ? (
-                                    <Code2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                                ) : (
-                                    <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                                )}
+                                <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-medium truncate" title={page.title || 'Nueva Página'}>
                                         {page.title || 'Nueva Página'}
@@ -182,15 +176,13 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
                                                 <Link className="h-4 w-4 mr-2" />
                                                 Copiar enlace
                                             </DropdownMenuItem>
-                                            {page.pageType === IncidencePageType.DEFAULT && (
-                                                <DropdownMenuItem
-                                                    className="text-red-500 focus:text-red-500"
-                                                    onClick={(e) => handleDeleteClick(page, e)}
-                                                >
-                                                    <Trash2 className="h-4 w-4 mr-2" />
-                                                    Eliminar Página
-                                                </DropdownMenuItem>
-                                            )}
+                                            <DropdownMenuItem
+                                                className="text-red-500 focus:text-red-500"
+                                                onClick={(e) => handleDeleteClick(page, e)}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Eliminar Página
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
