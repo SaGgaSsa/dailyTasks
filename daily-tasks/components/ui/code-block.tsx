@@ -83,11 +83,29 @@ export function CodeBlock({
     const contentRef = useRef<HTMLDivElement>(null)
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
     const [hasOverflow, setHasOverflow] = useState(false)
+    const [animatedMaxHeight, setAnimatedMaxHeight] = useState<string | undefined>(undefined)
     const language = variant === 'sql' ? 'sql' : 'typescript'
     const isDark = !mounted || resolvedTheme === 'dark'
 
     const normalizedCode = useMemo(() => code.replace(/\s+$/, ''), [code])
     const collapsedMaxHeight = `${collapsedLines * CODE_LINE_HEIGHT_REM}rem`
+
+    const measureExpandedHeight = () => {
+        const element = contentRef.current
+        if (!element) {
+            return null
+        }
+
+        return `${element.scrollHeight}px`
+    }
+
+    const getCollapsedHeightPx = () => {
+        const rootFontSize = Number.parseFloat(
+            window.getComputedStyle(document.documentElement).fontSize
+        )
+
+        return collapsedLines * CODE_LINE_HEIGHT_REM * rootFontSize
+    }
 
     useEffect(() => {
         if (!collapsible || !isExpanded) {
@@ -105,7 +123,8 @@ export function CodeBlock({
     }, [collapsible, isExpanded])
 
     useEffect(() => {
-        if (!collapsible || isExpanded) {
+        if (!collapsible) {
+            setAnimatedMaxHeight(undefined)
             return
         }
 
@@ -114,19 +133,60 @@ export function CodeBlock({
             return
         }
 
-        const updateOverflow = () => {
-            setHasOverflow(element.scrollHeight > element.clientHeight + 1)
+        const updateMeasurements = () => {
+            const collapsedHeightPx = getCollapsedHeightPx()
+            setHasOverflow(element.scrollHeight > collapsedHeightPx + 1)
+
+            if (isExpanded) {
+                setAnimatedMaxHeight(`${element.scrollHeight}px`)
+            }
         }
 
-        const frameId = window.requestAnimationFrame(updateOverflow)
-        const observer = new ResizeObserver(updateOverflow)
+        const frameId = window.requestAnimationFrame(() => {
+            setAnimatedMaxHeight(isExpanded ? `${element.scrollHeight}px` : collapsedMaxHeight)
+            updateMeasurements()
+        })
+        const observer = new ResizeObserver(updateMeasurements)
         observer.observe(element)
 
         return () => {
             window.cancelAnimationFrame(frameId)
             observer.disconnect()
         }
-    }, [collapsible, isExpanded, normalizedCode, collapsedLines, mounted, resolvedTheme])
+    }, [collapsible, isExpanded, normalizedCode, collapsedLines, collapsedMaxHeight, mounted, resolvedTheme])
+
+    useEffect(() => {
+        if (!collapsible) {
+            return
+        }
+
+        const element = contentRef.current
+        if (!element) {
+            return
+        }
+
+        if (isExpanded) {
+            const nextHeight = measureExpandedHeight()
+            if (nextHeight) {
+                setAnimatedMaxHeight(nextHeight)
+            }
+            return
+        }
+
+        const currentHeight = measureExpandedHeight()
+        if (!currentHeight) {
+            setAnimatedMaxHeight(collapsedMaxHeight)
+            return
+        }
+
+        setAnimatedMaxHeight(currentHeight)
+
+        const frameId = window.requestAnimationFrame(() => {
+            setAnimatedMaxHeight(collapsedMaxHeight)
+        })
+
+        return () => window.cancelAnimationFrame(frameId)
+    }, [collapsible, collapsedMaxHeight, isExpanded])
 
     return (
         <div
@@ -150,16 +210,16 @@ export function CodeBlock({
             <div
                 ref={contentRef}
                 className={cn(
-                    'relative overflow-x-auto px-3 py-3',
-                    !isExpanded && 'overflow-y-hidden'
+                    'relative overflow-x-auto overflow-y-hidden px-3 py-3 motion-reduce:transition-none',
+                    'transition-[max-height] duration-200 ease-out'
                 )}
-                style={!isExpanded && collapsible ? { maxHeight: collapsedMaxHeight } : undefined}
+                style={collapsible ? { maxHeight: animatedMaxHeight } : undefined}
                 onDoubleClick={() => {
                     if (collapsible) {
-                        setIsExpanded(true)
+                        setIsExpanded((current) => !current)
                     }
                 }}
-                title={collapsible && !isExpanded ? 'Doble click para expandir' : undefined}
+                title={collapsible ? (isExpanded ? 'Click afuera para contraer' : 'Doble click para expandir') : undefined}
             >
                 <SyntaxHighlighter
                     language={language}
@@ -171,10 +231,11 @@ export function CodeBlock({
                 >
                     {normalizedCode}
                 </SyntaxHighlighter>
-                {collapsible && !isExpanded && hasOverflow ? (
+                {collapsible && hasOverflow ? (
                     <div
                         className={cn(
-                            'pointer-events-none absolute inset-x-0 bottom-0 h-12',
+                            'pointer-events-none absolute inset-x-0 bottom-0 h-12 transition-opacity duration-200 ease-out motion-reduce:transition-none',
+                            isExpanded ? 'opacity-0' : 'opacity-100',
                             isDark
                                 ? 'bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent'
                                 : 'bg-gradient-to-t from-zinc-50 via-zinc-50/80 to-transparent'
