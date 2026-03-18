@@ -111,7 +111,7 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                     isAdmin={isAdmin}
                 />
 
-                <div>
+                <div className="lg:sticky lg:top-0 lg:self-start">
                     <div className="flex justify-between items-center py-2">
                         <span className="text-sm text-muted-foreground">Trámite</span>
                         <IncidenceBadge type={incidence.externalWorkItem.type} color={incidence.externalWorkItem.color} externalId={incidence.externalWorkItem.externalId} />
