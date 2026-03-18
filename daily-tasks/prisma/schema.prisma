@@ -26,6 +26,7 @@ model User {
   assignments        Assignment[]
   attachments        Attachment[]
   pages              IncidencePage[]
+  scripts            Script[]
 
   @@map("users")
 }
@@ -155,6 +156,7 @@ model Incidence {
   assignments   Assignment[]
   pages         IncidencePage[]
   qaTickets     TicketQA[]
+  scripts       Script[]
 
   @@map("incidences")
 }
@@ -237,6 +239,28 @@ model IncidencePage {
 enum IncidencePageType {
   DEFAULT
   SYSTEM_SCRIPTS
+}
+
+enum ScriptType {
+  SQL
+  CODE
+}
+
+model Script {
+  id           Int        @id @default(autoincrement())
+  content      String     @db.Text
+  type         ScriptType
+
+  incidenceId  Int
+  incidence    Incidence  @relation(fields: [incidenceId], references: [id], onDelete: Cascade)
+
+  createdById  Int
+  createdBy    User       @relation(fields: [createdById], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@map("scripts")
 }
 
 enum TracklistStatus {

@@ -62,6 +62,16 @@ export enum WorkspaceRole {
     MEMBER = "MEMBER",
 }
 
+export enum ScriptType {
+    SQL = "SQL",
+    CODE = "CODE",
+}
+
+export const SCRIPT_TYPE_LABELS: Record<ScriptType, string> = {
+    [ScriptType.SQL]: 'SQL',
+    [ScriptType.CODE]: 'Código',
+}
+
 export enum AttachmentType {
     FILE = "FILE",
     LINK = "LINK",
