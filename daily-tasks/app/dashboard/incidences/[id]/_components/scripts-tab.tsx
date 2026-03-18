@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { ArrowUp, ClipboardCopy, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
+import { CodeBlock } from '@/components/ui/code-block'
 import {
     Tooltip,
     TooltipContent,
@@ -188,59 +188,57 @@ export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDe
                 ) : (
                     <div className="space-y-4">
                         {sortedScripts.map((script) => (
-                            <div
-                                key={script.id}
-                                className="border border-border rounded-lg p-4 space-y-3"
-                            >
-                                <pre className="font-mono text-sm whitespace-pre-wrap bg-accent/30 rounded p-3">
-                                    {script.content}
-                                </pre>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Badge variant={script.type === 'SQL' ? 'default' : 'secondary'} className="text-[10px]">
-                                        {script.type}
-                                    </Badge>
-                                    <span>{script.createdBy.name || script.createdBy.username}</span>
-                                    <div className="flex-1" />
-                                    <span>
-                                        {new Date(script.createdAt).getTime() !== new Date(script.updatedAt).getTime()
-                                            ? `Actualizado: ${formatDate(script.updatedAt)}`
-                                            : formatDate(script.createdAt)}
-                                    </span>
-                                    {canModify(script) && (
-                                        <>
+                            <div key={script.id} className="space-y-3">
+                                <CodeBlock
+                                    code={script.content}
+                                    variant={script.type === 'SQL' ? 'sql' : 'code'}
+                                    header={(
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <span className="font-medium text-zinc-200">{script.type}</span>
+                                            <span className="truncate">{script.createdBy.name || script.createdBy.username}</span>
+                                            <div className="flex-1" />
+                                            <span className="shrink-0">
+                                                {new Date(script.createdAt).getTime() !== new Date(script.updatedAt).getTime()
+                                                    ? `Actualizado: ${formatDate(script.updatedAt)}`
+                                                    : formatDate(script.createdAt)}
+                                            </span>
+                                            {canModify(script) && (
+                                                <>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 shrink-0"
+                                                        onClick={() => handleEdit(script)}
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 shrink-0 text-red-500 hover:text-red-400"
+                                                        onClick={() => setDeleteTarget(script)}
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </>
+                                            )}
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6"
-                                                onClick={() => handleEdit(script)}
-                                                title="Editar"
+                                                className="h-6 w-6 shrink-0"
+                                                onClick={() => handleCopy(script.content)}
+                                                title="Copiar"
                                             >
-                                                <Pencil className="h-3 w-3" />
+                                                <Copy className="h-3 w-3" />
                                             </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 text-red-500 hover:text-red-400"
-                                                onClick={() => setDeleteTarget(script)}
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </>
+                                        </div>
                                     )}
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => handleCopy(script.content)}
-                                        title="Copiar"
-                                    >
-                                        <Copy className="h-3 w-3" />
-                                    </Button>
-                                </div>
+                                />
                             </div>
                         ))}
                     </div>
