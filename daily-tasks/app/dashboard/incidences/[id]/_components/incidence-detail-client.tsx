@@ -65,25 +65,7 @@ export function IncidenceDetailClient({
         setIncidenceData(updated)
     }, [])
 
-    const handleRefreshAttachments = useCallback(() => {
-        startTransition(async () => {
-            const updated = await getIncidence(incidence.id)
-            if (updated) {
-                setIncidenceData(updated)
-            }
-        })
-    }, [incidence.id])
-
-    const handleRefreshPages = useCallback(() => {
-        startTransition(async () => {
-            const updated = await getIncidence(incidence.id)
-            if (updated) {
-                setIncidenceData(updated)
-            }
-        })
-    }, [incidence.id])
-
-    const handleRefreshScripts = useCallback(() => {
+    const handleRefresh = useCallback(() => {
         startTransition(async () => {
             const updated = await getIncidence(incidence.id)
             if (updated) {
@@ -163,10 +145,11 @@ export function IncidenceDetailClient({
                     <ScriptsTab
                         scripts={incidenceData.scripts}
                         incidenceId={incidenceData.id}
-                        sqlHeader={`--${incidenceData.externalWorkItem.type} ${incidenceData.externalWorkItem.externalId} ${incidenceData.description}`}
+                        externalWorkItem={incidenceData.externalWorkItem}
+                        incidenceDescription={incidenceData.description}
                         currentUserId={currentUserId}
                         isAdmin={isAdmin}
-                        onRefresh={handleRefreshScripts}
+                        onRefresh={handleRefresh}
                     />
                 </TabsContent>
 
@@ -175,7 +158,7 @@ export function IncidenceDetailClient({
                         incidenceId={incidenceData.id}
                         pages={incidenceData.pages}
                         currentUserId={currentUserId}
-                        onRefresh={handleRefreshPages}
+                        onRefresh={handleRefresh}
                     />
                 </TabsContent>
 
@@ -184,7 +167,7 @@ export function IncidenceDetailClient({
                         externalWorkItemId={incidenceData.externalWorkItem.id}
                         attachments={incidenceData.externalWorkItem.attachments}
                         currentUserId={currentUserId}
-                        onRefresh={handleRefreshAttachments}
+                        onRefresh={handleRefresh}
                     />
                 </TabsContent>
             </Tabs>

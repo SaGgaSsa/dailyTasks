@@ -80,7 +80,7 @@ async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
     })
 }
 
-const incidenceDetailsInclude = {
+const incidenceBaseInclude = {
     externalWorkItem: {
         include: {
             workItemType: true,
@@ -118,6 +118,10 @@ const incidenceDetailsInclude = {
         }
     },
     qaTickets: { select: { id: true } },
+} satisfies Prisma.IncidenceInclude
+
+const incidenceDetailsInclude = {
+    ...incidenceBaseInclude,
     scripts: {
         include: {
             createdBy: {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { ArrowUp, ClipboardCopy, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,12 +26,13 @@ import {
     deleteScript,
 } from '@/app/actions/script-actions'
 import type { ScriptType } from '@prisma/client'
-import type { ScriptWithCreator } from '@/types'
+import type { ScriptWithCreator, ExternalWorkItemWithAttachments } from '@/types'
 
 interface ScriptsTabProps {
     scripts: ScriptWithCreator[]
     incidenceId: number
-    sqlHeader: string
+    externalWorkItem: ExternalWorkItemWithAttachments
+    incidenceDescription: string
     currentUserId: number
     isAdmin: boolean
     onRefresh?: () => void
@@ -54,7 +55,7 @@ function getRelevantDate(script: ScriptWithCreator): number {
     )
 }
 
-export function ScriptsTab({ scripts, incidenceId, sqlHeader, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
+export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDescription, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
     const [content, setContent] = useState('')
     const [scriptType, setScriptType] = useState<ScriptType>('SQL')
     const [editingScript, setEditingScript] = useState<ScriptWithCreator | null>(null)
@@ -64,13 +65,17 @@ export function ScriptsTab({ scripts, incidenceId, sqlHeader, currentUserId, isA
     const bottomRef = useRef<HTMLDivElement>(null)
     const initialScrollDone = useRef(false)
 
-    const sortedScripts = [...scripts].sort((a, b) => getRelevantDate(a) - getRelevantDate(b))
+    const sortedScripts = useMemo(
+        () => [...scripts].sort((a, b) => getRelevantDate(a) - getRelevantDate(b)),
+        [scripts]
+    )
 
-    const allSqlText = (() => {
+    const allSqlText = useMemo(() => {
         const sqlScripts = sortedScripts.filter(s => s.type === 'SQL')
         if (sqlScripts.length === 0) return ''
-        return sqlHeader + '\n\n' + sqlScripts.map(s => s.content).join('\n\n')
-    })()
+        const header = `--${externalWorkItem.type} ${externalWorkItem.externalId} ${incidenceDescription}`
+        return header + '\n\n' + sqlScripts.map(s => s.content).join('\n\n')
+    }, [sortedScripts, externalWorkItem.type, externalWorkItem.externalId, incidenceDescription])
 
     useEffect(() => {
         if (scripts.length > 0 && !initialScrollDone.current) {
@@ -129,7 +134,7 @@ export function ScriptsTab({ scripts, incidenceId, sqlHeader, currentUserId, isA
     const handleEdit = (script: ScriptWithCreator) => {
         setEditingScript(script)
         setContent(script.content)
-        setScriptType(script.type as ScriptType)
+        setScriptType(script.type)
         scrollToBottom()
     }
 

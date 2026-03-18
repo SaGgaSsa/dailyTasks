@@ -1,4 +1,4 @@
-import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, IncidencePageType, ExternalWorkItemStatus } from '.prisma/client'
+import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, IncidencePageType, ExternalWorkItemStatus, ScriptType } from '.prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 
@@ -9,7 +9,7 @@ export type { Task, Attachment, IncidencePage, IncidencePageType }
 export type ScriptWithCreator = {
     id: number
     content: string
-    type: string
+    type: ScriptType
     incidenceId: number
     createdById: number
     createdAt: Date
