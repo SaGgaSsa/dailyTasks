@@ -18,7 +18,6 @@ import {
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { DismissTicketDialog } from './DismissTicketDialog'
 import { CreateTicketDialog } from './create-ticket-dialog'
-import { getOrCreateScriptsPage } from '@/app/actions/pages'
 
 interface TicketActionsMenuProps {
   ticket: TicketQAWithDetails
@@ -69,21 +68,10 @@ export function TicketActionsMenu({
     }
   }
 
-  const handleOpenScripts = async () => {
+  const handleOpenScripts = () => {
     setMenuOpen(false)
     if (!ticket.incidenceId) return
-
-    if (ticket.scriptPageId) {
-      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${ticket.scriptPageId}`)
-      return
-    }
-
-    const result = await getOrCreateScriptsPage(ticket.incidenceId)
-    if (result.success && result.data) {
-      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${result.data.id}`)
-    } else {
-      toast.error(result.error || 'Error al abrir scripts')
-    }
+    router.push(`/dashboard/incidences/${ticket.incidenceId}#scripts`)
   }
 
   const buttonClass = triggerSize === 'sm' ? 'h-6 w-6' : 'h-8 w-8'

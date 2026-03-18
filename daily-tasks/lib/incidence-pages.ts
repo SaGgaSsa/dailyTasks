@@ -1,6 +1,4 @@
-import { IncidencePageType, Prisma } from '@prisma/client'
-
-export const SCRIPT_PAGE_TITLE = 'Scripts'
+import { Prisma } from '@prisma/client'
 
 function blockHasTextContent(block: unknown): boolean {
   if (!block || typeof block !== 'object') return false
@@ -33,26 +31,4 @@ function blockHasTextContent(block: unknown): boolean {
 export function pageHasMeaningfulContent(content: Prisma.JsonValue | null | undefined): boolean {
   if (!Array.isArray(content)) return false
   return content.some(blockHasTextContent)
-}
-
-export async function ensureSystemScriptsPage(
-  tx: Prisma.TransactionClient,
-  incidenceId: number,
-  authorId: number
-) {
-  const existing = await tx.incidencePage.findFirst({
-    where: { incidenceId, pageType: IncidencePageType.SYSTEM_SCRIPTS },
-  })
-
-  if (existing) return existing
-
-  return tx.incidencePage.create({
-    data: {
-      incidenceId,
-      authorId,
-      title: SCRIPT_PAGE_TITLE,
-      content: Prisma.JsonNull,
-      pageType: IncidencePageType.SYSTEM_SCRIPTS,
-    },
-  })
 }

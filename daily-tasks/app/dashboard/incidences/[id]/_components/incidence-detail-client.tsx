@@ -8,6 +8,7 @@ import { GeneralTab } from './general-tab'
 import { TasksTab } from './tasks-tab'
 import { AssetsTab } from './assets-tab'
 import { PagesTab } from './pages-tab'
+import { ScriptsTab } from './scripts-tab'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { getIncidence } from '@/app/actions/incidence-actions'
@@ -44,7 +45,7 @@ export function IncidenceDetailClient({
     const [activeTab, setActiveTab] = useState('overview')
 
     useEffect(() => {
-        const validTabs = ['overview', 'tasks', 'pages', 'files']
+        const validTabs = ['overview', 'tasks', 'scripts', 'pages', 'files']
 
         const handleHashChange = () => {
             const hash = window.location.hash.replace('#', '')
@@ -125,6 +126,7 @@ export function IncidenceDetailClient({
                 <TabsList>
                     <TabsTrigger value="overview">General</TabsTrigger>
                     <TabsTrigger value="tasks">Tareas</TabsTrigger>
+                    <TabsTrigger value="scripts">Scripts</TabsTrigger>
                     <TabsTrigger value="pages">Páginas</TabsTrigger>
                     <TabsTrigger value="files">Archivos</TabsTrigger>
                 </TabsList>
@@ -145,6 +147,14 @@ export function IncidenceDetailClient({
                         onHasChangesChange={onHasChangesChange}
                         onSaveRef={onSaveRef}
                         onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
+                    />
+                </TabsContent>
+
+                <TabsContent value="scripts" className="mt-0">
+                    <ScriptsTab
+                        incidenceId={incidenceData.id}
+                        currentUserId={currentUserId}
+                        isAdmin={isAdmin}
                     />
                 </TabsContent>
 

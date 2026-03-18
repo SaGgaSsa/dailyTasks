@@ -110,9 +110,6 @@ export function PagesTab({ incidenceId, pages, currentUserId, onRefresh }: Pages
     }
 
     const sortedPages = [...pages].sort((a, b) => {
-        if (a.pageType !== b.pageType) {
-            return a.pageType === IncidencePageType.SYSTEM_SCRIPTS ? -1 : 1
-        }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
 

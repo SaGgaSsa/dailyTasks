@@ -4,7 +4,6 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { IncidencePageType, Prisma, TaskStatus } from '@prisma/client'
-import { SCRIPT_PAGE_TITLE } from '@/lib/incidence-pages'
 
 export type PageContent = Prisma.InputJsonValue
 
@@ -201,58 +200,3 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
     }
 }
 
-export async function getOrCreateScriptsPage(incidenceId: number) {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: 'No autorizado' }
-    }
-
-    if (!incidenceId) {
-        return { success: false, error: 'ID de incidencia requerido' }
-    }
-
-    try {
-        const authorId = Number(session.user.id)
-
-        const page = await db.$transaction(async (tx) => {
-            const incidence = await tx.incidence.findUnique({
-                where: { id: incidenceId },
-                select: { id: true, status: true }
-            })
-
-            if (!incidence) return null
-            if (incidence.status === TaskStatus.DISMISSED) {
-                throw new Error('INCIDENCE_DISMISSED')
-            }
-
-            const existing = await tx.incidencePage.findFirst({
-                where: { incidenceId, pageType: IncidencePageType.SYSTEM_SCRIPTS }
-            })
-
-            if (existing) return existing
-
-            return tx.incidencePage.create({
-                data: {
-                    title: SCRIPT_PAGE_TITLE,
-                    content: Prisma.JsonNull,
-                    incidenceId,
-                    authorId,
-                    pageType: IncidencePageType.SYSTEM_SCRIPTS,
-                }
-            })
-        })
-
-        if (!page) {
-            return { success: false, error: 'Incidencia no encontrada' }
-        }
-
-        revalidatePath('/dashboard')
-        return { success: true, data: page }
-    } catch (error) {
-        console.error('Error getting scripts page:', error)
-        if (error instanceof Error && error.message === 'INCIDENCE_DISMISSED') {
-            return { success: false, error: 'No puede modificar páginas de una incidencia desestimada' }
-        }
-        return { success: false, error: 'Error al obtener la página de scripts' }
-    }
-}

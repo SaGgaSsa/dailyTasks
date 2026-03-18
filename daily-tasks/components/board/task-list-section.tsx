@@ -29,7 +29,6 @@ export interface TaskListSectionProps {
     editingDraftTaskId: string | null
     draftTaskEdits: Record<string, string>
     incidenceId?: number
-    scriptPageId?: number | null
     canEditTasks: boolean
     newTaskValue: string
     taskInputError: boolean
@@ -79,7 +78,6 @@ export function TaskListSection({
     editingDraftTaskId,
     draftTaskEdits,
     incidenceId,
-    scriptPageId,
     canEditTasks,
     newTaskValue,
     taskInputError,
@@ -119,7 +117,6 @@ export function TaskListSection({
                         key={task.id}
                         task={task}
                         incidenceId={incidenceId}
-                        scriptPageId={scriptPageId ?? null}
                         onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
                         checked={displayCompleted}
                         isEditing={editingTaskId === task.id}
@@ -243,8 +240,7 @@ export function TaskListSection({
                                         key={task.id}
                                         task={task}
                                         incidenceId={incidenceId}
-                                        scriptPageId={scriptPageId ?? null}
-                                        onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
+                                                        onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
                                         checked={displayCompleted}
                                         isEditing={false}
                                         editValue={taskEdits[task.id] || task.title}
@@ -299,8 +295,7 @@ export function TaskListSection({
                                 key={task.id}
                                 task={task}
                                 incidenceId={incidenceId}
-                                scriptPageId={scriptPageId ?? null}
-                                onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
+                                        onNavigateWithUnsavedChanges={onNavigateWithUnsavedChanges}
                                 checked={displayCompleted}
                                 isEditing={false}
                                 editValue={taskEdits[task.id] || task.title}

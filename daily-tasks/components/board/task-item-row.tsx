@@ -18,7 +18,6 @@ interface TaskItemLike {
 interface TaskItemRowProps {
   task: TaskItemLike
   incidenceId?: number | null
-  scriptPageId?: number | null
   onNavigateWithUnsavedChanges?: (url: string) => void
   checked: boolean
   isEditing: boolean
@@ -41,7 +40,6 @@ interface TaskItemRowProps {
 export function TaskItemRow({
   task,
   incidenceId,
-  scriptPageId,
   onNavigateWithUnsavedChanges,
   checked,
   isEditing,
@@ -122,7 +120,6 @@ export function TaskItemRow({
         {isQaReported && incidenceId && (
           <OpenScriptsButton
             incidenceId={incidenceId}
-            pageId={scriptPageId}
             onNavigate={onNavigateWithUnsavedChanges}
             className="h-5 w-5 text-muted-foreground/70 hover:text-card-foreground/80"
           />

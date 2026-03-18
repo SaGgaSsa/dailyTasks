@@ -3,8 +3,6 @@ import { db } from '@/lib/db'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistViewClient } from './_components/tracklist-view-client'
-import { IncidencePageType } from '@prisma/client'
-import { pageHasMeaningfulContent } from '@/lib/incidence-pages'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 interface Props {
@@ -39,23 +37,19 @@ export default async function TracklistDetailPage({ params }: Props) {
               where: { isAssigned: true },
               select: { assignedHours: true }
             },
-            pages: {
-              where: { pageType: IncidencePageType.SYSTEM_SCRIPTS },
-              select: { id: true, content: true },
-              take: 1,
+            _count: {
+              select: { scripts: true },
             },
           },
         },
       }
     }).then((tickets) => sortTicketsByPriorityAndNumber(tickets.map((ticket) => {
-      const scriptPage = ticket.incidence?.pages[0] ?? null
       const inc = ticket.incidence
 
       return {
         ...ticket,
         externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
-        scriptPageId: scriptPage?.id ?? null,
-        hasScriptsContent: pageHasMeaningfulContent(scriptPage?.content ?? null),
+        hasScripts: (inc?._count?.scripts ?? 0) > 0,
         incidenceGantt: inc ? {
           id: inc.id,
           status: inc.status as import('@/types/enums').TaskStatus,

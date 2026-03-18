@@ -8,7 +8,6 @@ import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
-import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 const DISMISSED_INCIDENCE_ERROR = 'No puede modificar una incidencia desestimada'
@@ -310,7 +309,6 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
                 await syncAssignments(tx, incidence.id, data.assignees)
             }
 
-            await ensureSystemScriptsPage(tx, incidence.id, authorId)
         })
 
         revalidatePath('/dashboard')

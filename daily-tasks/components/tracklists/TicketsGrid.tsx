@@ -78,7 +78,7 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                   <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
                     <div className="relative inline-flex items-center justify-center gap-1">
                       {ticket.ticketNumber}
-                      {ticket.hasScriptsContent && (
+                      {ticket.hasScripts && (
                         <FileCode2 className="h-3.5 w-3.5 text-amber-500" />
                       )}
                       {ticket.hasUnreadUpdates && (

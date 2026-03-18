@@ -9,7 +9,6 @@ import { saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskListSection } from '@/components/board/task-list-section'
-import { IncidencePageType } from '@prisma/client'
 
 interface TasksTabProps {
     incidence: IncidenceWithDetails
@@ -50,7 +49,6 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const [pinnedDraftIds, setPinnedDraftIds] = useState<Set<string>>(new Set())
 
     const assignedUserIds = new Set(incidence.assignments.map(a => a.userId))
-    const scriptPage = incidence.pages.find((page) => page.pageType === IncidencePageType.SYSTEM_SCRIPTS) ?? null
 
     const sortedAssignedUsers = [...incidence.assignments]
         .filter(a => !draftRemovedAssignees.has(a.userId))
@@ -540,7 +538,6 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                     editingDraftTaskId={editingDraftTaskId}
                                     draftTaskEdits={draftTaskEdits}
                                     incidenceId={incidence.id}
-                                    scriptPageId={scriptPage?.id ?? null}
                                     canEditTasks={canEditTasks}
                                     newTaskValue={newTaskInputs[realUserId] || ''}
                                     taskInputError={taskInputErrors[assignment.id] || false}

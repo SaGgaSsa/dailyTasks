@@ -30,7 +30,7 @@ export function TicketKanbanCard({ ticket, assignableUsers, readOnly = false }: 
             ) : (
               <span className="text-xs text-muted-foreground">—</span>
             )}
-            {ticket.hasScriptsContent && (
+            {ticket.hasScripts && (
               <FileCode2 className="h-3.5 w-3.5 text-amber-500" aria-label="Tiene scripts" />
             )}
           </div>

@@ -8,9 +8,8 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority, Prisma, IncidencePageType, ExternalWorkItemStatus } from '.prisma/client'
+import { TaskStatus, Priority as PrismaPriority, Prisma, ExternalWorkItemStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
-import { ensureSystemScriptsPage, pageHasMeaningfulContent } from '@/lib/incidence-pages'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
 interface CreateTracklistData {
@@ -55,10 +54,8 @@ const ticketDetailsInclude = {
                 where: { isAssigned: true },
                 select: { assignedHours: true }
             },
-            pages: {
-                where: { pageType: IncidencePageType.SYSTEM_SCRIPTS },
-                select: { id: true, content: true },
-                take: 1,
+            _count: {
+                select: { scripts: true },
             },
         },
     },
@@ -67,7 +64,6 @@ const ticketDetailsInclude = {
 type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetailsInclude }>
 
 function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
-    const scriptPage = ticket.incidence?.pages[0] ?? null
     const inc = ticket.incidence
 
     const incidenceGantt = inc ? {
@@ -82,8 +78,7 @@ function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     return {
         ...ticket,
         externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
-        scriptPageId: scriptPage?.id ?? null,
-        hasScriptsContent: pageHasMeaningfulContent((scriptPage?.content ?? null) as Prisma.JsonValue | null),
+        hasScripts: (inc?._count?.scripts ?? 0) > 0,
         incidenceGantt,
     }
 }
@@ -148,8 +143,6 @@ async function runAssignmentTransaction(
                     status: TaskStatus.BACKLOG,
                 },
             })
-
-            await ensureSystemScriptsPage(tx, newIncidence.id, assignedToId)
 
             const assignment = await tx.assignment.upsert({
                 where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },

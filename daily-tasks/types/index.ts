@@ -135,8 +135,7 @@ export type TicketQAWithDetails = TicketQA & {
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean
-  scriptPageId: number | null
-  hasScriptsContent: boolean
+  hasScripts: boolean
   incidenceGantt: IncidenceGanttData | null
 }
 

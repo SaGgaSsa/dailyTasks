@@ -4,7 +4,6 @@ import { Priority, TaskStatus } from '@/types/enums'
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
-import { ensureSystemScriptsPage } from '@/lib/incidence-pages'
 
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
@@ -172,7 +171,6 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      await ensureSystemScriptsPage(tx, createdIncidence.id, uploader.id)
       return createdIncidence
     })
 

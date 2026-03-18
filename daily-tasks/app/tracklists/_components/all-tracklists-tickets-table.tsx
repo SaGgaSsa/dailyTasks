@@ -24,7 +24,6 @@ import { DismissTicketDialog } from '@/components/tracklists/DismissTicketDialog
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
 import { toast } from 'sonner'
-import { getOrCreateScriptsPage } from '@/app/actions/pages'
 
 interface Props {
   tickets: TicketQAWithDetails[]
@@ -77,20 +76,9 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
     }
   }
 
-  const handleOpenScripts = async (ticket: TicketQAWithDetails) => {
+  const handleOpenScripts = (ticket: TicketQAWithDetails) => {
     if (!ticket.incidenceId) return
-
-    if (ticket.scriptPageId) {
-      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${ticket.scriptPageId}`)
-      return
-    }
-
-    const result = await getOrCreateScriptsPage(ticket.incidenceId)
-    if (result.success && result.data) {
-      router.push(`/dashboard/incidences/${ticket.incidenceId}/pages/${result.data.id}`)
-    } else {
-      toast.error(result.error || 'Error al abrir scripts')
-    }
+    router.push(`/dashboard/incidences/${ticket.incidenceId}#scripts`)
   }
 
   return (
@@ -150,7 +138,7 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                     <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
                       <div className="relative inline-flex items-center justify-center gap-1">
                         {ticket.ticketNumber}
-                        {ticket.hasScriptsContent && (
+                        {ticket.hasScripts && (
                           <FileCode2 className="h-3.5 w-3.5 text-amber-500" />
                         )}
                         {ticket.hasUnreadUpdates && (

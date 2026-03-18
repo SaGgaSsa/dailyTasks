@@ -1,15 +1,11 @@
 'use client'
 
-import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileCode2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getOrCreateScriptsPage } from '@/app/actions/pages'
-import { toast } from 'sonner'
 
 interface OpenScriptsButtonProps {
   incidenceId?: number | null
-  pageId?: number | null
   size?: 'icon' | 'sm'
   className?: string
   title?: string
@@ -18,44 +14,23 @@ interface OpenScriptsButtonProps {
 
 export function OpenScriptsButton({
   incidenceId,
-  pageId,
   size = 'icon',
   className,
   title = 'Ver scripts',
   onNavigate,
 }: OpenScriptsButtonProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
 
   const handleOpen = () => {
     if (!incidenceId) return
 
-    if (pageId) {
-      const targetUrl = `/dashboard/incidences/${incidenceId}/pages/${pageId}`
-      if (onNavigate) {
-        onNavigate(targetUrl)
-        return
-      }
-
-      router.push(targetUrl)
+    const targetUrl = `/dashboard/incidences/${incidenceId}#scripts`
+    if (onNavigate) {
+      onNavigate(targetUrl)
       return
     }
 
-    startTransition(async () => {
-      const result = await getOrCreateScriptsPage(incidenceId)
-      if (!result.success || !result.data) {
-        toast.error(result.error || 'No se pudo abrir la página de scripts')
-        return
-      }
-
-      const targetUrl = `/dashboard/incidences/${incidenceId}/pages/${result.data.id}`
-      if (onNavigate) {
-        onNavigate(targetUrl)
-        return
-      }
-
-      router.push(targetUrl)
-    })
+    router.push(targetUrl)
   }
 
   return (
@@ -67,7 +42,7 @@ export function OpenScriptsButton({
         event.stopPropagation()
         handleOpen()
       }}
-      disabled={!incidenceId || isPending}
+      disabled={!incidenceId}
       className={className}
       title={title}
     >
