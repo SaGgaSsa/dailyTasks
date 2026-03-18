@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { coy, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { useTheme } from '@/lib/use-theme'
@@ -16,10 +16,18 @@ interface CodeBlockProps {
     className?: string
 }
 
+function sanitizePreTheme(styles: CSSProperties): CSSProperties {
+    const nextStyles = { ...styles }
+    delete nextStyles.backgroundColor
+    delete nextStyles.marginBottom
+    delete nextStyles.marginTop
+    return nextStyles
+}
+
 const darkTheme = {
     ...oneDark,
     'pre[class*="language-"]': {
-        ...oneDark['pre[class*="language-"]'],
+        ...sanitizePreTheme(oneDark['pre[class*="language-"]']),
         background: 'transparent',
         margin: 0,
         padding: 0,
@@ -38,7 +46,7 @@ const darkTheme = {
 const lightTheme = {
     ...coy,
     'pre[class*="language-"]': {
-        ...coy['pre[class*="language-"]'],
+        ...sanitizePreTheme(coy['pre[class*="language-"]']),
         background: 'transparent',
         margin: 0,
         padding: 0,
