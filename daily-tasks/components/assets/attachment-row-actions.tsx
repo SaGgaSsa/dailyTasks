@@ -27,12 +27,13 @@ import { Attachment } from '@/types'
 
 interface AttachmentRowActionsProps {
   attachment: Attachment
+  canManage: boolean
   onSuccess?: () => void
 }
 
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 
-export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowActionsProps) {
+export function AttachmentRowActions({ attachment, canManage, onSuccess }: AttachmentRowActionsProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -139,18 +140,20 @@ export function AttachmentRowActions({ attachment, onSuccess }: AttachmentRowAct
             </DropdownMenuItem>
           )}
           
-          <DropdownMenuItem onClick={() => {
-            setEditName(attachment.name)
-            setEditUrl(attachment.url)
-            setEditDescription(attachment.description || '')
-            setError(null)
-            setIsEditDialogOpen(true)
-          }}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </DropdownMenuItem>
+          {canManage && (
+            <DropdownMenuItem onClick={() => {
+              setEditName(attachment.name)
+              setEditUrl(attachment.url)
+              setEditDescription(attachment.description || '')
+              setError(null)
+              setIsEditDialogOpen(true)
+            }}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+          )}
           
-          {canDelete && (
+          {canManage && canDelete && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

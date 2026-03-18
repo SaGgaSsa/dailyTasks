@@ -2,13 +2,22 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import { Prisma, TaskStatus } from '@prisma/client'
+import {
+    canCreateIncidencePage,
+    canDeleteIncidencePage,
+    canEditIncidencePage,
+    canSetMainIncidencePage,
+    getAuthenticatedUser,
+    getIncidenceAccessContext,
+    getPageAccessContext,
+    isEditableIncidenceStatus,
+} from '@/lib/authorization'
 
 export type PageContent = Prisma.InputJsonValue
 
 function ensureIncidenceIsEditable(status: TaskStatus) {
-    if (status === TaskStatus.DISMISSED) {
+    if (!isEditableIncidenceStatus(status)) {
         return { success: false, error: 'No puede modificar páginas de una incidencia desestimada' } as const
     }
 
@@ -16,8 +25,8 @@ function ensureIncidenceIsEditable(status: TaskStatus) {
 }
 
 export async function createPage(incidenceId: number, title: string) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -26,25 +35,24 @@ export async function createPage(incidenceId: number, title: string) {
     }
 
     try {
-        const incidence = await db.incidence.findUnique({
-            where: { id: incidenceId }
-        })
-
-        if (!incidence) {
+        const accessContext = await getIncidenceAccessContext(incidenceId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
 
-        const authorId = Number(session.user.id)
+        if (!canCreateIncidencePage(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para crear páginas en esta incidencia' }
+        }
 
         const page = await db.incidencePage.create({
             data: {
                 title: title.trim().slice(0, 60),
                 content: Prisma.JsonNull,
                 incidenceId,
-                authorId,
+                authorId: user.id,
             }
         })
 
@@ -61,8 +69,8 @@ export async function updatePageContent(
     content: PageContent,
     title?: string
 ) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -72,24 +80,25 @@ export async function updatePageContent(
 
     try {
         const page = await db.incidencePage.findUnique({
-            where: { id: pageId }
+            where: { id: pageId },
+            select: { incidenceId: true }
         })
 
         if (!page) {
             return { success: false, error: 'Página no encontrada' }
         }
 
-        const incidence = await db.incidence.findUnique({
-            where: { id: page.incidenceId },
-            select: { status: true }
-        })
-
-        if (!incidence) {
-            return { success: false, error: 'Incidencia no encontrada' }
+        const accessContext = await getPageAccessContext(pageId, user.id)
+        if (!accessContext) {
+            return { success: false, error: 'Página no encontrada' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
+
+        if (!canEditIncidencePage(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para editar esta página' }
+        }
 
         const updateData: Prisma.IncidencePageUpdateInput = {
             content: content as Prisma.InputJsonValue,
@@ -103,7 +112,8 @@ export async function updatePageContent(
             data: updateData
         })
 
-        revalidatePath(`/incidences/${page.incidenceId}/pages/${pageId}`)
+        revalidatePath(`/dashboard/incidences/${page.incidenceId}/pages/${pageId}`)
+        revalidatePath(`/dashboard/shared-pages/${pageId}`)
         return { success: true }
     } catch (error) {
         console.error('Error updating page:', error)
@@ -112,8 +122,8 @@ export async function updatePageContent(
 }
 
 export async function deletePage(pageId: number) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -134,6 +144,11 @@ export async function deletePage(pageId: number) {
         const editabilityError = ensureIncidenceIsEditable(page.incidence.status)
         if (editabilityError) return editabilityError
 
+        const accessContext = await getPageAccessContext(pageId, user.id)
+        if (!accessContext || !canDeleteIncidencePage(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para eliminar esta página' }
+        }
+
         await db.incidencePage.delete({
             where: { id: pageId }
         })
@@ -147,8 +162,8 @@ export async function deletePage(pageId: number) {
 }
 
 export async function setMainIncidencePage(incidenceId: number, pageId: number) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -157,15 +172,12 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
     }
 
     try {
-        const incidence = await db.incidence.findUnique({
-            where: { id: incidenceId }
-        })
-
-        if (!incidence) {
+        const accessContext = await getIncidenceAccessContext(incidenceId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
 
         const page = await db.incidencePage.findFirst({
@@ -174,6 +186,11 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
 
         if (!page) {
             return { success: false, error: 'Página no encontrada' }
+        }
+
+        const pageAccessContext = await getPageAccessContext(pageId, user.id)
+        if (!pageAccessContext || !canSetMainIncidencePage(user, pageAccessContext)) {
+            return { success: false, error: 'No tiene permisos para fijar esta página' }
         }
 
         await db.$transaction([

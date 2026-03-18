@@ -1,11 +1,10 @@
 import type { Priority, TaskStatus, TaskType, TicketQAStatus, TicketType } from '@prisma/client'
 import { ExternalWorkItemStatus } from '.prisma/client'
+import { UserRole } from '@prisma/client'
 
 import { db } from '@/lib/db'
 import { type WorkItemTypeColor } from '@/lib/work-item-color-options'
 import { setMockSession } from '@/tests/integration/setup'
-
-type UserRole = 'ADMIN' | 'DEV' | 'QA'
 
 let sequence = 1
 
@@ -28,7 +27,7 @@ export async function createUser(role: UserRole, overrides?: Partial<{ name: str
   })
 }
 
-export function actAs(user: { id: number; email: string; username: string; role: string; name: string | null }) {
+export function actAs(user: { id: number; email: string; username: string; role: UserRole; name: string | null }) {
   setMockSession({
     user: {
       id: String(user.id),

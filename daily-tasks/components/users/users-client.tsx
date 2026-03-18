@@ -1,30 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Eye } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { UserForm } from './user-form'
 import { UsersTable } from './users-table'
 import { UserDetailSheet } from './user-detail-sheet'
 import { Button } from '@/components/ui/button'
-import { getUserWithTechnologies } from '@/app/actions/user-actions'
+import { AdminUserSummary, getUserWithTechnologies } from '@/app/actions/user-actions'
 
-import { User } from '@prisma/client'
-
-interface UserWithTechs extends User {
+interface UserWithTechs extends AdminUserSummary {
     technologies: { id: number; name: string }[]
 }
 
 interface UsersClientProps {
-    initialUsers: User[]
+    initialUsers: AdminUserSummary[]
 }
 
 export function UsersClient({ initialUsers }: UsersClientProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(null)
     const [selectedTechNames, setSelectedTechNames] = useState<string[]>([])
     const [detailUserId, setDetailUserId] = useState<number | null>(null)
 
-    const handleEdit = async (user: User) => {
+    const handleEdit = async (user: AdminUserSummary) => {
         const userWithTechs = await getUserWithTechnologies(user.id) as UserWithTechs | null
         if (userWithTechs) {
             setSelectedTechNames(userWithTechs.technologies.map(t => t.name))
@@ -33,7 +31,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
         setIsOpen(true)
     }
 
-    const handleViewDetail = (user: User) => {
+    const handleViewDetail = (user: AdminUserSummary) => {
         setDetailUserId(user.id)
     }
 
@@ -62,6 +60,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 initialData={selectedUser}
+                initialTechNames={selectedTechNames}
             />
 
             <UserDetailSheet

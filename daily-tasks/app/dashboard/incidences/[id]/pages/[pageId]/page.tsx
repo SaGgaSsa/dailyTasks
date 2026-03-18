@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
-import { auth } from '@/auth'
 import { PageEditorContent } from './_components/page-editor-content'
+import { canEditIncidencePage, getAuthenticatedUser, getPageAccessContext } from '@/lib/authorization'
 
 interface PageProps {
     params: Promise<{ id: string; pageId: string }>
@@ -9,9 +9,9 @@ interface PageProps {
 
 export default async function PageEditorPage({ params }: PageProps) {
     const { id, pageId } = await params
-    const session = await auth()
+    const user = await getAuthenticatedUser()
     
-    if (!session?.user) {
+    if (!user) {
         notFound()
     }
 
@@ -31,6 +31,9 @@ export default async function PageEditorPage({ params }: PageProps) {
         notFound()
     }
 
+    const accessContext = await getPageAccessContext(page.id, user.id)
+    const canEdit = accessContext ? canEditIncidencePage(user, accessContext) : false
+
     return (
         <PageEditorContent
             initialContent={page.content as object | undefined}
@@ -38,6 +41,7 @@ export default async function PageEditorPage({ params }: PageProps) {
             pageId={page.id}
             incidenceId={incidenceNumberId}
             incidenceTitle={page.incidence.description}
+            canEdit={canEdit}
         />
     )
 }

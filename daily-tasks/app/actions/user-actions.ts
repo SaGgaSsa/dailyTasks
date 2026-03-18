@@ -3,19 +3,44 @@
 import { unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { User, UserRole } from '@prisma/client'
+import { UserRole } from '@prisma/client'
 import { createUserSchema, updateUserSchema } from '@/types'
 import bcrypt from 'bcryptjs'
 import { serializeExternalWorkItem } from '@/lib/work-item-types'
+import { canManageUsers, getAuthenticatedUser } from '@/lib/authorization'
 
 interface GetUsersResult {
-    data: User[]
+    data: AdminUserSummary[]
     error?: string
 }
 
+export interface AdminUserSummary {
+    id: number
+    email: string
+    name: string | null
+    username: string
+    role: UserRole
+    createdAt: Date
+    updatedAt: Date
+}
+
 export async function getUsers(): Promise<GetUsersResult> {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { data: [], error: 'No autorizado' }
+    }
+
     try {
         const users = await db.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                username: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true,
+            },
             orderBy: { username: 'asc' }
         })
         return { data: users }
@@ -36,6 +61,11 @@ interface UpsertUserData {
 }
 
 export async function upsertUser(data: UpsertUserData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     const schema = data.id ? updateUserSchema : createUserSchema
     const validation = schema.safeParse(data)
 
@@ -87,6 +117,11 @@ export async function upsertUser(data: UpsertUserData) {
 }
 
 export async function createUser(formData: FormData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: null, error: 'No autorizado' }
+    }
+
     const username = formData.get('username') as string
     const name = formData.get('name') as string
     const email = formData.get('email') as string
@@ -138,11 +173,16 @@ export async function createUser(formData: FormData) {
 }
 
 export async function getUserByUsername(username: string) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return null
+    }
+
     try {
-        const user = await db.user.findUnique({
+        const existingUser = await db.user.findUnique({
             where: { username }
         })
-        return user
+        return existingUser
     } catch (error) {
         console.error('Error getting user by username:', error)
         return null
@@ -150,11 +190,16 @@ export async function getUserByUsername(username: string) {
 }
 
 export async function getUserById(id: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return null
+    }
+
     try {
-        const user = await db.user.findUnique({
+        const existingUser = await db.user.findUnique({
             where: { id }
         })
-        return user
+        return existingUser
     } catch (error) {
         console.error('Error getting user by id:', error)
         return null
@@ -162,14 +207,19 @@ export async function getUserById(id: number) {
 }
 
 export async function getUserWithTechnologies(id: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return null
+    }
+
     try {
-        const user = await db.user.findUnique({
+        const existingUser = await db.user.findUnique({
             where: { id },
             include: {
                 technologies: true
             }
         })
-        return user
+        return existingUser
     } catch (error) {
         console.error('Error getting user with technologies:', error)
         return null
@@ -177,6 +227,11 @@ export async function getUserWithTechnologies(id: number) {
 }
 
 export async function updateUserPassword(formData: FormData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     const userId = Number(formData.get('userId'))
     const newPassword = formData.get('newPassword') as string
     
@@ -195,6 +250,11 @@ export async function updateUserPassword(formData: FormData) {
 }
 
 export async function deleteUser(userId: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     try {
         await db.user.delete({
             where: { id: userId }
@@ -208,6 +268,11 @@ export async function deleteUser(userId: number) {
 }
 
 export async function getUserDetails(userId: number) {
+  const user = await getAuthenticatedUser()
+  if (!user || !canManageUsers(user.role)) {
+    return null
+  }
+
   try {
     const user = await db.user.findUnique({
       where: { id: userId },

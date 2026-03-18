@@ -25,6 +25,7 @@ import {
     updateScript,
     deleteScript,
 } from '@/app/actions/script-actions'
+import { UserRole } from '@prisma/client'
 import type { ScriptType } from '@prisma/client'
 import type { ScriptWithCreator, ExternalWorkItemWithAttachments } from '@/types'
 
@@ -35,6 +36,8 @@ interface ScriptsTabProps {
     incidenceDescription: string
     currentUserId: number
     isAdmin: boolean
+    currentUserRole: UserRole
+    isAssignedToCurrentUser: boolean
     onRefresh?: () => void
 }
 
@@ -55,7 +58,17 @@ function getRelevantDate(script: ScriptWithCreator): number {
     )
 }
 
-export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDescription, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
+export function ScriptsTab({
+    scripts,
+    incidenceId,
+    externalWorkItem,
+    incidenceDescription,
+    currentUserId,
+    isAdmin,
+    currentUserRole,
+    isAssignedToCurrentUser,
+    onRefresh,
+}: ScriptsTabProps) {
     const [content, setContent] = useState('')
     const [scriptType, setScriptType] = useState<ScriptType>('SQL')
     const [editingScript, setEditingScript] = useState<ScriptWithCreator | null>(null)
@@ -174,8 +187,12 @@ export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDe
         }
     }
 
+    const canCreateOrEditScripts =
+        currentUserRole === UserRole.ADMIN ||
+        (currentUserRole === UserRole.DEV && isAssignedToCurrentUser)
+
     const canModify = (script: ScriptWithCreator) =>
-        isAdmin || script.createdById === currentUserId
+        isAdmin || (currentUserRole === UserRole.DEV && isAssignedToCurrentUser && script.createdById === currentUserId)
 
     return (
         <TooltipProvider>
@@ -245,15 +262,16 @@ export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDe
                 )}
 
                 {/* Composer (abajo) */}
-                <div className="space-y-3">
-                    <Textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Escribe un script..."
-                        className="font-mono text-sm min-h-[100px]"
-                    />
-                    <div className="flex items-center gap-2">
+                {canCreateOrEditScripts && (
+                    <div className="space-y-3">
+                        <Textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Escribe un script..."
+                            className="font-mono text-sm min-h-[100px]"
+                        />
+                        <div className="flex items-center gap-2">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -323,7 +341,8 @@ export function ScriptsTab({ scripts, incidenceId, externalWorkItem, incidenceDe
                             <ArrowUp className="h-4 w-4" />
                         </Button>
                     </div>
-                </div>
+                    </div>
+                )}
 
                 <div ref={bottomRef} />
 

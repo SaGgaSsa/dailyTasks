@@ -20,13 +20,11 @@ import { toast } from 'sonner'
 
 interface UploadAssetDialogProps {
   externalWorkItemId: number
-  uploadedById: number
   onSuccess?: () => void
 }
 
 export function UploadAssetDialog({
   externalWorkItemId,
-  uploadedById,
   onSuccess,
 }: UploadAssetDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -63,7 +61,6 @@ export function UploadAssetDialog({
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('externalWorkItemId', String(externalWorkItemId))
-      formData.append('uploadedById', String(uploadedById))
       formData.append('name', fileName.trim())
 
       const result = await uploadAttachment(formData)

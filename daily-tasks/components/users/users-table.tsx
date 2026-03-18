@@ -21,20 +21,19 @@ import {
 import { Edit, Trash, AlertTriangle, Eye } from 'lucide-react'
 import { deleteUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
-
-import { User } from '@prisma/client'
+import { AdminUserSummary } from '@/app/actions/user-actions'
 
 interface UsersTableProps {
-    data: User[]
-    onEdit: (user: User) => void
-    onViewDetail: (user: User) => void
+    data: AdminUserSummary[]
+    onEdit: (user: AdminUserSummary) => void
+    onViewDetail: (user: AdminUserSummary) => void
 }
 
 export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
-    const [userToDelete, setUserToDelete] = useState<User | null>(null)
+    const [userToDelete, setUserToDelete] = useState<AdminUserSummary | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
-    const handleDeleteClick = (user: User) => {
+    const handleDeleteClick = (user: AdminUserSummary) => {
         setUserToDelete(user)
     }
 
@@ -50,7 +49,7 @@ export function UsersTable({ data, onEdit, onViewDetail }: UsersTableProps) {
             } else {
                 toast.error('Error al eliminar colaborador')
             }
-        } catch (error) {
+        } catch {
             toast.error('Error al eliminar colaborador')
         } finally {
             setIsDeleting(false)

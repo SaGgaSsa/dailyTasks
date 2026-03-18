@@ -14,15 +14,25 @@ import {
 import { Button } from "@/components/ui/button"
 import { IncidenceDetailClient } from './incidence-detail-client'
 import { IncidenceWithDetails } from '@/types'
+import { UserRole } from '@prisma/client'
 
 interface IncidencePageContentProps {
     incidence: IncidenceWithDetails
     allUsers: { id: number; name: string | null; username: string; role: string }[]
     currentUserId: number
     isAdmin: boolean
+    currentUserRole: UserRole
+    isAssignedToCurrentUser: boolean
 }
 
-export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdmin }: IncidencePageContentProps) {
+export function IncidencePageContent({
+    incidence,
+    allUsers,
+    currentUserId,
+    isAdmin,
+    currentUserRole,
+    isAssignedToCurrentUser,
+}: IncidencePageContentProps) {
     const pathname = usePathname()
     const { setBreadcrumbs } = useNavbarBreadcrumbs()
     const [hasChanges, setHasChanges] = useState(false)
@@ -109,6 +119,8 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
                 allUsers={allUsers}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
+                currentUserRole={currentUserRole}
+                isAssignedToCurrentUser={isAssignedToCurrentUser}
                 hasChanges={hasChanges}
                 isSaving={isSaving}
                 onSave={handleSave}

@@ -1,17 +1,19 @@
 import bcrypt from 'bcryptjs'
-import NextAuth from 'next-auth'
+import type { NextAuthConfig } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { UserRole } from '@prisma/client'
 import { db } from './lib/db'
+import { isPublicPath } from './lib/auth-route-policy'
 
 interface AuthUser {
-  id: number
+  id: string
   email: string
   name: string
   username: string
-  role: string
+  role: UserRole
 }
 
-export const authConfig = {
+export const authConfig: NextAuthConfig = {
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -41,7 +43,7 @@ export const authConfig = {
         }
 
         return {
-          id: user.id,
+          id: String(user.id),
           email: user.email,
           name: user.name || '',
           username: user.username,
@@ -53,13 +55,12 @@ export const authConfig = {
   session: {
     strategy: 'jwt' as const
   },
-  refetchOnWindowFocus: false,
   pages: {
     signIn: '/auth/login',
     error: '/auth/login'
   },
   callbacks: {
-    async jwt({ token, user }: { token: Record<string, unknown>; user?: AuthUser }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -69,22 +70,23 @@ export const authConfig = {
       }
       return token
     },
-    async session({ session, token }: { session: Record<string, unknown>; token: Record<string, unknown> }) {
-      if (token) {
-        session.user = {
-          id: String(token.id),
-          email: token.email as string,
-          name: token.name as string,
-          username: token.username as string,
-          role: token.role as string,
-        }
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = typeof token.id === 'string' ? token.id : ''
+        session.user.email = typeof token.email === 'string' ? token.email : ''
+        session.user.name = typeof token.name === 'string' ? token.name : ''
+        session.user.username = typeof token.username === 'string' ? token.username : ''
+        session.user.role = token.role === UserRole.ADMIN || token.role === UserRole.DEV || token.role === UserRole.QA
+          ? token.role
+          : UserRole.DEV
       }
+
       return session
     },
-    async authorized({ auth, request }: { auth: { user: AuthUser } | null; request: { nextUrl: URL } }) {
+    async authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname
 
-      if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
+      if (isPublicPath(pathname)) {
         return true
       }
 
@@ -94,5 +96,3 @@ export const authConfig = {
   trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 }
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig as any)

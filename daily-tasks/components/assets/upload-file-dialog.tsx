@@ -22,7 +22,6 @@ interface UploadFileDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   externalWorkItemId: number
-  uploadedById: number
   onSuccess?: () => void
 }
 
@@ -30,7 +29,6 @@ export function UploadFileDialog({
   open,
   onOpenChange,
   externalWorkItemId,
-  uploadedById,
   onSuccess,
 }: UploadFileDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -67,7 +65,6 @@ export function UploadFileDialog({
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('externalWorkItemId', String(externalWorkItemId))
-      formData.append('uploadedById', String(uploadedById))
       formData.append('name', fileName.trim())
       if (description.trim()) {
         formData.append('description', description.trim())

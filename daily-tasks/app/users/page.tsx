@@ -1,6 +1,5 @@
 import { getUsers } from '@/app/actions/user-actions'
 import { UsersClient } from '@/components/users/users-client'
-
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 

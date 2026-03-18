@@ -2,10 +2,15 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import { writeFile, unlink, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import {
+  canManageAttachment,
+  getAttachmentAccessContext,
+  getAuthenticatedUser,
+  getExternalWorkItemAccessContext,
+} from '@/lib/authorization'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -109,18 +114,17 @@ async function resolveExternalWorkItemIdFromForm(formData: FormData): Promise<nu
 }
 
 export async function uploadAttachment(formData: FormData) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
     const file = formData.get('file') as File | null
     const externalWorkItemId = await resolveExternalWorkItemIdFromForm(formData)
     const name = formData.get('name') as string
-    const uploadedById = Number(formData.get('uploadedById'))
     const description = formData.get('description') as string | null
 
-    if (!file || !externalWorkItemId || !name || !uploadedById) {
+    if (!file || !externalWorkItemId || !name) {
         return { success: false, error: 'Faltan datos requeridos' }
     }
 
@@ -143,6 +147,11 @@ export async function uploadAttachment(formData: FormData) {
 
         if (!workItem) {
             return { success: false, error: 'External work item no encontrado' }
+        }
+
+        const accessContext = await getExternalWorkItemAccessContext(externalWorkItemId, user.id)
+        if (!accessContext || !canManageAttachment(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para adjuntar archivos a esta incidencia' }
         }
 
         const originalName = file.name
@@ -168,7 +177,7 @@ export async function uploadAttachment(formData: FormData) {
                 mimeType: file.type,
                 description: description || null,
                 externalWorkItemId,
-                uploadedById
+                uploadedById: user.id
             }
         })
 
@@ -188,8 +197,8 @@ export async function updateAttachment(
         description?: string | null
     }
 ) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -200,12 +209,13 @@ export async function updateAttachment(
     }
 
     try {
-        const attachment = await db.attachment.findUnique({
-            where: { id: attachmentId }
-        })
-
-        if (!attachment) {
+        const accessContext = await getAttachmentAccessContext(attachmentId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Archivo no encontrado' }
+        }
+
+        if (!canManageAttachment(user, accessContext.assignment)) {
+            return { success: false, error: 'No tiene permisos para editar este archivo' }
         }
 
         const updateData: { name: string; url?: string; description: string | null } = {
@@ -213,7 +223,7 @@ export async function updateAttachment(
             description: description?.trim() || null
         }
 
-        if (attachment.type === ATTACHMENT_TYPE_LINK) {
+        if (accessContext.type === ATTACHMENT_TYPE_LINK) {
             if (!url || url.trim() === '') {
                 return { success: false, error: 'El enlace no puede estar vacío' }
             }
@@ -252,24 +262,18 @@ export async function updateAttachment(
 export async function deleteAttachment(
     attachmentId: number
 ) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
     try {
-        const attachment = await db.attachment.findUnique({
-            where: { id: attachmentId },
-        })
-
+        const attachment = await getAttachmentAccessContext(attachmentId, user.id)
         if (!attachment) {
             return { success: false, error: 'Archivo no encontrado' }
         }
 
-        const isOwner = attachment.uploadedById === Number(session.user.id)
-        const isAdmin = session.user.role === 'ADMIN'
-
-        if (!isOwner && !isAdmin) {
+        if (!canManageAttachment(user, attachment.assignment)) {
             return { success: false, error: 'No tienes permiso para eliminar este archivo' }
         }
 
@@ -304,18 +308,17 @@ interface AddLinkData {
     name: string
     url: string
     description?: string
-    uploadedById: number
 }
 
 export async function addLinkAttachment(data: AddLinkData) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
-    const { externalWorkItemId, name, url, description, uploadedById } = data
+    const { externalWorkItemId, name, url, description } = data
 
-    if (!externalWorkItemId || !name || !url || !uploadedById) {
+    if (!externalWorkItemId || !name || !url) {
         return { success: false, error: 'Faltan datos requeridos' }
     }
 
@@ -326,6 +329,11 @@ export async function addLinkAttachment(data: AddLinkData) {
 
         if (!workItem) {
             return { success: false, error: 'External work item no encontrado' }
+        }
+
+        const accessContext = await getExternalWorkItemAccessContext(externalWorkItemId, user.id)
+        if (!accessContext || !canManageAttachment(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para adjuntar enlaces a esta incidencia' }
         }
 
         let normalizedUrl = url.trim()
@@ -353,7 +361,7 @@ export async function addLinkAttachment(data: AddLinkData) {
                 mimeType: null,
                 description: description?.trim() || null,
                 externalWorkItemId,
-                uploadedById
+                uploadedById: user.id
             }
         })
 

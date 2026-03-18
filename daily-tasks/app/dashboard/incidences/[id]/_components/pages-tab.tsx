@@ -21,10 +21,14 @@ import {
 import { IncidencePageWithAuthor } from '@/types'
 import { createPage, deletePage, setMainIncidencePage } from '@/app/actions/pages'
 import { toast } from 'sonner'
+import { UserRole } from '@prisma/client'
 
 interface PagesTabProps {
     incidenceId: number
     pages: IncidencePageWithAuthor[]
+    currentUserId: number
+    currentUserRole: UserRole
+    isAssignedToCurrentUser: boolean
     onRefresh?: () => void
 }
 
@@ -36,13 +40,25 @@ function formatDate(date: Date): string {
     })
 }
 
-export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
+export function PagesTab({
+    incidenceId,
+    pages,
+    currentUserId,
+    currentUserRole,
+    isAssignedToCurrentUser,
+    onRefresh,
+}: PagesTabProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [pageToDelete, setPageToDelete] = useState<IncidencePageWithAuthor | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isSettingMain, setIsSettingMain] = useState(false)
+    const canCreatePages = currentUserRole === UserRole.ADMIN || (currentUserRole === UserRole.DEV && isAssignedToCurrentUser)
+
+    const canManagePage = (page: IncidencePageWithAuthor) =>
+        currentUserRole === UserRole.ADMIN ||
+        (currentUserRole === UserRole.DEV && isAssignedToCurrentUser && page.authorId === currentUserId)
 
     const handleCreatePage = async () => {
         setIsSubmitting(true)
@@ -83,7 +99,7 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
 
     const handleCopyLink = async (page: IncidencePageWithAuthor, e: React.MouseEvent) => {
         e.stopPropagation()
-        const url = `${window.location.origin}/dashboard/incidences/${incidenceId}/pages/${page.id}`
+        const url = `${window.location.origin}/dashboard/shared-pages/${page.id}`
         await navigator.clipboard.writeText(url)
         toast.success('Enlace copiado al portapapeles')
     }
@@ -114,15 +130,17 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-end">
-                <Button
-                    size="sm"
-                    className="gap-2"
-                    onClick={handleCreatePage}
-                    disabled={isSubmitting}
-                >
-                    <FilePlus className="h-4 w-4" />
-                    {isSubmitting ? 'Creando...' : 'Agregar Página'}
-                </Button>
+                {canCreatePages && (
+                    <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleCreatePage}
+                        disabled={isSubmitting}
+                    >
+                        <FilePlus className="h-4 w-4" />
+                        {isSubmitting ? 'Creando...' : 'Agregar Página'}
+                    </Button>
+                )}
             </div>
 
             {pages.length === 0 ? (
@@ -156,19 +174,21 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            {page.isMainPage ? (
-                                                <DropdownMenuItem disabled>
-                                                    <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" />
-                                                    Ya es la principal
-                                                </DropdownMenuItem>
-                                            ) : (
-                                                <DropdownMenuItem
-                                                    onClick={(e) => handleSetMainPage(page, e)}
-                                                    disabled={isSettingMain}
-                                                >
-                                                    <Star className="h-4 w-4 mr-2" />
-                                                    Fijar
-                                                </DropdownMenuItem>
+                                            {canManagePage(page) && (
+                                                page.isMainPage ? (
+                                                    <DropdownMenuItem disabled>
+                                                        <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" />
+                                                        Ya es la principal
+                                                    </DropdownMenuItem>
+                                                ) : (
+                                                    <DropdownMenuItem
+                                                        onClick={(e) => handleSetMainPage(page, e)}
+                                                        disabled={isSettingMain}
+                                                    >
+                                                        <Star className="h-4 w-4 mr-2" />
+                                                        Fijar
+                                                    </DropdownMenuItem>
+                                                )
                                             )}
                                             <DropdownMenuItem
                                                 onClick={(e) => handleCopyLink(page, e)}
@@ -176,13 +196,15 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
                                                 <Link className="h-4 w-4 mr-2" />
                                                 Copiar enlace
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="text-red-500 focus:text-red-500"
-                                                onClick={(e) => handleDeleteClick(page, e)}
-                                            >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Eliminar Página
-                                            </DropdownMenuItem>
+                                            {canManagePage(page) && (
+                                                <DropdownMenuItem
+                                                    className="text-red-500 focus:text-red-500"
+                                                    onClick={(e) => handleDeleteClick(page, e)}
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Eliminar Página
+                                                </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>

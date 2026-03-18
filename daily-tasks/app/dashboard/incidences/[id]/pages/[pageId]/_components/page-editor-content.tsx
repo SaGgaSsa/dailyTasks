@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { EditorWrapper } from '../editor-wrapper'
+import { ReadonlyBlockNoteWrapper } from '@/app/dashboard/shared-pages/[pageId]/readonly-block-note-wrapper'
 
 interface PageEditorContentProps {
     initialContent: object | undefined
@@ -10,6 +11,7 @@ interface PageEditorContentProps {
     pageId: number
     incidenceId: number
     incidenceTitle: string
+    canEdit: boolean
 }
 
 export function PageEditorContent({ 
@@ -18,6 +20,7 @@ export function PageEditorContent({
     pageId, 
     incidenceId,
     incidenceTitle,
+    canEdit,
 }: PageEditorContentProps) {
     const { setBreadcrumbs } = useNavbarBreadcrumbs()
 
@@ -35,14 +38,21 @@ export function PageEditorContent({
 
     return (
         <div className="pt-4 px-8 max-w-4xl mx-auto">
-            <EditorWrapper
-                initialContent={initialContent}
-                initialTitle={initialTitle || ''}
-                pageId={pageId}
-                incidenceId={incidenceId}
-                isEditor={true}
-                isTitleEditable={true}
-            />
+            {canEdit ? (
+                <EditorWrapper
+                    initialContent={initialContent}
+                    initialTitle={initialTitle || ''}
+                    pageId={pageId}
+                    incidenceId={incidenceId}
+                    isEditor={true}
+                    isTitleEditable={true}
+                />
+            ) : (
+                <div className="space-y-4">
+                    <h1 className="text-2xl font-semibold pl-[54px]">{initialTitle || 'Nueva Página'}</h1>
+                    <ReadonlyBlockNoteWrapper initialContent={initialContent} />
+                </div>
+            )}
         </div>
     )
 }

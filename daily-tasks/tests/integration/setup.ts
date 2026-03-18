@@ -1,3 +1,4 @@
+import { UserRole } from '@prisma/client'
 import { afterAll, beforeAll, beforeEach, vi } from 'vitest'
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST
@@ -16,7 +17,7 @@ export type MockSession = {
     email: string
     name: string
     username: string
-    role: string
+    role: UserRole
   }
 } | null
 

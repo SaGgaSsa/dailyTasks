@@ -22,7 +22,6 @@ interface AddLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   externalWorkItemId: number
-  uploadedById: number
   onSuccess?: () => void
 }
 
@@ -30,7 +29,6 @@ export function AddLinkDialog({
   open,
   onOpenChange,
   externalWorkItemId,
-  uploadedById,
   onSuccess,
 }: AddLinkDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -53,7 +51,6 @@ export function AddLinkDialog({
     try {
       const result = await addLinkAttachment({
         externalWorkItemId,
-        uploadedById,
         url: url.trim(),
         name: name.trim(),
         description: description.trim() || undefined,

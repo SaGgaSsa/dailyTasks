@@ -17,6 +17,7 @@ import {
     ExternalWorkItemStatus,
     ticketDetailsInclude,
 } from '@/lib/tracklist-ticket-management'
+import { canManageTracklists, getAuthenticatedUser } from '@/lib/authorization'
 
 interface CreateTracklistData {
     title: string
@@ -109,9 +110,13 @@ export async function getTracklists(locale: Locale = 'es') {
 }
 
 export async function createTracklist(data: CreateTracklistData, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
+    if (!canManageTracklists(user.role)) {
+        return { success: false, error: 'No tiene permisos para crear tracklists' }
     }
 
     try {
@@ -125,7 +130,7 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
             title: data.title,
             description: data.description,
             dueDate: data.dueDate,
-            createdById: Number(session.user.id)
+            createdById: user.id
         }
 
         if (data.externalWorkItemIds && data.externalWorkItemIds.length > 0) {
@@ -532,8 +537,11 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
     }
 }
 export async function completeTracklist(id: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const user = await getAuthenticatedUser()
+    if (!user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    if (!canManageTracklists(user.role)) {
+        return { success: false, error: 'No tiene permisos para completar tracklists' }
+    }
     try {
         const testTickets = await db.ticketQA.findMany({
             where: { tracklistId: id, status: TicketQAStatus.TEST },
@@ -558,7 +566,7 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
             data: {
                 status: TracklistStatus.COMPLETED,
                 completedAt: new Date(),
-                completedById: Number(session.user.id),
+                completedById: user.id,
             },
         })
         revalidatePath('/tracklists')
@@ -571,8 +579,11 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
 }
 
 export async function archiveTracklist(id: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const user = await getAuthenticatedUser()
+    if (!user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    if (!canManageTracklists(user.role)) {
+        return { success: false, error: 'No tiene permisos para archivar tracklists' }
+    }
     try {
         await db.tracklist.update({
             where: { id },

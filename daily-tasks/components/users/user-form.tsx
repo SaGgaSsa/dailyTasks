@@ -4,14 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { FormSheet, FormInput, FormSelect, FormRow } from '@/components/ui/form-sheet'
-import { upsertUser, getUserWithTechnologies } from '@/app/actions/user-actions'
+import { upsertUser } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
-import { User, UserRole } from '@prisma/client'
+import { UserRole } from '@prisma/client'
+import { AdminUserSummary } from '@/app/actions/user-actions'
 
 interface UserFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    initialData: User | null
+    initialData: AdminUserSummary | null
     initialTechNames?: string[]
 }
 
@@ -79,7 +80,7 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
             })
             setIsLoading(false)
         }
-    }, [initialData, open])
+    }, [initialData, initialTechNames, open])
 
     const handleSave = async () => {
         if (!formData.name || !formData.email || !formData.username) {
@@ -116,7 +117,7 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                 toast.error(res.error || 'Error al guardar el usuario')
                 return false
             }
-        } catch (err) {
+        } catch {
             toast.error('Error inesperado al guardar')
             return false
         } finally {
