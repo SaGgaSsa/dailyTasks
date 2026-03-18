@@ -6,6 +6,17 @@ export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, Ticket
 export type { Technology, WorkItemType, ExternalWorkItemStatus }
 export type { Task, Attachment, IncidencePage, IncidencePageType }
 
+export type ScriptWithCreator = {
+    id: number
+    content: string
+    type: string
+    incidenceId: number
+    createdById: number
+    createdAt: Date
+    updatedAt: Date
+    createdBy: { id: number; name: string | null; username: string }
+}
+
 export type ModuleWithTech = ModulePrisma & { technology: Technology }
 
 export interface AssigneeWithHours {
@@ -85,6 +96,7 @@ export type IncidenceWithDetails = Omit<Incidence, 'status' | 'technology' | 'pr
   assignments: AssignmentWithDetails[]
   pages: IncidencePageWithAuthor[]
   qaTickets: { id: number }[]
+  scripts: ScriptWithCreator[]
 }
 
 export type TracklistWithDetails = Tracklist & {

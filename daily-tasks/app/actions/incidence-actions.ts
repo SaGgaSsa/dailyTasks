@@ -117,7 +117,15 @@ const incidenceDetailsInclude = {
             createdAt: 'desc' as const
         }
     },
-    qaTickets: { select: { id: true } }
+    qaTickets: { select: { id: true } },
+    scripts: {
+        include: {
+            createdBy: {
+                select: { id: true, name: true, username: true }
+            }
+        },
+        orderBy: { createdAt: 'asc' as const }
+    }
 } satisfies Prisma.IncidenceInclude
 
 type IncidenceDetailsPayload = Prisma.IncidenceGetPayload<{

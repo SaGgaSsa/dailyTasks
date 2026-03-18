@@ -83,6 +83,15 @@ export function IncidenceDetailClient({
         })
     }, [incidence.id])
 
+    const handleRefreshScripts = useCallback(() => {
+        startTransition(async () => {
+            const updated = await getIncidence(incidence.id)
+            if (updated) {
+                setIncidenceData(updated)
+            }
+        })
+    }, [incidence.id])
+
     return (
         <div className="pt-6 pl-8 pr-6 border-r border-border min-h-[calc(100vh-6rem)]">
             <div className="flex items-center justify-between">
@@ -152,9 +161,11 @@ export function IncidenceDetailClient({
 
                 <TabsContent value="scripts" className="mt-0">
                     <ScriptsTab
+                        scripts={incidenceData.scripts}
                         incidenceId={incidenceData.id}
                         currentUserId={currentUserId}
                         isAdmin={isAdmin}
+                        onRefresh={handleRefreshScripts}
                     />
                 </TabsContent>
 

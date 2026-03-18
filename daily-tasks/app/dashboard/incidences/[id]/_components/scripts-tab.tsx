@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowUp, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,27 +21,19 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
-    getScriptsByIncidence,
     createScript,
     updateScript,
     deleteScript,
 } from '@/app/actions/script-actions'
 import type { ScriptType } from '@prisma/client'
-
-interface ScriptItem {
-    id: number
-    content: string
-    type: ScriptType
-    createdAt: Date
-    updatedAt: Date
-    createdById: number
-    createdBy: { id: number; name: string | null; username: string }
-}
+import type { ScriptWithCreator } from '@/types'
 
 interface ScriptsTabProps {
+    scripts: ScriptWithCreator[]
     incidenceId: number
     currentUserId: number
     isAdmin: boolean
+    onRefresh?: () => void
 }
 
 function formatDate(date: Date): string {
@@ -54,27 +46,24 @@ function formatDate(date: Date): string {
     })
 }
 
-export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabProps) {
-    const [scripts, setScripts] = useState<ScriptItem[]>([])
+function getRelevantDate(script: ScriptWithCreator): number {
+    return Math.max(
+        new Date(script.createdAt).getTime(),
+        new Date(script.updatedAt).getTime()
+    )
+}
+
+export function ScriptsTab({ scripts, incidenceId, currentUserId, isAdmin, onRefresh }: ScriptsTabProps) {
     const [content, setContent] = useState('')
     const [scriptType, setScriptType] = useState<ScriptType>('SQL')
-    const [editingScript, setEditingScript] = useState<ScriptItem | null>(null)
+    const [editingScript, setEditingScript] = useState<ScriptWithCreator | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [deleteTarget, setDeleteTarget] = useState<ScriptItem | null>(null)
+    const [deleteTarget, setDeleteTarget] = useState<ScriptWithCreator | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const bottomRef = useRef<HTMLDivElement>(null)
     const initialScrollDone = useRef(false)
 
-    const fetchScripts = useCallback(async () => {
-        const result = await getScriptsByIncidence(incidenceId)
-        if (result.success && result.data) {
-            setScripts(result.data as ScriptItem[])
-        }
-    }, [incidenceId])
-
-    useEffect(() => {
-        fetchScripts()
-    }, [fetchScripts])
+    const sortedScripts = [...scripts].sort((a, b) => getRelevantDate(a) - getRelevantDate(b))
 
     useEffect(() => {
         if (scripts.length > 0 && !initialScrollDone.current) {
@@ -123,17 +112,17 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
             }
             setContent('')
             setScriptType('SQL')
-            await fetchScripts()
+            onRefresh?.()
             scrollToBottom()
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    const handleEdit = (script: ScriptItem) => {
+    const handleEdit = (script: ScriptWithCreator) => {
         setEditingScript(script)
         setContent(script.content)
-        setScriptType(script.type)
+        setScriptType(script.type as ScriptType)
         scrollToBottom()
     }
 
@@ -151,7 +140,7 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
             const result = await deleteScript(deleteTarget.id)
             if (result.success) {
                 toast.success('Script eliminado')
-                await fetchScripts()
+                onRefresh?.()
             } else {
                 toast.error(result.error || 'Error al eliminar')
             }
@@ -173,20 +162,20 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
         }
     }
 
-    const canModify = (script: ScriptItem) =>
+    const canModify = (script: ScriptWithCreator) =>
         isAdmin || script.createdById === currentUserId
 
     return (
         <TooltipProvider>
             <div className="space-y-6">
                 {/* Historial */}
-                {scripts.length === 0 ? (
+                {sortedScripts.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
                         No hay scripts registrados
                     </p>
                 ) : (
                     <div className="space-y-4">
-                        {scripts.map((script) => (
+                        {sortedScripts.map((script) => (
                             <div
                                 key={script.id}
                                 className="border border-border rounded-lg p-4 space-y-3"
