@@ -1,10 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ArrowUp, Copy, Pencil, Trash2, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ArrowUp, Copy, Database, FileCode, Pencil, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
     Dialog,
     DialogContent,
@@ -56,6 +62,8 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<ScriptItem | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const bottomRef = useRef<HTMLDivElement>(null)
+    const initialScrollDone = useRef(false)
 
     const fetchScripts = useCallback(async () => {
         const result = await getScriptsByIncidence(incidenceId)
@@ -67,6 +75,21 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
     useEffect(() => {
         fetchScripts()
     }, [fetchScripts])
+
+    useEffect(() => {
+        if (scripts.length > 0 && !initialScrollDone.current) {
+            initialScrollDone.current = true
+            setTimeout(() => {
+                bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+            }, 100)
+        }
+    }, [scripts])
+
+    const scrollToBottom = () => {
+        setTimeout(() => {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+    }
 
     const handleSubmit = async () => {
         if (!content.trim()) return
@@ -101,6 +124,7 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
             setContent('')
             setScriptType('SQL')
             await fetchScripts()
+            scrollToBottom()
         } finally {
             setIsSubmitting(false)
         }
@@ -110,6 +134,7 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
         setEditingScript(script)
         setContent(script.content)
         setScriptType(script.type)
+        scrollToBottom()
     }
 
     const handleCancelEdit = () => {
@@ -152,156 +177,169 @@ export function ScriptsTab({ incidenceId, currentUserId, isAdmin }: ScriptsTabPr
         isAdmin || script.createdById === currentUserId
 
     return (
-        <div className="space-y-6">
-            {/* Composer */}
-            <div className="space-y-3">
-                {editingScript && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Modificando script</span>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={handleCancelEdit}
-                        >
-                            <X className="h-3 w-3" />
-                        </Button>
+        <TooltipProvider>
+            <div className="space-y-6">
+                {/* Historial */}
+                {scripts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                        No hay scripts registrados
+                    </p>
+                ) : (
+                    <div className="space-y-4">
+                        {scripts.map((script) => (
+                            <div
+                                key={script.id}
+                                className="border border-border rounded-lg p-4 space-y-3"
+                            >
+                                <pre className="font-mono text-sm whitespace-pre-wrap bg-accent/30 rounded p-3">
+                                    {script.content}
+                                </pre>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Badge variant={script.type === 'SQL' ? 'default' : 'secondary'} className="text-[10px]">
+                                        {script.type}
+                                    </Badge>
+                                    <span>{script.createdBy.name || script.createdBy.username}</span>
+                                    <div className="flex-1" />
+                                    <span>
+                                        {new Date(script.createdAt).getTime() !== new Date(script.updatedAt).getTime()
+                                            ? `Actualizado: ${formatDate(script.updatedAt)}`
+                                            : formatDate(script.createdAt)}
+                                    </span>
+                                    {canModify(script) && (
+                                        <>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => handleEdit(script)}
+                                                title="Editar"
+                                            >
+                                                <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 text-red-500 hover:text-red-400"
+                                                onClick={() => setDeleteTarget(script)}
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => handleCopy(script.content)}
+                                        title="Copiar"
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
-                <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant={scriptType === 'SQL' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setScriptType('SQL')}
-                    >
-                        SQL
-                    </Button>
-                    <Button
-                        type="button"
-                        variant={scriptType === 'CODE' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setScriptType('CODE')}
-                    >
-                        CODE
-                    </Button>
-                </div>
-                <div className="flex gap-2">
+
+                {/* Composer (abajo) */}
+                <div className="space-y-3">
                     <Textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Escribe un script..."
-                        className="font-mono text-sm min-h-[100px] flex-1"
+                        className="font-mono text-sm min-h-[100px]"
                     />
-                    <Button
-                        type="button"
-                        size="icon"
-                        onClick={handleSubmit}
-                        disabled={!content.trim() || isSubmitting}
-                        className="self-end"
-                    >
-                        <ArrowUp className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-
-            {/* Historial */}
-            {scripts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    No hay scripts registrados
-                </p>
-            ) : (
-                <div className="space-y-4">
-                    {scripts.map((script) => (
-                        <div
-                            key={script.id}
-                            className="border border-border rounded-lg p-4 space-y-3"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Badge variant={script.type === 'SQL' ? 'default' : 'secondary'}>
-                                    {script.type}
-                                </Badge>
-                                <div className="flex-1" />
+                    <div className="flex items-center gap-2">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant={scriptType === 'SQL' ? 'default' : 'outline'}
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setScriptType('SQL')}
+                                >
+                                    <Database className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>SQL</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant={scriptType === 'CODE' ? 'default' : 'outline'}
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setScriptType('CODE')}
+                                >
+                                    <FileCode className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Code</TooltipContent>
+                        </Tooltip>
+                        {editingScript && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <span>Modificando script</span>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleCopy(script.content)}
-                                    title="Copiar"
+                                    className="h-5 w-5"
+                                    onClick={handleCancelEdit}
                                 >
-                                    <Copy className="h-3.5 w-3.5" />
+                                    <X className="h-3 w-3" />
                                 </Button>
-                                {canModify(script) && (
-                                    <>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() => handleEdit(script)}
-                                            title="Editar"
-                                        >
-                                            <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 text-red-500 hover:text-red-400"
-                                            onClick={() => setDeleteTarget(script)}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </>
-                                )}
                             </div>
-                            <pre className="font-mono text-sm whitespace-pre-wrap bg-accent/30 rounded p-3">
-                                {script.content}
-                            </pre>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span>{script.createdBy.name || script.createdBy.username}</span>
-                                <span>
-                                    {new Date(script.createdAt).getTime() !== new Date(script.updatedAt).getTime()
-                                        ? `Actualizado: ${formatDate(script.updatedAt)}`
-                                        : formatDate(script.createdAt)}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                        )}
+                        <div className="flex-1" />
+                        <Button
+                            type="button"
+                            size="icon"
+                            onClick={handleSubmit}
+                            disabled={!content.trim() || isSubmitting}
+                            className="h-8 w-8"
+                        >
+                            <ArrowUp className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
-            )}
 
-            {/* Delete confirmation dialog */}
-            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
-                <DialogContent className="bg-card border-border">
-                    <DialogHeader>
-                        <DialogTitle>Eliminar Script</DialogTitle>
-                        <DialogDescription>
-                            ¿Estás seguro de que deseas eliminar este script? Esta acción no se puede deshacer.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setDeleteTarget(null)}
-                            disabled={isDeleting}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDeleteConfirm}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? 'Eliminando...' : 'Eliminar'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                <div ref={bottomRef} />
+
+                {/* Delete confirmation dialog */}
+                <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                    <DialogContent className="bg-card border-border">
+                        <DialogHeader>
+                            <DialogTitle>Eliminar Script</DialogTitle>
+                            <DialogDescription>
+                                ¿Estás seguro de que deseas eliminar este script? Esta acción no se puede deshacer.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setDeleteTarget(null)}
+                                disabled={isDeleting}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteConfirm}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </TooltipProvider>
     )
 }
