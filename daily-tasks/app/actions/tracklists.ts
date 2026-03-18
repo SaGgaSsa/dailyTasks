@@ -8,9 +8,15 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority, Prisma, ExternalWorkItemStatus } from '.prisma/client'
+import { TaskStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
+import {
+    assignTicketToNewIncidence,
+    enrichTicketScripts,
+    ExternalWorkItemStatus,
+    ticketDetailsInclude,
+} from '@/lib/tracklist-ticket-management'
 
 interface CreateTracklistData {
     title: string
@@ -37,146 +43,6 @@ interface CreateTicketData {
     assignedToId?: number
 }
 
-const ticketDetailsInclude = {
-    reportedBy: { select: { id: true, name: true, username: true } },
-    assignedTo: { select: { id: true, name: true, username: true } },
-    externalWorkItem: { select: externalWorkItemBaseSelect },
-    dismissedBy: { select: { id: true, name: true, username: true } },
-    module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
-    incidence: {
-        select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            completedAt: true,
-            estimatedTime: true,
-            assignments: {
-                where: { isAssigned: true },
-                select: { assignedHours: true }
-            },
-            _count: {
-                select: { scripts: true },
-            },
-        },
-    },
-} satisfies Prisma.TicketQAInclude
-
-type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetailsInclude }>
-
-function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
-    const inc = ticket.incidence
-
-    const incidenceGantt = inc ? {
-        id: inc.id,
-        status: inc.status as import('@/types/enums').TaskStatus,
-        startedAt: inc.startedAt,
-        completedAt: inc.completedAt,
-        estimatedTime: inc.estimatedTime,
-        totalAssignedHours: inc.assignments.reduce((sum, a) => sum + (a.assignedHours ?? 0), 0),
-    } : null
-
-    return {
-        ...ticket,
-        externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
-        hasScripts: (inc?._count?.scripts ?? 0) > 0,
-        incidenceGantt,
-    }
-}
-
-const PRIORITY_MAP: Record<string, PrismaPriority> = {
-    LOW: 'LOW',
-    MEDIUM: 'MEDIUM',
-    HIGH: 'HIGH',
-    BLOCKER: 'BLOCKER',
-}
-
-const TICKET_TYPE_TITLE_PREFIX: Record<TicketType, string> = {
-    [TicketType.BUG]: 'Corrección',
-    [TicketType.CAMBIO]: 'Modificación',
-    [TicketType.CONSULTA]: 'Consulta',
-}
-
-const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
-    [TicketType.BUG]: 'Corrección',
-    [TicketType.CAMBIO]: 'Modificación',
-    [TicketType.CONSULTA]: 'Análisis',
-}
-
-
-async function runAssignmentTransaction(
-    ticketId: number,
-    assignedToId: number,
-    tracklistId: number
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        const ticket = await db.ticketQA.findUnique({
-            where: { id: ticketId },
-            include: { module: { select: { id: true, name: true, slug: true, technologyId: true } } },
-        })
-        if (!ticket) return { success: false, error: 'Ticket no encontrado' }
-
-        const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
-        const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
-        const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
-
-        const workItem = ticket.externalWorkItemId
-            ? await db.externalWorkItem.findUnique({
-                where: { id: ticket.externalWorkItemId },
-                select: externalWorkItemBaseSelect,
-            })
-            : null
-
-        if (!workItem) {
-            return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
-        }
-
-        const serializedWorkItem = workItem ? serializeExternalWorkItem(workItem) : null
-        const title = serializedWorkItem?.title || `${titlePrefix} – ${serializedWorkItem?.type ?? ''} ${serializedWorkItem?.externalId ?? ''}`
-
-        await db.$transaction(async (tx) => {
-            const newIncidence = await tx.incidence.create({
-                data: {
-                    externalWorkItemId: workItem!.id,
-                    description: ticket.description || title,
-                    technologyId: ticket.module.technologyId,
-                    priority: incidencePriority,
-                    status: TaskStatus.BACKLOG,
-                },
-            })
-
-            const assignment = await tx.assignment.upsert({
-                where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
-                create: { incidenceId: newIncidence.id, userId: assignedToId, isAssigned: true },
-                update: { isAssigned: true },
-            })
-
-            await tx.task.create({
-                data: { title: taskTitle, assignmentId: assignment.id },
-            })
-
-            await tx.ticketQA.update({
-                where: { id: ticketId },
-                data: {
-                    status: TicketQAStatus.ASSIGNED,
-                    assignedToId,
-                    incidenceId: newIncidence.id,
-                    hasUnreadUpdates: false,
-                },
-            })
-        })
-
-        revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
-        return { success: true }
-    } catch (error) {
-        console.error('Error in assignment transaction:', error)
-        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'Ya existe una incidencia con ese trámite y tipo' }
-        }
-        return { success: false, error: 'Error al ejecutar la asignación' }
-    }
-}
-
 export async function assignTicket(
     ticketId: number,
     assignedToId: number,
@@ -193,7 +59,7 @@ export async function assignTicket(
         if (ticket.status !== TicketQAStatus.NEW) {
             return { success: false, error: 'Solo se pueden asignar tickets en estado Nuevo' }
         }
-        return runAssignmentTransaction(ticketId, assignedToId, tracklistId)
+        return assignTicketToNewIncidence(ticketId, assignedToId, tracklistId)
     } catch (error) {
         console.error('Error assigning ticket:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
@@ -417,7 +283,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         })
 
         if (data.assignedToId) {
-            const txResult = await runAssignmentTransaction(ticket.id, data.assignedToId, tracklistId)
+            const txResult = await assignTicketToNewIncidence(ticket.id, data.assignedToId, tracklistId)
             if (!txResult.success) {
                 console.error('Assignment transaction failed after ticket creation:', txResult.error)
             }
@@ -589,7 +455,7 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
         })
 
         if (data.assignedToId) {
-            const txResult = await runAssignmentTransaction(ticketId, data.assignedToId, tracklistId)
+            const txResult = await assignTicketToNewIncidence(ticketId, data.assignedToId, tracklistId)
             if (!txResult.success) {
                 console.error('Assignment transaction failed after ticket update:', txResult.error)
             }
