@@ -293,17 +293,20 @@ describe('access control integration', () => {
 
     actAs(dev)
     const unauthorizedUsers = await getUsers()
+    expect(unauthorizedUsers.success).toBe(false)
     expect(unauthorizedUsers.error).toBe('No autorizado')
-    expect(unauthorizedUsers.data).toEqual([])
+    expect(unauthorizedUsers.data).toBeUndefined()
 
     const unauthorizedDelete = await deleteUser(qa.id)
     expect(unauthorizedDelete.success).toBe(false)
 
     actAs(admin)
     const usersResult = await getUsers()
+    expect(usersResult.success).toBe(true)
     expect(usersResult.error).toBeUndefined()
-    expect(usersResult.data.length).toBe(3)
-    expect('password' in usersResult.data[0]!).toBe(false)
+    const users = usersResult.data ?? []
+    expect(users.length).toBe(3)
+    expect('password' in users[0]!).toBe(false)
 
     const upsertResult = await upsertUser({
       id: qa.id,
@@ -326,10 +329,48 @@ describe('access control integration', () => {
 
     actAs(qa)
     const unauthorizedDetails = await getUserDetails(admin.id)
-    expect(unauthorizedDetails).toBeNull()
+    expect(unauthorizedDetails.success).toBe(false)
+    expect(unauthorizedDetails.data).toBeUndefined()
 
     actAs(admin)
     const adminDetails = await getUserDetails(qa.id)
-    expect(adminDetails?.id).toBe(qa.id)
+    expect(adminDetails.success).toBe(true)
+    expect(adminDetails.data?.id).toBe(qa.id)
+  })
+
+  it('counts real tasks in user details using active assignments only', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const dev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const firstWorkItem = await createExternalWorkItem()
+    const secondWorkItem = await createExternalWorkItem()
+
+    await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: firstWorkItem.id,
+      assignees: [{ userId: dev.id, assignedHours: 4, isAssigned: true }],
+      tasks: [
+        { userId: dev.id, title: 'Pendiente 1', isCompleted: false },
+        { userId: dev.id, title: 'Hecha 1', isCompleted: true },
+      ],
+    })
+
+    await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: secondWorkItem.id,
+      assignees: [{ userId: dev.id, assignedHours: 2, isAssigned: false }],
+      tasks: [
+        { userId: dev.id, title: 'Ignorada', isCompleted: false },
+      ],
+    })
+
+    actAs(admin)
+    const detailsResult = await getUserDetails(dev.id)
+    expect(detailsResult.success).toBe(true)
+    expect(detailsResult.data?.metrics).toEqual({
+      totalTasks: 2,
+      pendingTasks: 1,
+      completedTasks: 1,
+    })
   })
 })

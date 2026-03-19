@@ -15,6 +15,7 @@ import {
 } from '@/lib/authorization'
 
 export type PageContent = Prisma.InputJsonValue
+const UNTITLED_PAGE = 'Nueva Página'
 
 function ensureIncidenceIsEditable(status: TaskStatus) {
     if (!isEditableIncidenceStatus(status)) {
@@ -22,6 +23,20 @@ function ensureIncidenceIsEditable(status: TaskStatus) {
     }
 
     return null
+}
+
+function normalizePageTitle(title?: string) {
+    const normalizedTitle = title?.trim().slice(0, 60) ?? ''
+    return normalizedTitle || UNTITLED_PAGE
+}
+
+function revalidateIncidencePagePaths(incidenceId: number, pageId?: number) {
+    revalidatePath(`/dashboard/incidences/${incidenceId}`)
+
+    if (pageId) {
+        revalidatePath(`/dashboard/incidences/${incidenceId}/pages/${pageId}`)
+        revalidatePath(`/dashboard/shared-pages/${pageId}`)
+    }
 }
 
 export async function createPage(incidenceId: number, title: string) {
@@ -49,14 +64,14 @@ export async function createPage(incidenceId: number, title: string) {
 
         const page = await db.incidencePage.create({
             data: {
-                title: title.trim().slice(0, 60),
+                title: normalizePageTitle(title),
                 content: Prisma.JsonNull,
                 incidenceId,
                 authorId: user.id,
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidateIncidencePagePaths(incidenceId, page.id)
         return { success: true, data: page }
     } catch (error) {
         console.error('Error creating page:', error)
@@ -103,7 +118,7 @@ export async function updatePageContent(
         const updateData: Prisma.IncidencePageUpdateInput = {
             content: content as Prisma.InputJsonValue,
             ...(title !== undefined
-                ? { title: title.trim().slice(0, 60) }
+                ? { title: normalizePageTitle(title) }
                 : {})
         }
 
@@ -112,8 +127,7 @@ export async function updatePageContent(
             data: updateData
         })
 
-        revalidatePath(`/dashboard/incidences/${page.incidenceId}/pages/${pageId}`)
-        revalidatePath(`/dashboard/shared-pages/${pageId}`)
+        revalidateIncidencePagePaths(page.incidenceId, pageId)
         return { success: true }
     } catch (error) {
         console.error('Error updating page:', error)
@@ -153,7 +167,7 @@ export async function deletePage(pageId: number) {
             where: { id: pageId }
         })
 
-        revalidatePath(`/dashboard`)
+        revalidateIncidencePagePaths(page.incidenceId, pageId)
         return { success: true }
     } catch (error) {
         console.error('Error deleting page:', error)
@@ -204,7 +218,7 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
             })
         ])
 
-        revalidatePath(`/dashboard`)
+        revalidateIncidencePagePaths(incidenceId, pageId)
         return { success: true }
     } catch (error) {
         console.error('Error setting main page:', error)

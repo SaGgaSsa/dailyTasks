@@ -13,7 +13,7 @@ export default async function UsersPage() {
   }
 
   const usersResult = await getUsers()
-  const users = usersResult.data
+  const users = usersResult.success && usersResult.data ? usersResult.data : []
 
   if (usersResult.error) {
     console.error(usersResult.error)

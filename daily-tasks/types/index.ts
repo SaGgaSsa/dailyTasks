@@ -167,7 +167,7 @@ export const createUserSchema = z.object({
   email: z.string()
     .email('Email inválido'),
   password: z.string()
-    .min(4, 'Mínimo 4 caracteres'),
+    .min(8, 'Mínimo 8 caracteres'),
   role: z.enum(['ADMIN', 'DEV', 'QA']),
   technologies: z.array(z.string()).optional(),
 })

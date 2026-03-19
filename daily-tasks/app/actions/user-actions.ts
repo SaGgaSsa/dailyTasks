@@ -9,9 +9,10 @@ import bcrypt from 'bcryptjs'
 import { serializeExternalWorkItem } from '@/lib/work-item-types'
 import { canManageUsers, getAuthenticatedUser } from '@/lib/authorization'
 
-interface GetUsersResult {
-    data: AdminUserSummary[]
+type ActionResult<T = undefined> = {
+    success: boolean
     error?: string
+    data?: T
 }
 
 export interface AdminUserSummary {
@@ -24,10 +25,37 @@ export interface AdminUserSummary {
     updatedAt: Date
 }
 
-export async function getUsers(): Promise<GetUsersResult> {
+export interface UserDetailsPayload {
+    id: number
+    email: string
+    name: string | null
+    username: string
+    role: UserRole
+    createdAt: Date
+    updatedAt: Date
+    metrics: {
+        totalTasks: number
+        pendingTasks: number
+        completedTasks: number
+    }
+    recentIncidences: Array<{
+        id: number
+        description: string
+        status: string
+        priority: string
+        updatedAt: Date
+        externalWorkItem: ReturnType<typeof serializeExternalWorkItem> | null
+    }>
+}
+
+function unauthorizedResult<T>(): ActionResult<T> {
+    return { success: false, error: 'No autorizado' }
+}
+
+export async function getUsers(): Promise<ActionResult<AdminUserSummary[]>> {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return { data: [], error: 'No autorizado' }
+        return unauthorizedResult<AdminUserSummary[]>()
     }
 
     try {
@@ -43,10 +71,10 @@ export async function getUsers(): Promise<GetUsersResult> {
             },
             orderBy: { username: 'asc' }
         })
-        return { data: users }
+        return { success: true, data: users }
     } catch (error) {
         console.error('Error getting users:', error)
-        return { data: [], error: 'Error al obtener los usuarios' }
+        return { success: false, error: 'Error al obtener los usuarios' }
     }
 }
 
@@ -63,7 +91,7 @@ interface UpsertUserData {
 export async function upsertUser(data: UpsertUserData) {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return { success: false, error: 'No autorizado' }
+        return unauthorizedResult()
     }
 
     const technologyNames = data.technologies.map((technology) => technology.connect.name)
@@ -129,7 +157,7 @@ export async function upsertUser(data: UpsertUserData) {
 export async function createUser(formData: FormData) {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return { success: null, error: 'No autorizado' }
+        return unauthorizedResult()
     }
 
     const username = formData.get('username') as string
@@ -150,7 +178,7 @@ export async function createUser(formData: FormData) {
 
     if (!validation.success) {
         const errors = validation.error.issues.map(e => e.message).join(', ')
-        return { success: null, error: errors }
+        return { success: false, error: errors }
     }
 
     const normalizedData = validation.data
@@ -174,54 +202,69 @@ export async function createUser(formData: FormData) {
             }
         })
         revalidatePath('/dashboard')
-        return { success: 'Usuario creado correctamente', error: null }
+        return { success: true }
     } catch (error) {
         console.error('Error creating user:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: null, error: 'El usuario ya existe' }
+            return { success: false, error: 'El usuario ya existe' }
         }
-        return { success: null, error: 'Error al crear el usuario' }
+        return { success: false, error: 'Error al crear el usuario' }
     }
 }
 
-export async function getUserByUsername(username: string) {
+export async function getUserByUsername(username: string): Promise<ActionResult<AdminUserSummary>> {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return null
+        return unauthorizedResult<AdminUserSummary>()
     }
 
     try {
         const existingUser = await db.user.findUnique({
-            where: { username }
+            where: { username },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                username: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true,
+            }
         })
-        return existingUser
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user by username:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
 export async function getUserById(id: number) {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return null
+        return unauthorizedResult()
     }
 
     try {
         const existingUser = await db.user.findUnique({
             where: { id }
         })
-        return existingUser
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user by id:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
 export async function getUserWithTechnologies(id: number) {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return null
+        return unauthorizedResult()
     }
 
     try {
@@ -231,10 +274,13 @@ export async function getUserWithTechnologies(id: number) {
                 technologies: true
             }
         })
-        return existingUser
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user with technologies:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
@@ -282,7 +328,7 @@ export async function deleteUser(userId: number) {
 export async function getUserDetails(userId: number) {
   const user = await getAuthenticatedUser()
   if (!user || !canManageUsers(user.role)) {
-    return null
+    return unauthorizedResult<UserDetailsPayload>()
   }
 
   try {
@@ -292,46 +338,54 @@ export async function getUserDetails(userId: number) {
         assignments: {
           include: {
             incidence: { include: { externalWorkItem: { include: { workItemType: true } } } },
+            tasks: {
+              select: {
+                id: true,
+                isCompleted: true,
+              },
+            },
           },
           orderBy: { incidence: { updatedAt: 'desc' } },
           take: 5,
-        },
-        _count: {
-          select: {
-            assignments: true,
-          },
         },
       },
     })
 
     if (!user) {
-      return null
+      return { success: false, error: 'Usuario no encontrado' }
     }
 
-    const assignedIncidences = user.assignments.map((a) => ({
+    const activeAssignments = user.assignments.filter((assignment) => assignment.isAssigned)
+    const assignedIncidences = activeAssignments.map((a) => ({
       ...a.incidence,
       externalWorkItem: a.incidence.externalWorkItem ? serializeExternalWorkItem(a.incidence.externalWorkItem) : null,
     }))
-    const totalTasks = user._count.assignments
-    const pendingTasks = assignedIncidences.filter(
-      (i) => i.status !== 'DONE' && i.status !== 'DISMISSED'
-    ).length
-    const completedTasks = assignedIncidences.filter(
-      (i) => i.status === 'DONE'
-    ).length
+    const realTasks = activeAssignments.flatMap((assignment) => assignment.tasks)
+    const totalTasks = realTasks.length
+    const pendingTasks = realTasks.filter((task) => !task.isCompleted).length
+    const completedTasks = realTasks.filter((task) => task.isCompleted).length
 
     return {
-      ...user,
-      metrics: {
-        totalTasks,
-        pendingTasks,
-        completedTasks,
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        metrics: {
+          totalTasks,
+          pendingTasks,
+          completedTasks,
+        },
+        recentIncidences: assignedIncidences,
       },
-      recentIncidences: assignedIncidences,
     }
   } catch (error) {
     console.error('Error getting user details:', error)
-    return null
+    return { success: false, error: 'Error al obtener el detalle del usuario' }
   }
 }
 

@@ -24,7 +24,7 @@ import {
   Circle,
   ChevronDown,
 } from 'lucide-react'
-import { getUserDetails } from '@/app/actions/user-actions'
+import { getUserDetails, type UserDetailsPayload } from '@/app/actions/user-actions'
 import { toast } from 'sonner'
 import { TaskStatus } from '@/types/enums'
 
@@ -32,29 +32,6 @@ interface UserDetailSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   userId: number | null
-}
-
-interface UserDetails {
-  id: number
-  email: string
-  name: string | null
-  username: string | null
-  role: string
-  createdAt: Date
-  updatedAt: Date
-  metrics: {
-    totalTasks: number
-    pendingTasks: number
-    completedTasks: number
-  }
-  recentIncidences: Array<{
-    id: number
-    description: string
-    status: string
-    priority: string
-    externalWorkItem: { type: string; externalId: number } | null
-    updatedAt: Date
-  }>
 }
 
 function formatDate(date: Date | string): string {
@@ -122,15 +99,22 @@ export function UserDetailSheet({
   userId,
 }: UserDetailSheetProps) {
   const [loading, setLoading] = useState(true)
-  const [details, setDetails] = useState<UserDetails | null>(null)
+  const [details, setDetails] = useState<UserDetailsPayload | null>(null)
   const [isDebugOpen, setIsDebugOpen] = useState(false)
 
   const loadUserDetails = useCallback(async () => {
     if (!userId) return
     setLoading(true)
     try {
-      const data = await getUserDetails(userId)
-      setDetails(data)
+      const result = await getUserDetails(userId)
+      if (result.success && result.data) {
+        setDetails(result.data)
+      } else {
+        setDetails(null)
+        if (result.error) {
+          toast.error(result.error)
+        }
+      }
     } catch {
       toast.error('Error al cargar los detalles del usuario')
     } finally {

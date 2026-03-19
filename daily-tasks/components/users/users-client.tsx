@@ -23,8 +23,9 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     const [detailUserId, setDetailUserId] = useState<number | null>(null)
 
     const handleEdit = async (user: AdminUserSummary) => {
-        const userWithTechs = await getUserWithTechnologies(user.id) as UserWithTechs | null
-        if (userWithTechs) {
+        const userWithTechsResult = await getUserWithTechnologies(user.id)
+        if (userWithTechsResult.success && userWithTechsResult.data) {
+            const userWithTechs = userWithTechsResult.data as UserWithTechs
             setSelectedTechNames(userWithTechs.technologies.map(t => t.name))
         }
         setSelectedUser(user)
