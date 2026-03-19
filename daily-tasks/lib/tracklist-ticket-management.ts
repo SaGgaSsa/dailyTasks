@@ -2,7 +2,7 @@ import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus 
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/lib/db'
-import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
+import { isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { TicketType, TicketQAStatus } from '@/types/enums'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
@@ -71,7 +71,7 @@ const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
   [TicketType.CONSULTA]: 'Análisis',
 }
 
-type AssignmentTransactionClient = Pick<typeof db, 'incidence' | 'assignment' | 'task' | 'ticketQA'>
+type AssignmentTransactionClient = Pick<typeof db, 'incidence' | 'assignment' | 'task' | 'ticketQA' | 'externalWorkItem'>
 
 async function assignTicketToNewIncidenceCore(
   client: AssignmentTransactionClient,
@@ -88,7 +88,10 @@ async function assignTicketToNewIncidenceCore(
   }
 
   const workItem = ticket.externalWorkItemId
-    ? await getExternalWorkItemById(ticket.externalWorkItemId)
+    ? await client.externalWorkItem.findUnique({
+      where: { id: ticket.externalWorkItemId },
+      select: externalWorkItemBaseSelect,
+    })
     : null
 
   if (!workItem) {

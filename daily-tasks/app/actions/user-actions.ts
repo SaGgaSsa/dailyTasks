@@ -25,6 +25,21 @@ export interface AdminUserSummary {
     updatedAt: Date
 }
 
+const adminUserSelect = {
+    id: true,
+    email: true,
+    name: true,
+    username: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+} as const
+
+const adminUserWithTechnologiesSelect = {
+    ...adminUserSelect,
+    technologies: true,
+} as const
+
 export interface UserDetailsPayload {
     id: number
     email: string
@@ -60,15 +75,7 @@ export async function getUsers(): Promise<ActionResult<AdminUserSummary[]>> {
 
     try {
         const users = await db.user.findMany({
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                username: true,
-                role: true,
-                createdAt: true,
-                updatedAt: true,
-            },
+            select: adminUserSelect,
             orderBy: { username: 'asc' }
         })
         return { success: true, data: users }
@@ -221,15 +228,7 @@ export async function getUserByUsername(username: string): Promise<ActionResult<
     try {
         const existingUser = await db.user.findUnique({
             where: { username },
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                username: true,
-                role: true,
-                createdAt: true,
-                updatedAt: true,
-            }
+            select: adminUserSelect,
         })
         if (!existingUser) {
             return { success: false, error: 'Usuario no encontrado' }
@@ -249,7 +248,8 @@ export async function getUserById(id: number) {
 
     try {
         const existingUser = await db.user.findUnique({
-            where: { id }
+            where: { id },
+            select: adminUserSelect,
         })
         if (!existingUser) {
             return { success: false, error: 'Usuario no encontrado' }
@@ -270,9 +270,7 @@ export async function getUserWithTechnologies(id: number) {
     try {
         const existingUser = await db.user.findUnique({
             where: { id },
-            include: {
-                technologies: true
-            }
+            select: adminUserWithTechnologiesSelect,
         })
         if (!existingUser) {
             return { success: false, error: 'Usuario no encontrado' }

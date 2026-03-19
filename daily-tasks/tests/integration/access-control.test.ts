@@ -7,7 +7,7 @@ import { syncNonWorkingDays } from '@/app/actions/non-working-days'
 import { createPage, updatePageContent } from '@/app/actions/pages'
 import { createScript, updateScript } from '@/app/actions/script-actions'
 import { archiveTracklist, clearTicketUnreadUpdates, completeTracklist, createTicket, createTracklist, getTracklistForEdit, updateTracklist } from '@/app/actions/tracklists'
-import { deleteUser, getUserDetails, getUsers, upsertUser } from '@/app/actions/user-actions'
+import { deleteUser, getUserById, getUserDetails, getUsers, getUserWithTechnologies, upsertUser } from '@/app/actions/user-actions'
 import { db } from '@/lib/db'
 import { Priority, TicketType } from '@/types/enums'
 import { actAs, createExternalWorkItem, createIncidenceFixture, createTechnologyModule, createTicketFixture, createTracklist as createTracklistFixture, createUser } from '@/tests/integration/helpers'
@@ -414,6 +414,35 @@ describe('access control integration', () => {
     const adminDetails = await getUserDetails(qa.id)
     expect(adminDetails.success).toBe(true)
     expect(adminDetails.data?.id).toBe(qa.id)
+  })
+
+  it('never returns password hashes from admin user lookup actions', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const qa = await createUser(UserRole.QA)
+    const { technology } = await createTechnologyModule()
+
+    await db.user.update({
+      where: { id: qa.id },
+      data: { technologies: { connect: [{ id: technology.id }] } },
+    })
+
+    actAs(admin)
+
+    const byIdResult = await getUserById(qa.id)
+    expect(byIdResult.success).toBe(true)
+    expect(byIdResult.data).toBeDefined()
+    expect('password' in (byIdResult.data as Record<string, unknown>)).toBe(false)
+
+    const withTechnologiesResult = await getUserWithTechnologies(qa.id)
+    expect(withTechnologiesResult.success).toBe(true)
+    if (!withTechnologiesResult.success || !withTechnologiesResult.data) {
+      throw new Error('Expected user lookup with technologies to succeed')
+    }
+    const userWithTechnologies = withTechnologiesResult.data as Record<string, unknown> & {
+      technologies: Array<unknown>
+    }
+    expect('password' in userWithTechnologies).toBe(false)
+    expect(userWithTechnologies.technologies).toHaveLength(1)
   })
 
   it('counts real tasks in user details using active assignments only', async () => {
