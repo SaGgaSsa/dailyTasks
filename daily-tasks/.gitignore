@@ -55,6 +55,9 @@ next-env.d.ts
 
 REVIEW_PROJECT.md
 QUESTIONS.md
+PLANES.md
+QUESTIONS_RESUME.md
 
 # temporary
 prisma/migrations/20260317120000_add_external_work_item_status/
+*.swp
