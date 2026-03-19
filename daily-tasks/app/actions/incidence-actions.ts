@@ -590,7 +590,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             return { success: false, error: 'Las incidencias desestimadas solo pueden establecerse desde un ticket' }
         }
 
-        const isAssigned = currentIncidence.assignments.some((assignment) => assignment.userId === Number(session.user.id))
+        const isAssigned = currentIncidence.assignments.some((assignment) => assignment.isAssigned && assignment.userId === Number(session.user.id))
         const canEditIncidence = session.user.role === 'ADMIN' || (session.user.role === 'DEV' && isAssigned)
         if (!canEditIncidence) {
             return { success: false, error: t(locale, 'business.incidenceEditRestricted') }

@@ -304,6 +304,25 @@ describe('access control integration', () => {
     expect(adminUpdateResult.success).toBe(true)
   })
 
+  it('treats deactivated assignments as unassigned for incidence edits', async () => {
+    const dev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: dev.id, assignedHours: 4, isAssigned: false }],
+    })
+
+    actAs(dev)
+    const result = await updateIncidence(incidence.id, {
+      comment: 'Intento con asignación desactivada',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
+  })
+
   it('limits clearing unread ticket updates to authorized users', async () => {
     const admin = await createUser(UserRole.ADMIN)
     const qa = await createUser(UserRole.QA)
