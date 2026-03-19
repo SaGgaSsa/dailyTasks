@@ -16,7 +16,9 @@ import {
   isExternalApiEnabled,
   validateExternalApiSecret,
 } from '@/lib/external-api'
+import { parsePositiveIntegerInput } from '@/lib/input-validation'
 import { normalizeUsername } from '@/lib/usernames'
+import { t } from '@/lib/i18n'
 
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
@@ -134,10 +136,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const parsedExternalId = Number(externalId)
-    if (!Number.isInteger(parsedExternalId)) {
+    const parsedExternalId = parsePositiveIntegerInput(externalId)
+    if (parsedExternalId === null) {
       return NextResponse.json(
-        { success: false, error: `externalId inválido: ${externalId}` },
+        { success: false, error: t('es', 'validation.invalidInteger', { field: 'externalId' }) },
         { status: 400 }
       )
     }
@@ -152,6 +154,13 @@ export async function POST(request: NextRequest) {
           error: `No existe ExternalWorkItem para type=${workItemType.name} y externalId=${parsedExternalId}`,
         },
         { status: 400 }
+      )
+    }
+
+    if (workItem.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { success: false, error: t('es', 'business.inactiveExternalWorkItem') },
+        { status: 409 }
       )
     }
 
@@ -185,18 +194,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const normalizedLinks = links.flatMap((link: { name: string; url: string; description?: string | null }) => {
+    const normalizedLinks: Array<{ name: string; url: string; description: string | null }> = []
+    for (const link of links as Array<{ name: string; url: string; description?: string | null }>) {
       const normalizedLink = normalizeAttachmentUrl(link.url)
       if (!normalizedLink.valid || !normalizedLink.normalizedUrl) {
-        return []
+        return NextResponse.json(
+          { success: false, error: t('es', 'business.invalidExternalAttachmentLink') },
+          { status: 400 }
+        )
       }
 
-      return [{
+      normalizedLinks.push({
         name: link.name,
         description: link.description || null,
         url: normalizedLink.normalizedUrl,
-      }]
-    })
+      })
+    }
 
     const existingIncidence = await db.incidence.findFirst({
       where: { externalWorkItemId: workItem.id },

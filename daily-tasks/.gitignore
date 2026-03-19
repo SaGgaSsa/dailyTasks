@@ -57,6 +57,8 @@ REVIEW_PROJECT.md
 QUESTIONS.md
 PLANES.md
 QUESTIONS_RESUME.md
+PLAN.md
+.code-reviewer-mcp/
 
 # temporary
 prisma/migrations/20260317120000_add_external_work_item_status/

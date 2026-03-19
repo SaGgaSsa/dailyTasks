@@ -8,6 +8,8 @@ import {
   isExternalApiEnabled,
   validateExternalApiSecret,
 } from '@/lib/external-api'
+import { parsePositiveIntegerInput } from '@/lib/input-validation'
+import { t } from '@/lib/i18n'
 
 interface CreateExternalWorkItemRequest {
   type?: string
@@ -28,18 +30,11 @@ export async function POST(request: NextRequest) {
     const body: CreateExternalWorkItemRequest = await request.json()
     const type = body.type?.trim()
     const title = body.title?.trim()
-    const parsedExternalId = Number(body.externalId)
+    const parsedExternalId = parsePositiveIntegerInput(body.externalId)
 
-    if (!type || Number.isNaN(parsedExternalId) || !title) {
+    if (!type || parsedExternalId === null || !title) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos: type, externalId, title' },
-        { status: 400 }
-      )
-    }
-
-    if (!Number.isInteger(parsedExternalId)) {
-      return NextResponse.json(
-        { error: `externalId inválido: ${body.externalId}` },
         { status: 400 }
       )
     }
@@ -58,12 +53,16 @@ export async function POST(request: NextRequest) {
 
     const existingWorkItem = await db.externalWorkItem.findUnique({
       where: { workItemTypeId_externalId: { workItemTypeId: workItemType.id, externalId: parsedExternalId } },
-      select: { id: true },
+      select: { id: true, status: true },
     })
 
     if (existingWorkItem) {
       return NextResponse.json(
-        { error: `ExternalWorkItem ya existe para type=${type} y externalId=${parsedExternalId}` },
+        {
+          error: existingWorkItem.status === ExternalWorkItemStatus.INACTIVE
+            ? t('es', 'business.inactiveExternalWorkItem')
+            : `ExternalWorkItem ya existe para type=${type} y externalId=${parsedExternalId}`,
+        },
         { status: 409 }
       )
     }

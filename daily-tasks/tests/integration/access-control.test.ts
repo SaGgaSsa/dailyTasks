@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { Prisma, UserRole } from '@prisma/client'
+import { ExternalWorkItemStatus, Prisma, UserRole } from '@prisma/client'
 
 import { addLinkAttachment, deleteAttachment, updateAttachment, uploadAttachment } from '@/app/actions/attachment-actions'
+import { deleteIncidence, updateIncidence } from '@/app/actions/incidence-actions'
 import { syncNonWorkingDays } from '@/app/actions/non-working-days'
 import { createPage, updatePageContent } from '@/app/actions/pages'
 import { createScript, updateScript } from '@/app/actions/script-actions'
-import { archiveTracklist, clearTicketUnreadUpdates, completeTracklist, createTracklist } from '@/app/actions/tracklists'
+import { archiveTracklist, clearTicketUnreadUpdates, completeTracklist, createTicket, createTracklist, getTracklistForEdit, updateTracklist } from '@/app/actions/tracklists'
 import { deleteUser, getUserDetails, getUsers, upsertUser } from '@/app/actions/user-actions'
-import { deleteIncidence } from '@/app/actions/incidence-actions'
 import { db } from '@/lib/db'
+import { Priority, TicketType } from '@/types/enums'
 import { actAs, createExternalWorkItem, createIncidenceFixture, createTechnologyModule, createTicketFixture, createTracklist as createTracklistFixture, createUser } from '@/tests/integration/helpers'
 
 describe('access control integration', () => {
@@ -205,18 +206,95 @@ describe('access control integration', () => {
     actAs(dev)
     const devCreateTracklist = await createTracklist({ title: 'Tracklist DEV' })
     expect(devCreateTracklist.success).toBe(false)
+    expect(devCreateTracklist.error).toBe('Solo ADMIN y QA pueden gestionar tracklists')
 
     actAs(qa)
     const qaCreateTracklist = await createTracklist({ title: 'Tracklist QA' })
     expect(qaCreateTracklist.success).toBe(true)
+    if (!qaCreateTracklist.success || !qaCreateTracklist.data) {
+      throw new Error('Expected QA tracklist creation to succeed')
+    }
 
     actAs(dev)
-    const devCompleteResult = await completeTracklist(qaCreateTracklist.data!.id)
+    const devEditTracklist = await getTracklistForEdit(qaCreateTracklist.data.id)
+    expect(devEditTracklist.success).toBe(false)
+
+    actAs(admin)
+    const adminUpdateTracklist = await updateTracklist({
+      id: qaCreateTracklist.data.id,
+      title: 'Tracklist QA actualizada',
+    })
+    expect(adminUpdateTracklist.success).toBe(true)
+
+    actAs(dev)
+    const devCompleteResult = await completeTracklist(qaCreateTracklist.data.id)
     expect(devCompleteResult.success).toBe(false)
 
     actAs(admin)
-    const adminArchiveResult = await archiveTracklist(qaCreateTracklist.data!.id)
+    const adminArchiveResult = await archiveTracklist(qaCreateTracklist.data.id)
     expect(adminArchiveResult.success).toBe(true)
+  })
+
+  it('blocks dev ticket mutations on tracklists while keeping read access', async () => {
+    const dev = await createUser(UserRole.DEV)
+    const qa = await createUser(UserRole.QA)
+    const { module } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklistFixture(qa.id)
+
+    await db.tracklist.update({
+      where: { id: tracklist.id },
+      data: { externalWorkItems: { connect: [{ id: workItem.id }] } },
+    })
+
+    actAs(dev)
+    const result = await createTicket(tracklist.id, {
+      type: TicketType.BUG,
+      moduleId: module.id,
+      description: 'ticket dev',
+      priority: Priority.MEDIUM,
+      externalWorkItemId: workItem.id,
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Solo ADMIN y QA pueden gestionar tracklists')
+  })
+
+  it('blocks inactive external work items in tracklists and incidence updates for unassigned users', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const qa = await createUser(UserRole.QA)
+    const assignedDev = await createUser(UserRole.DEV)
+    const otherDev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const inactiveWorkItem = await createExternalWorkItem('I_MODAPL', ExternalWorkItemStatus.INACTIVE)
+
+    actAs(qa)
+    const tracklistResult = await createTracklist({
+      title: 'Tracklist con trámite inactivo',
+      externalWorkItemIds: [inactiveWorkItem.id],
+    })
+    expect(tracklistResult.success).toBe(false)
+    expect(tracklistResult.error).toBe('No se puede usar un trámite externo inactivo')
+
+    const activeWorkItem = await createExternalWorkItem()
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: activeWorkItem.id,
+      assignees: [{ userId: assignedDev.id, assignedHours: 4 }],
+    })
+
+    actAs(otherDev)
+    const updateResult = await updateIncidence(incidence.id, {
+      comment: 'Intento ajeno',
+    })
+    expect(updateResult.success).toBe(false)
+    expect(updateResult.error).toBe('Solo los desarrolladores asignados pueden mover esta tarea')
+
+    actAs(admin)
+    const adminUpdateResult = await updateIncidence(incidence.id, {
+      comment: 'Actualización admin',
+    })
+    expect(adminUpdateResult.success).toBe(true)
   })
 
   it('limits clearing unread ticket updates to authorized users', async () => {

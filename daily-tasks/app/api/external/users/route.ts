@@ -9,6 +9,7 @@ import {
   isExternalApiEnabled,
   validateExternalApiSecret,
 } from '@/lib/external-api'
+import { parsePositiveIntegerInput } from '@/lib/input-validation'
 
 interface CreateUserRequest {
   email: string
@@ -139,8 +140,8 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const userId = parseInt(id, 10)
-    if (isNaN(userId)) {
+    const userId = parsePositiveIntegerInput(id)
+    if (userId === null) {
       return NextResponse.json(
         { error: 'ID inválido' },
         { status: 400 }

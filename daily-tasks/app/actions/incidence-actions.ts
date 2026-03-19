@@ -8,6 +8,7 @@ import { Priority } from '@/types/enums'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
+import { getExternalWorkItemByComposite, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
     canActivateBacklogIncidence,
@@ -100,11 +101,13 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
             return { success: false, error: 'Tipo de trámite no válido' }
         }
 
-        const workItem = await db.externalWorkItem.findUnique({
-            where: { workItemTypeId_externalId: { workItemTypeId: workItemType.id, externalId: data.externalId } },
-        })
+        const workItem = await getExternalWorkItemByComposite(workItemType.id, data.externalId)
         if (!workItem) {
             return { success: false, error: 'El trámite externo no existe. Debe crearse primero por API externa.' }
+        }
+
+        if (!isExternalWorkItemActive(workItem)) {
+            return { success: false, error: t(locale, 'business.inactiveExternalWorkItem') }
         }
 
         const existingIncidence = await db.incidence.findFirst({
@@ -585,6 +588,15 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
 
         if (data.status === TaskStatus.DISMISSED) {
             return { success: false, error: 'Las incidencias desestimadas solo pueden establecerse desde un ticket' }
+        }
+
+        const isAssigned = currentIncidence.assignments.some((assignment) => assignment.userId === Number(session.user.id))
+        if (session.user.role === 'QA') {
+            return { success: false, error: t(locale, 'business.assigneeOnly') }
+        }
+
+        if (session.user.role !== 'ADMIN' && !isAssigned) {
+            return { success: false, error: t(locale, 'business.assigneeOnly') }
         }
 
         let techConnect = undefined

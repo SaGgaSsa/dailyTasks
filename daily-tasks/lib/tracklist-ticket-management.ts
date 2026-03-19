@@ -2,6 +2,7 @@ import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus 
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/lib/db'
+import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { TicketType, TicketQAStatus } from '@/types/enums'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 
@@ -87,14 +88,15 @@ async function assignTicketToNewIncidenceCore(
   }
 
   const workItem = ticket.externalWorkItemId
-    ? await db.externalWorkItem.findUnique({
-      where: { id: ticket.externalWorkItemId },
-      select: externalWorkItemBaseSelect,
-    })
+    ? await getExternalWorkItemById(ticket.externalWorkItemId)
     : null
 
   if (!workItem) {
     return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
+  }
+
+  if (!isExternalWorkItemActive(workItem)) {
+    return { success: false, error: 'No se puede usar un trámite externo inactivo' }
   }
 
   const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'

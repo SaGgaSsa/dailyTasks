@@ -78,7 +78,10 @@ export async function createTechnologyModule() {
   return { technology, module: moduleRecord }
 }
 
-export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
+export async function createExternalWorkItem(
+  type: TaskType = 'I_MODAPL',
+  status: ExternalWorkItemStatus = ExternalWorkItemStatus.ACTIVE
+) {
   const typeColors: Record<TaskType, WorkItemTypeColor> = {
     I_MODAPL: 'blue',
     I_CASO: 'orange',
@@ -96,7 +99,7 @@ export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
       workItemTypeId: workItemType.id,
       externalId: sequence * 100,
       title: nextValue('work-item'),
-      status: ExternalWorkItemStatus.ACTIVE,
+      status,
     },
   })
 }
