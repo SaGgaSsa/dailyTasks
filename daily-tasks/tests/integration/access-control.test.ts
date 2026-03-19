@@ -288,7 +288,14 @@ describe('access control integration', () => {
       comment: 'Intento ajeno',
     })
     expect(updateResult.success).toBe(false)
-    expect(updateResult.error).toBe('Solo los desarrolladores asignados pueden mover esta tarea')
+    expect(updateResult.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
+
+    actAs(qa)
+    const qaUpdateResult = await updateIncidence(incidence.id, {
+      comment: 'Intento QA',
+    })
+    expect(qaUpdateResult.success).toBe(false)
+    expect(qaUpdateResult.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
 
     actAs(admin)
     const adminUpdateResult = await updateIncidence(incidence.id, {

@@ -158,6 +158,7 @@ export const es = {
     notAssigned: 'No está asignado a esta incidencia',
     readonlyState: 'No puede modificar tareas en una incidencia finalizada',
     reviewOnlyAdmin: 'Solo los administradores pueden modificar tareas en revisión',
+    incidenceEditRestricted: 'Solo los administradores y desarrolladores asignados pueden editar incidencias',
     tracklistsManageOnly: 'Solo ADMIN y QA pueden gestionar tracklists',
     invalidExternalWorkItem: 'El trámite externo no existe',
     inactiveExternalWorkItem: 'No se puede usar un trámite externo inactivo',

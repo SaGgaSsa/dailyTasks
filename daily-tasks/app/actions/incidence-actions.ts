@@ -591,12 +591,9 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
         }
 
         const isAssigned = currentIncidence.assignments.some((assignment) => assignment.userId === Number(session.user.id))
-        if (session.user.role === 'QA') {
-            return { success: false, error: t(locale, 'business.assigneeOnly') }
-        }
-
-        if (session.user.role !== 'ADMIN' && !isAssigned) {
-            return { success: false, error: t(locale, 'business.assigneeOnly') }
+        const canEditIncidence = session.user.role === 'ADMIN' || (session.user.role === 'DEV' && isAssigned)
+        if (!canEditIncidence) {
+            return { success: false, error: t(locale, 'business.incidenceEditRestricted') }
         }
 
         let techConnect = undefined

@@ -158,6 +158,7 @@ export const en = {
     notAssigned: 'You are not assigned to this incidence',
     readonlyState: 'Cannot modify tasks in a completed incidence',
     reviewOnlyAdmin: 'Only administrators can modify tasks in review',
+    incidenceEditRestricted: 'Only administrators and assigned developers can edit incidences',
     tracklistsManageOnly: 'Only ADMIN and QA can manage tracklists',
     invalidExternalWorkItem: 'The external work item does not exist',
     inactiveExternalWorkItem: 'Inactive external work items cannot be used',
