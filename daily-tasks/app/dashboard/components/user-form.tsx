@@ -35,7 +35,11 @@ interface FormState {
 
 async function createUserWrapper(state: FormState, formData: FormData): Promise<FormState> {
   'use server'
-  return await createUser(formData)
+  const result = await createUser(formData)
+  return {
+    error: result.error ?? null,
+    success: result.success ? 'Usuario creado correctamente' : null,
+  }
 }
 
 export function UserForm({ open, onOpenChange }: UserFormProps) {

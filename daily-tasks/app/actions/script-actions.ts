@@ -2,12 +2,20 @@
 
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
-import { TaskStatus, UserRole } from '@prisma/client'
+import { TaskStatus } from '@prisma/client'
 import type { ScriptType } from '@prisma/client'
+import {
+    canCreateScript,
+    canDeleteScript,
+    canEditScript,
+    getAuthenticatedUser,
+    getIncidenceAccessContext,
+    getScriptAccessContext,
+    isEditableIncidenceStatus,
+} from '@/lib/authorization'
 
 function ensureIncidenceIsEditable(status: TaskStatus) {
-    if (status === TaskStatus.DISMISSED) {
+    if (!isEditableIncidenceStatus(status)) {
         return { success: false, error: 'No puede modificar scripts de una incidencia desestimada' } as const
     }
 
@@ -15,8 +23,8 @@ function ensureIncidenceIsEditable(status: TaskStatus) {
 }
 
 export async function getScriptsByIncidence(incidenceId: number) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -43,8 +51,8 @@ export async function createScript(data: {
     content: string
     type: ScriptType
 }) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -53,25 +61,24 @@ export async function createScript(data: {
     }
 
     try {
-        const incidence = await db.incidence.findUnique({
-            where: { id: data.incidenceId }
-        })
-
-        if (!incidence) {
+        const accessContext = await getIncidenceAccessContext(data.incidenceId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Incidencia no encontrada' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
 
-        const createdById = Number(session.user.id)
+        if (!canCreateScript(user, accessContext)) {
+            return { success: false, error: 'No tiene permisos para crear scripts en esta incidencia' }
+        }
 
         const script = await db.script.create({
             data: {
                 content: data.content,
                 type: data.type,
                 incidenceId: data.incidenceId,
-                createdById,
+                createdById: user.id,
             }
         })
 
@@ -87,8 +94,8 @@ export async function updateScript(
     scriptId: number,
     data: { content: string; type: ScriptType }
 ) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -97,22 +104,15 @@ export async function updateScript(
     }
 
     try {
-        const script = await db.script.findUnique({
-            where: { id: scriptId },
-            include: { incidence: { select: { status: true } } }
-        })
-
-        if (!script) {
+        const accessContext = await getScriptAccessContext(scriptId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Script no encontrado' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(script.incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
 
-        const userId = Number(session.user.id)
-        const userRole = session.user.role as UserRole
-
-        if (userRole !== UserRole.ADMIN && script.createdById !== userId) {
+        if (!canEditScript(user, accessContext)) {
             return { success: false, error: 'No tiene permisos para editar este script' }
         }
 
@@ -133,8 +133,8 @@ export async function updateScript(
 }
 
 export async function deleteScript(scriptId: number) {
-    const session = await auth()
-    if (!session?.user) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
         return { success: false, error: 'No autorizado' }
     }
 
@@ -143,22 +143,15 @@ export async function deleteScript(scriptId: number) {
     }
 
     try {
-        const script = await db.script.findUnique({
-            where: { id: scriptId },
-            include: { incidence: { select: { status: true } } }
-        })
-
-        if (!script) {
+        const accessContext = await getScriptAccessContext(scriptId, user.id)
+        if (!accessContext) {
             return { success: false, error: 'Script no encontrado' }
         }
 
-        const editabilityError = ensureIncidenceIsEditable(script.incidence.status)
+        const editabilityError = ensureIncidenceIsEditable(accessContext.status ?? TaskStatus.DISMISSED)
         if (editabilityError) return editabilityError
 
-        const userId = Number(session.user.id)
-        const userRole = session.user.role as UserRole
-
-        if (userRole !== UserRole.ADMIN && script.createdById !== userId) {
+        if (!canDeleteScript(user, accessContext)) {
             return { success: false, error: 'No tiene permisos para eliminar este script' }
         }
 

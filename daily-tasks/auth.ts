@@ -1,25 +1,36 @@
 import { authConfig } from './auth.config'
+import { UserRole } from '@prisma/client'
 import NextAuth from 'next-auth'
+import type { DefaultSession } from 'next-auth'
 
 declare module 'next-auth' {
   interface Session {
-    user: {
+    user: DefaultSession['user'] & {
       id: string
       email: string
       name: string
       username: string
-      role: string
+      role: UserRole
     }
   }
 
   interface User {
-    id: number
+    id: string
     email: string
     name: string
     username: string
-    role: string
+    role: UserRole
+  }
+}
+
+declare module '@auth/core/jwt' {
+  interface JWT {
+    id?: string
+    email?: string
+    username?: string
+    role?: UserRole
   }
 }
 
 export { authConfig }
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig as any)
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)

@@ -8,9 +8,18 @@ import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
 import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
-import { TaskStatus, Priority as PrismaPriority, Prisma, ExternalWorkItemStatus } from '.prisma/client'
+import { TaskStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
+import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
+import {
+    assignTicketToNewIncidence,
+    assignTicketToNewIncidenceCore,
+    enrichTicketScripts,
+    ExternalWorkItemStatus,
+    ticketDetailsInclude,
+} from '@/lib/tracklist-ticket-management'
+import { canManageTracklists, getAuthenticatedUser } from '@/lib/authorization'
 
 interface CreateTracklistData {
     title: string
@@ -37,144 +46,38 @@ interface CreateTicketData {
     assignedToId?: number
 }
 
-const ticketDetailsInclude = {
-    reportedBy: { select: { id: true, name: true, username: true } },
-    assignedTo: { select: { id: true, name: true, username: true } },
-    externalWorkItem: { select: externalWorkItemBaseSelect },
-    dismissedBy: { select: { id: true, name: true, username: true } },
-    module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
-    incidence: {
-        select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            completedAt: true,
-            estimatedTime: true,
-            assignments: {
-                where: { isAssigned: true },
-                select: { assignedHours: true }
-            },
-            _count: {
-                select: { scripts: true },
-            },
-        },
-    },
-} satisfies Prisma.TicketQAInclude
+async function requireTracklistManager(locale: Locale) {
+    const user = await getAuthenticatedUser()
 
-type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetailsInclude }>
-
-function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
-    const inc = ticket.incidence
-
-    const incidenceGantt = inc ? {
-        id: inc.id,
-        status: inc.status as import('@/types/enums').TaskStatus,
-        startedAt: inc.startedAt,
-        completedAt: inc.completedAt,
-        estimatedTime: inc.estimatedTime,
-        totalAssignedHours: inc.assignments.reduce((sum, a) => sum + (a.assignedHours ?? 0), 0),
-    } : null
-
-    return {
-        ...ticket,
-        externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
-        hasScripts: (inc?._count?.scripts ?? 0) > 0,
-        incidenceGantt,
+    if (!user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') } as const
     }
+
+    if (!canManageTracklists(user.role)) {
+        return { success: false, error: t(locale, 'business.tracklistsManageOnly') } as const
+    }
+
+    return { success: true, user } as const
 }
 
-const PRIORITY_MAP: Record<string, PrismaPriority> = {
-    LOW: 'LOW',
-    MEDIUM: 'MEDIUM',
-    HIGH: 'HIGH',
-    BLOCKER: 'BLOCKER',
-}
-
-const TICKET_TYPE_TITLE_PREFIX: Record<TicketType, string> = {
-    [TicketType.BUG]: 'Corrección',
-    [TicketType.CAMBIO]: 'Modificación',
-    [TicketType.CONSULTA]: 'Consulta',
-}
-
-const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
-    [TicketType.BUG]: 'Corrección',
-    [TicketType.CAMBIO]: 'Modificación',
-    [TicketType.CONSULTA]: 'Análisis',
-}
-
-
-async function runAssignmentTransaction(
-    ticketId: number,
-    assignedToId: number,
-    tracklistId: number
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        const ticket = await db.ticketQA.findUnique({
-            where: { id: ticketId },
-            include: { module: { select: { id: true, name: true, slug: true, technologyId: true } } },
-        })
-        if (!ticket) return { success: false, error: 'Ticket no encontrado' }
-
-        const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
-        const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
-        const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
-
-        const workItem = ticket.externalWorkItemId
-            ? await db.externalWorkItem.findUnique({
-                where: { id: ticket.externalWorkItemId },
-                select: externalWorkItemBaseSelect,
-            })
-            : null
-
-        if (!workItem) {
-            return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
-        }
-
-        const serializedWorkItem = workItem ? serializeExternalWorkItem(workItem) : null
-        const title = serializedWorkItem?.title || `${titlePrefix} – ${serializedWorkItem?.type ?? ''} ${serializedWorkItem?.externalId ?? ''}`
-
-        await db.$transaction(async (tx) => {
-            const newIncidence = await tx.incidence.create({
-                data: {
-                    externalWorkItemId: workItem!.id,
-                    description: ticket.description || title,
-                    technologyId: ticket.module.technologyId,
-                    priority: incidencePriority,
-                    status: TaskStatus.BACKLOG,
-                },
-            })
-
-            const assignment = await tx.assignment.upsert({
-                where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
-                create: { incidenceId: newIncidence.id, userId: assignedToId, isAssigned: true },
-                update: { isAssigned: true },
-            })
-
-            await tx.task.create({
-                data: { title: taskTitle, assignmentId: assignment.id },
-            })
-
-            await tx.ticketQA.update({
-                where: { id: ticketId },
-                data: {
-                    status: TicketQAStatus.ASSIGNED,
-                    assignedToId,
-                    incidenceId: newIncidence.id,
-                    hasUnreadUpdates: false,
-                },
-            })
-        })
-
-        revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
+async function ensureActiveExternalWorkItem(
+    externalWorkItemId: number | undefined,
+    locale: Locale
+): Promise<{ success: true } | { success: false; error: string }> {
+    if (externalWorkItemId === undefined) {
         return { success: true }
-    } catch (error) {
-        console.error('Error in assignment transaction:', error)
-        if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: false, error: 'Ya existe una incidencia con ese trámite y tipo' }
-        }
-        return { success: false, error: 'Error al ejecutar la asignación' }
     }
+
+    const workItem = await getExternalWorkItemById(externalWorkItemId)
+    if (!workItem) {
+        return { success: false, error: t(locale, 'business.invalidExternalWorkItem') }
+    }
+
+    if (!isExternalWorkItemActive(workItem)) {
+        return { success: false, error: t(locale, 'business.inactiveExternalWorkItem') }
+    }
+
+    return { success: true }
 }
 
 export async function assignTicket(
@@ -182,8 +85,8 @@ export async function assignTicket(
     assignedToId: number,
     tracklistId: number
 ): Promise<{ success: boolean; error?: string }> {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    const access = await requireTracklistManager('es')
+    if (!access.success) return access
 
     try {
         const ticket = await db.ticketQA.findUnique({
@@ -193,7 +96,7 @@ export async function assignTicket(
         if (ticket.status !== TicketQAStatus.NEW) {
             return { success: false, error: 'Solo se pueden asignar tickets en estado Nuevo' }
         }
-        return runAssignmentTransaction(ticketId, assignedToId, tracklistId)
+        return assignTicketToNewIncidence(ticketId, assignedToId, tracklistId)
     } catch (error) {
         console.error('Error assigning ticket:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
@@ -207,7 +110,42 @@ export async function clearTicketUnreadUpdates(
     ticketId: number,
     tracklistId: number
 ): Promise<{ success: boolean; error?: string }> {
+    const user = await getAuthenticatedUser()
+    if (!user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     try {
+        const ticket = await db.ticketQA.findFirst({
+            where: { id: ticketId, tracklistId },
+            select: {
+                assignedToId: true,
+                incidence: {
+                    select: {
+                        assignments: {
+                            where: { userId: user.id, isAssigned: true },
+                            select: { id: true },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        })
+
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' }
+        }
+
+        const canClear =
+            user.role === 'ADMIN' ||
+            user.role === 'QA' ||
+            ticket.assignedToId === user.id ||
+            (user.role === 'DEV' && (ticket.incidence?.assignments.length ?? 0) > 0)
+
+        if (!canClear) {
+            return { success: false, error: 'No autorizado' }
+        }
+
         await db.ticketQA.update({
             where: { id: ticketId },
             data: { hasUnreadUpdates: false },
@@ -243,12 +181,17 @@ export async function getTracklists(locale: Locale = 'es') {
 }
 
 export async function createTracklist(data: CreateTracklistData, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') }
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     try {
+        for (const externalWorkItemId of data.externalWorkItemIds ?? []) {
+            const workItemCheck = await ensureActiveExternalWorkItem(externalWorkItemId, locale)
+            if (!workItemCheck.success) {
+                return workItemCheck
+            }
+        }
+
         const tracklistData: {
             title: string
             description?: string
@@ -259,7 +202,7 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
             title: data.title,
             description: data.description,
             dueDate: data.dueDate,
-            createdById: Number(session.user.id)
+            createdById: access.user.id
         }
 
         if (data.externalWorkItemIds && data.externalWorkItemIds.length > 0) {
@@ -280,12 +223,17 @@ export async function createTracklist(data: CreateTracklistData, locale: Locale 
 }
 
 export async function updateTracklist(data: UpdateTracklistData, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') }
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     try {
+        for (const externalWorkItemId of data.externalWorkItemIds ?? []) {
+            const workItemCheck = await ensureActiveExternalWorkItem(externalWorkItemId, locale)
+            if (!workItemCheck.success) {
+                return workItemCheck
+            }
+        }
+
         const currentTracklist = await db.tracklist.findUnique({
             where: { id: data.id },
             select: { externalWorkItems: { select: { id: true } } }
@@ -329,6 +277,9 @@ export async function updateTracklist(data: UpdateTracklistData, locale: Locale 
 }
 
 export async function getTracklistForEdit(tracklistId: number) {
+    const access = await requireTracklistManager('es')
+    if (!access.success) return access
+
     try {
         const tracklist = await db.tracklist.findUnique({
             where: { id: tracklistId },
@@ -375,10 +326,8 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
 }
 
 export async function createTicket(tracklistId: number, data: CreateTicketData, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') }
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     const parsed = createTicketSchema.safeParse(data)
     if (!parsed.success) {
@@ -387,14 +336,12 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
     }
 
     try {
-        const sessionUserId = Number(session.user.id)
-        const sessionUser = await db.user.findUnique({
-            where: { id: sessionUserId }
-        })
-
-        if (!sessionUser) {
-            return { success: false, error: 'Usuario de la sesión no encontrado. Inicia sesión de nuevo.' }
+        const workItemCheck = await ensureActiveExternalWorkItem(data.externalWorkItemId, locale)
+        if (!workItemCheck.success) {
+            return workItemCheck
         }
+
+        const sessionUserId = access.user.id
 
         const lastTicket = await db.ticketQA.findFirst({
             where: { tracklistId: tracklistId },
@@ -402,26 +349,29 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         })
         const nextTicketNumber = (lastTicket?.ticketNumber ?? 0) + 1
 
-        const ticket = await db.ticketQA.create({
-            data: {
-                tracklistId: tracklistId,
-                ticketNumber: nextTicketNumber,
-                type: data.type,
-                moduleId: data.moduleId,
-                description: data.description,
-                priority: data.priority,
-                externalWorkItemId: data.externalWorkItemId,
-                observations: data.observations,
-                reportedById: sessionUserId,
+        let ticket
+        await db.$transaction(async (tx) => {
+            ticket = await tx.ticketQA.create({
+                data: {
+                    tracklistId: tracklistId,
+                    ticketNumber: nextTicketNumber,
+                    type: data.type,
+                    moduleId: data.moduleId,
+                    description: data.description,
+                    priority: data.priority,
+                    externalWorkItemId: data.externalWorkItemId,
+                    observations: data.observations,
+                    reportedById: sessionUserId,
+                }
+            })
+
+            if (data.assignedToId) {
+                const txResult = await assignTicketToNewIncidenceCore(tx, ticket.id, data.assignedToId)
+                if (!txResult.success) {
+                    throw new Error(txResult.error)
+                }
             }
         })
-
-        if (data.assignedToId) {
-            const txResult = await runAssignmentTransaction(ticket.id, data.assignedToId, tracklistId)
-            if (!txResult.success) {
-                console.error('Assignment transaction failed after ticket creation:', txResult.error)
-            }
-        }
 
         // Reactivate tracklist if it was completed or archived
         const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true } })
@@ -437,7 +387,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         return { success: true, data: ticket }
     } catch (error) {
         console.error('Error creating ticket:', error)
-        return { success: false, error: t(locale, 'errors.saveError') }
+        return { success: false, error: error instanceof Error ? error.message : t(locale, 'errors.saveError') }
     }
 }
 
@@ -466,13 +416,11 @@ export async function getTracklistExternalWorkItems(tracklistId: number) {
 }
 
 export async function dismissTicket(ticketId: number, reason: string, tracklistId: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') }
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     if (reason.trim().length < 3) {
-        return { success: false, error: 'La razón debe tener al menos 3 caracteres' }
+        return { success: false, error: t(locale, 'validation.minimumLength', { min: 3 }) }
     }
 
     try {
@@ -491,7 +439,7 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
                 data: {
                     status: TicketQAStatus.DISMISSED,
                     dismissReason: reason.trim(),
-                    dismissedById: Number(session.user.id)
+                    dismissedById: access.user.id
                 }
             })
 
@@ -518,8 +466,8 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
 }
 
 export async function deleteTracklist(id: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
     try {
         await db.tracklist.delete({ where: { id } })
         revalidatePath('/tracklists')
@@ -531,10 +479,8 @@ export async function deleteTracklist(id: number, locale: Locale = 'es') {
 }
 
 export async function getTicketFormData(tracklistId: number) {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: 'No autorizado' }
-    }
+    const access = await requireTracklistManager('es')
+    if (!access.success) return access
 
     try {
         const [techsResult, workItemsResult] = await Promise.all([
@@ -559,8 +505,8 @@ export async function getTicketFormData(tracklistId: number) {
 }
 
 export async function updateTicket(ticketId: number, tracklistId: number, data: CreateTicketData, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     const parsed = createTicketSchema.safeParse(data)
     if (!parsed.success) {
@@ -569,37 +515,47 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
     }
 
     try {
+        const workItemCheck = await ensureActiveExternalWorkItem(data.externalWorkItemId, locale)
+        if (!workItemCheck.success) {
+            return workItemCheck
+        }
+
         const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
         if (!ticket) return { success: false, error: 'Ticket no encontrado' }
         if (ticket.status !== TicketQAStatus.NEW) {
             return { success: false, error: 'Solo se pueden editar tickets en estado Nuevo' }
         }
+        if (ticket.assignedToId || ticket.incidenceId) {
+            return { success: false, error: 'Solo se pueden editar tickets todavía no asignados' }
+        }
 
-        await db.ticketQA.update({
-            where: { id: ticketId },
-            data: {
-                type: data.type,
-                moduleId: data.moduleId,
-                description: data.description,
-                priority: data.priority,
-                externalWorkItemId: data.externalWorkItemId ?? null,
-                observations: data.observations ?? null,
-                assignedToId: data.assignedToId ?? null,
+        await db.$transaction(async (tx) => {
+            await tx.ticketQA.update({
+                where: { id: ticketId },
+                data: {
+                    type: data.type,
+                    moduleId: data.moduleId,
+                    description: data.description,
+                    priority: data.priority,
+                    externalWorkItemId: data.externalWorkItemId ?? null,
+                    observations: data.observations ?? null,
+                    assignedToId: data.assignedToId ?? null,
+                }
+            })
+
+            if (data.assignedToId) {
+                const txResult = await assignTicketToNewIncidenceCore(tx, ticketId, data.assignedToId)
+                if (!txResult.success) {
+                    throw new Error(txResult.error)
+                }
             }
         })
-
-        if (data.assignedToId) {
-            const txResult = await runAssignmentTransaction(ticketId, data.assignedToId, tracklistId)
-            if (!txResult.success) {
-                console.error('Assignment transaction failed after ticket update:', txResult.error)
-            }
-        }
 
         revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true }
     } catch (error) {
         console.error('Error updating ticket:', error)
-        return { success: false, error: t(locale, 'errors.saveError') }
+        return { success: false, error: error instanceof Error ? error.message : t(locale, 'errors.saveError') }
     }
 }
 
@@ -634,10 +590,8 @@ export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
 }
 
 export async function completeTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') } as const
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     try {
         const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
@@ -666,8 +620,8 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
     }
 }
 export async function completeTracklist(id: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
     try {
         const testTickets = await db.ticketQA.findMany({
             where: { tracklistId: id, status: TicketQAStatus.TEST },
@@ -692,7 +646,7 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
             data: {
                 status: TracklistStatus.COMPLETED,
                 completedAt: new Date(),
-                completedById: Number(session.user.id),
+                completedById: access.user.id,
             },
         })
         revalidatePath('/tracklists')
@@ -705,8 +659,8 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
 }
 
 export async function archiveTracklist(id: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: t(locale, 'auth.unauthorized') }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
     try {
         await db.tracklist.update({
             where: { id },
@@ -788,10 +742,8 @@ export async function getGanttData() {
 }
 
 export async function uncompleteTicket(ticketId: number, tracklistId: number, locale: Locale = 'es') {
-    const session = await auth()
-    if (!session?.user) {
-        return { success: false, error: t(locale, 'auth.unauthorized') } as const
-    }
+    const access = await requireTracklistManager(locale)
+    if (!access.success) return access
 
     try {
         const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })

@@ -1,11 +1,10 @@
 import type { Priority, TaskStatus, TaskType, TicketQAStatus, TicketType } from '@prisma/client'
 import { ExternalWorkItemStatus } from '.prisma/client'
+import { UserRole } from '@prisma/client'
 
 import { db } from '@/lib/db'
 import { type WorkItemTypeColor } from '@/lib/work-item-color-options'
 import { setMockSession } from '@/tests/integration/setup'
-
-type UserRole = 'ADMIN' | 'DEV' | 'QA'
 
 let sequence = 1
 
@@ -15,11 +14,32 @@ function nextValue(prefix: string) {
   return value
 }
 
+function nextAlphabeticToken() {
+  let current = sequence
+  sequence += 1
+
+  let token = ''
+  while (current > 0) {
+    const index = (current - 1) % 26
+    token = String.fromCharCode(65 + index) + token
+    current = Math.floor((current - 1) / 26)
+  }
+
+  return token
+}
+
 export async function createUser(role: UserRole, overrides?: Partial<{ name: string; username: string; email: string }>) {
-  const username = overrides?.username ?? nextValue(role.toLowerCase())
+  const roleLabel: Record<UserRole, string> = {
+    ADMIN: 'Admin',
+    DEV: 'Dev',
+    QA: 'Qa',
+  }
+
+  const username = overrides?.username ?? `${roleLabel[role]} ${nextAlphabeticToken()}`
+  const emailLocalPart = username.toLowerCase().replace(/\s+/g, '.')
   return db.user.create({
     data: {
-      email: overrides?.email ?? `${username}@example.com`,
+      email: overrides?.email ?? `${emailLocalPart}@example.com`,
       password: 'test-password',
       name: overrides?.name ?? username,
       username,
@@ -28,7 +48,7 @@ export async function createUser(role: UserRole, overrides?: Partial<{ name: str
   })
 }
 
-export function actAs(user: { id: number; email: string; username: string; role: string; name: string | null }) {
+export function actAs(user: { id: number; email: string; username: string; role: UserRole; name: string | null }) {
   setMockSession({
     user: {
       id: String(user.id),
@@ -58,7 +78,10 @@ export async function createTechnologyModule() {
   return { technology, module: moduleRecord }
 }
 
-export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
+export async function createExternalWorkItem(
+  type: TaskType = 'I_MODAPL',
+  status: ExternalWorkItemStatus = ExternalWorkItemStatus.ACTIVE
+) {
   const typeColors: Record<TaskType, WorkItemTypeColor> = {
     I_MODAPL: 'blue',
     I_CASO: 'orange',
@@ -76,7 +99,7 @@ export async function createExternalWorkItem(type: TaskType = 'I_MODAPL') {
       workItemTypeId: workItemType.id,
       externalId: sequence * 100,
       title: nextValue('work-item'),
-      status: ExternalWorkItemStatus.ACTIVE,
+      status,
     },
   })
 }

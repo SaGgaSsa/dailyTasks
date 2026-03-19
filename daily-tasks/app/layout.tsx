@@ -28,43 +28,6 @@ export const metadata: Metadata = {
   description: "Gestión de tareas tipo Jira/Notion",
 };
 
-// Script para prevenir flash de tema incorrecto
-const themeScript = `
-  (function() {
-    function getCookie(name) {
-      var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-      return match ? decodeURIComponent(match[2]) : null;
-    }
-    function setCookie(name, value) {
-      var expires = new Date();
-      expires.setFullYear(expires.getFullYear() + 1);
-      document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
-    }
-    function getThemePreference() {
-      var cookie = getCookie('dailytasks-theme');
-      if (cookie && ['dark', 'light'].indexOf(cookie) !== -1) {
-        return cookie;
-      }
-      var stored = localStorage.getItem('dailytasks-theme');
-      if (stored && ['dark', 'light'].indexOf(stored) !== -1) {
-        setCookie('dailytasks-theme', stored);
-        return stored;
-      }
-      return 'dark';
-    }
-    var theme = getThemePreference();
-    var root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    }
-    root.style.colorScheme = theme;
-  })();
-`;
-
 // Script para suprimir errores de performance.measure con timestamp negativo
 const performanceErrorScript = `
   (function() {
@@ -85,6 +48,10 @@ const performanceErrorScript = `
   })();
 `;
 
+function resolveInitialTheme(themeCookie: string | undefined) {
+  return themeCookie === 'light' ? 'light' : 'dark';
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -94,11 +61,11 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get('dailytasks-sidebar-open')?.value;
   const defaultSidebarOpen = sidebarCookie !== undefined ? sidebarCookie === 'true' : true;
+  const initialTheme = resolveInitialTheme(cookieStore.get('dailytasks-theme')?.value);
 
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className={initialTheme} style={{ colorScheme: initialTheme }}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: performanceErrorScript }} />
       </head>
       <body
@@ -108,7 +75,7 @@ export default async function RootLayout({
           <I18nProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="dark"
+              defaultTheme={initialTheme}
               enableSystem={false}
               storageKey="dailytasks-theme"
               disableTransitionOnChange={false}

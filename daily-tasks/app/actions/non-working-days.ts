@@ -2,6 +2,7 @@
 
 import { unstable_cache, revalidateTag } from 'next/cache'
 import { db } from '@/lib/db'
+import { canManageNonWorkingDays, getAuthenticatedUser } from '@/lib/authorization'
 
 export const getCachedNonWorkingDays = unstable_cache(
   async (): Promise<Date[]> => fetchNonWorkingDays(),
@@ -31,6 +32,15 @@ function toUTCMidnight(d: Date): Date {
 }
 
 export async function syncNonWorkingDays(dates: Date[]): Promise<{ success: boolean; error?: string }> {
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, error: 'No autorizado' }
+  }
+
+  if (!canManageNonWorkingDays(user.role)) {
+    return { success: false, error: 'No tiene permisos para guardar los días no laborables' }
+  }
+
   try {
     const uniqueDates = [
       ...new Map(

@@ -5,24 +5,16 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { TaskStatus, TaskType } from '@/types/enums'
+import { TaskStatus } from '@/types/enums'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
-import { IncidenceDetailClient } from './_components/incidence-detail-client'
 import { User } from 'lucide-react'
 import { IncidencePageContent } from './_components/incidence-page-content'
+import { UserRole } from '@prisma/client'
 
 const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
     BACKLOG: { label: 'Backlog', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
@@ -73,7 +65,11 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
     }
 
     const currentUserId = Number(session.user.id)
-    const isAdmin = session.user.role === 'ADMIN'
+    const currentUserRole = session.user.role as UserRole
+    const isAdmin = currentUserRole === UserRole.ADMIN
+    const isAssignedToCurrentUser = incidence.assignments.some(
+        (assignment) => assignment.isAssigned && assignment.userId === currentUserId
+    )
 
     const assignedHours = incidence.assignments.reduce(
         (sum, a) => sum + (a.assignedHours ?? 0),
@@ -109,6 +105,8 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                     allUsers={users}
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
+                    currentUserRole={currentUserRole}
+                    isAssignedToCurrentUser={isAssignedToCurrentUser}
                 />
 
                 <div className="lg:sticky lg:top-0 lg:self-start">

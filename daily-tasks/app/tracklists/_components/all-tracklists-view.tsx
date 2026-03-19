@@ -20,7 +20,7 @@ import { AllTracklistsTicketsTable } from './all-tracklists-tickets-table'
 import { GanttChart } from './gantt/gantt-chart'
 import { WeekNavigator } from './gantt/week-navigator'
 import { FilterChips } from '@/components/ui/filter-chips'
-import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from './tracklist-toolbar'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, type TechOption, type ViewOption } from './tracklist-toolbar'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails, GanttTracklist } from '@/types'
 import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
@@ -59,6 +59,7 @@ interface Props {
   ganttData: GanttTracklist[]
   assignableUsers: AssignableUser[]
   nonWorkingDays: Date[]
+  techOptions: TechOption[]
 }
 
 const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
@@ -66,7 +67,7 @@ const ALL_TRACKLISTS_VIEW_OPTIONS: ViewOption[] = [
   { value: 'gantt', icon: <GanttChartIcon className="h-4 w-4" /> },
 ]
 
-export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonWorkingDays }: Props) {
+export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonWorkingDays, techOptions }: Props) {
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
@@ -147,6 +148,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonW
           selectedTech={selectedTech}
           onTechChange={setSelectedTech}
           assignableUsers={assignableUsers}
+          techOptions={techOptions}
           view={view}
           onViewChange={(v) => setView(v as 'list' | 'gantt')}
           viewOptions={ALL_TRACKLISTS_VIEW_OPTIONS}
@@ -169,7 +171,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonW
           selectedTech={selectedTech}
           statusOptions={TICKET_STATUS_OPTIONS}
           assigneeOptions={assignableUsers.map(u => ({ value: String(u.id), label: u.name || u.username }))}
-          techOptions={TECH_OPTIONS}
+          techOptions={techOptions}
           onSearchChange={setSearch}
           onStatusChange={setSelectedStatus}
           onAssigneeChange={setSelectedUser}

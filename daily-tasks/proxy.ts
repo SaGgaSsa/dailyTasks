@@ -1,28 +1,38 @@
-import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
-import { NextResponse } from "next/server"
+import NextAuth from 'next-auth'
+import { NextResponse } from 'next/server'
+import { authConfig } from './auth.config'
+import { isPublicPath } from './lib/auth-route-policy'
+import { externalApiDisabledResponse, isExternalApiEnabled, isExternalApiPath } from './lib/external-api'
 
-const { auth } = NextAuth(authConfig as any)
+const { auth } = NextAuth(authConfig)
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
 
-  // Permitir acceso a rutas públicas
-  if (pathname === '/' || pathname.startsWith('/auth') || pathname.startsWith('/api') || 
-      pathname.startsWith('/_next') || pathname === '/favicon.ico') {
-    return // Deja pasar
+  if (isExternalApiPath(pathname)) {
+    if (!isExternalApiEnabled()) {
+      return externalApiDisabledResponse()
+    }
+
+    return
   }
 
-  // Para rutas protegidas (dashboard, tracklists, analytics), verificar autenticación
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/tracklists') || pathname.startsWith('/analytics')) {
-    if (!isLoggedIn) return NextResponse.redirect(new URL("/auth/login", req.nextUrl))
+  if (isPublicPath(pathname)) {
+    return
   }
-  
-  return // Deja pasar
+
+  if (!isLoggedIn) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    return NextResponse.redirect(new URL('/auth/login', req.nextUrl))
+  }
+
+  return
 })
 
 export const config = {
-  // Matcher que excluye archivos estáticos y rutas de API internas
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }

@@ -11,13 +11,7 @@ import { TICKET_QA_STATUS_LABELS } from '@/types/enums'
 export const TICKET_STATUS_OPTIONS = Object.entries(TICKET_QA_STATUS_LABELS).map(
   ([value, label]) => ({ value, label })
 )
-export const TECH_OPTIONS = [
-  { value: 'SISA', label: 'SISA' },
-  { value: 'WEB', label: 'WEB' },
-  { value: 'ANDROID', label: 'ANDROID' },
-  { value: 'ANGULAR', label: 'ANGULAR' },
-  { value: 'SPRING', label: 'SPRING' },
-]
+export type TechOption = { value: string; label: string }
 
 export type ViewOption = { value: string; icon: ReactNode }
 
@@ -31,6 +25,7 @@ interface TracklistToolbarProps {
   selectedTech: string[]
   onTechChange: (v: string[]) => void
   assignableUsers: AssignableUser[]
+  techOptions: TechOption[]
   view: string
   onViewChange: (v: string) => void
   viewOptions: ViewOption[]
@@ -47,6 +42,7 @@ export function TracklistToolbar({
   selectedTech,
   onTechChange,
   assignableUsers,
+  techOptions,
   view,
   onViewChange,
   viewOptions,
@@ -75,9 +71,9 @@ export function TracklistToolbar({
         <FilterDropdown
           icon={<BrainCircuit className="h-4 w-4" />}
           label="Tecnología"
-          options={TECH_OPTIONS}
+          options={techOptions}
           selectedValues={selectedTech}
-          allValues={TECH_OPTIONS.map(o => o.value)}
+          allValues={techOptions.map(o => o.value)}
           onValuesChange={onTechChange}
         />
       </div>

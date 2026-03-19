@@ -8,11 +8,13 @@ import { AttachmentWithDetails } from '@/types'
 import { UploadFileDialog } from '@/components/assets/upload-file-dialog'
 import { AddLinkDialog } from '@/components/assets/add-link-dialog'
 import { AttachmentRowActions } from '@/components/assets/attachment-row-actions'
+import { UserRole } from '@prisma/client'
 
 interface AssetsTabProps {
     externalWorkItemId: number
     attachments: AttachmentWithDetails[]
-    currentUserId: number
+    currentUserRole: UserRole
+    isAssignedToCurrentUser: boolean
     onRefresh?: () => void
 }
 
@@ -40,10 +42,19 @@ function formatDate(date: Date): string {
     })
 }
 
-export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRefresh }: AssetsTabProps) {
+export function AssetsTab({
+    externalWorkItemId,
+    attachments,
+    currentUserRole,
+    isAssignedToCurrentUser,
+    onRefresh,
+}: AssetsTabProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [isUploadFileOpen, setIsUploadFileOpen] = useState(false)
     const [isAddLinkOpen, setIsAddLinkOpen] = useState(false)
+    const canManageAttachments =
+        currentUserRole === UserRole.ADMIN ||
+        (currentUserRole === UserRole.DEV && isAssignedToCurrentUser)
 
     const getDateOnly = (date: Date) => {
         const d = new Date(date)
@@ -83,6 +94,7 @@ export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRe
                                     </span>
                                     <AttachmentRowActions
                                         attachment={attachment}
+                                        canManage={canManageAttachments}
                                         onSuccess={onRefresh}
                                     />
                                 </div>
@@ -102,24 +114,26 @@ export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRe
                         className="pl-9"
                     />
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => setIsAddLinkOpen(true)}
-                    >
-                        <LinkIcon className="h-4 w-4" />
-                        Vincular Enlace
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => setIsUploadFileOpen(true)}
-                    >
-                        <FileIcon className="h-4 w-4" />
-                        Subir Archivo
-                    </Button>
-                </div>
+                {canManageAttachments && (
+                    <div className="flex gap-2">
+                        <Button
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => setIsAddLinkOpen(true)}
+                        >
+                            <LinkIcon className="h-4 w-4" />
+                            Vincular Enlace
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => setIsUploadFileOpen(true)}
+                        >
+                            <FileIcon className="h-4 w-4" />
+                            Subir Archivo
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {filteredAttachments.length === 0 ? (
@@ -160,6 +174,7 @@ export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRe
                                 </span>
                                 <AttachmentRowActions
                                     attachment={attachment}
+                                    canManage={canManageAttachments}
                                     onSuccess={onRefresh}
                                 />
                             </div>
@@ -172,7 +187,6 @@ export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRe
                 open={isUploadFileOpen}
                 onOpenChange={setIsUploadFileOpen}
                 externalWorkItemId={externalWorkItemId}
-                uploadedById={currentUserId}
                 onSuccess={onRefresh}
             />
 
@@ -180,7 +194,6 @@ export function AssetsTab({ externalWorkItemId, attachments, currentUserId, onRe
                 open={isAddLinkOpen}
                 onOpenChange={setIsAddLinkOpen}
                 externalWorkItemId={externalWorkItemId}
-                uploadedById={currentUserId}
                 onSuccess={onRefresh}
             />
         </div>

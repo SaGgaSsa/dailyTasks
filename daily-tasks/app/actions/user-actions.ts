@@ -3,25 +3,85 @@
 import { unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { User, UserRole } from '@prisma/client'
+import { UserRole } from '@prisma/client'
 import { createUserSchema, updateUserSchema } from '@/types'
 import bcrypt from 'bcryptjs'
 import { serializeExternalWorkItem } from '@/lib/work-item-types'
+import { canManageUsers, getAuthenticatedUser } from '@/lib/authorization'
 
-interface GetUsersResult {
-    data: User[]
+type ActionResult<T = undefined> = {
+    success: boolean
     error?: string
+    data?: T
 }
 
-export async function getUsers(): Promise<GetUsersResult> {
+export interface AdminUserSummary {
+    id: number
+    email: string
+    name: string | null
+    username: string
+    role: UserRole
+    createdAt: Date
+    updatedAt: Date
+}
+
+const adminUserSelect = {
+    id: true,
+    email: true,
+    name: true,
+    username: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+} as const
+
+const adminUserWithTechnologiesSelect = {
+    ...adminUserSelect,
+    technologies: true,
+} as const
+
+export interface UserDetailsPayload {
+    id: number
+    email: string
+    name: string | null
+    username: string
+    role: UserRole
+    createdAt: Date
+    updatedAt: Date
+    metrics: {
+        totalTasks: number
+        pendingTasks: number
+        completedTasks: number
+    }
+    recentIncidences: Array<{
+        id: number
+        description: string
+        status: string
+        priority: string
+        updatedAt: Date
+        externalWorkItem: ReturnType<typeof serializeExternalWorkItem> | null
+    }>
+}
+
+function unauthorizedResult<T>(): ActionResult<T> {
+    return { success: false, error: 'No autorizado' }
+}
+
+export async function getUsers(): Promise<ActionResult<AdminUserSummary[]>> {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult<AdminUserSummary[]>()
+    }
+
     try {
         const users = await db.user.findMany({
+            select: adminUserSelect,
             orderBy: { username: 'asc' }
         })
-        return { data: users }
+        return { success: true, data: users }
     } catch (error) {
         console.error('Error getting users:', error)
-        return { data: [], error: 'Error al obtener los usuarios' }
+        return { success: false, error: 'Error al obtener los usuarios' }
     }
 }
 
@@ -36,25 +96,40 @@ interface UpsertUserData {
 }
 
 export async function upsertUser(data: UpsertUserData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult()
+    }
+
+    const technologyNames = data.technologies.map((technology) => technology.connect.name)
     const schema = data.id ? updateUserSchema : createUserSchema
-    const validation = schema.safeParse(data)
+    const validation = schema.safeParse({
+        username: data.username,
+        name: data.name,
+        email: data.email,
+        ...(data.id ? {} : { password: data.password }),
+        role: data.role,
+        technologies: technologyNames,
+    })
 
     if (!validation.success) {
         const errors = validation.error.issues.map(e => e.message).join(', ')
         return { success: false, error: errors }
     }
 
+    const normalizedData = validation.data
+
     try {
         if (data.id) {
             await db.user.update({
                 where: { id: data.id },
                 data: {
-                    username: data.username,
-                    name: data.name,
-                    email: data.email,
-                    role: data.role,
-                    ...(data.technologies.length > 0
-                        ? { technologies: { set: data.technologies.map(t => ({ name: t.connect.name })) } }
+                    username: normalizedData.username,
+                    name: normalizedData.name,
+                    email: normalizedData.email,
+                    role: normalizedData.role,
+                    ...(technologyNames.length > 0
+                        ? { technologies: { set: technologyNames.map((name) => ({ name })) } }
                         : { technologies: { set: [] } }),
                 }
             })
@@ -64,13 +139,13 @@ export async function upsertUser(data: UpsertUserData) {
             const hashedPassword = await bcrypt.hash(data.password, 10)
             await db.user.create({
                 data: {
-                    username: data.username,
-                    name: data.name,
-                    email: data.email,
+                    username: normalizedData.username,
+                    name: normalizedData.name,
+                    email: normalizedData.email,
                     password: hashedPassword,
-                    role: data.role,
-                    ...(data.technologies.length > 0 && {
-                        technologies: { connect: data.technologies.map(t => ({ name: t.connect.name })) },
+                    role: normalizedData.role,
+                    ...(technologyNames.length > 0 && {
+                        technologies: { connect: technologyNames.map((name) => ({ name })) },
                     }),
                 }
             })
@@ -87,6 +162,11 @@ export async function upsertUser(data: UpsertUserData) {
 }
 
 export async function createUser(formData: FormData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult()
+    }
+
     const username = formData.get('username') as string
     const name = formData.get('name') as string
     const email = formData.get('email') as string
@@ -105,8 +185,10 @@ export async function createUser(formData: FormData) {
 
     if (!validation.success) {
         const errors = validation.error.issues.map(e => e.message).join(', ')
-        return { success: null, error: errors }
+        return { success: false, error: errors }
     }
+
+    const normalizedData = validation.data
     
     const techIds = await Promise.all(
         techNames.map(name => db.technology.findUnique({ where: { name } }))
@@ -118,65 +200,94 @@ export async function createUser(formData: FormData) {
     try {
         await db.user.create({
             data: {
-                username,
-                name,
-                email,
+                username: normalizedData.username,
+                name: normalizedData.name,
+                email: normalizedData.email,
                 password: hashedPassword,
-                role,
+                role: normalizedData.role,
                 technologies: technologies as never,
             }
         })
         revalidatePath('/dashboard')
-        return { success: 'Usuario creado correctamente', error: null }
+        return { success: true }
     } catch (error) {
         console.error('Error creating user:', error)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-            return { success: null, error: 'El usuario ya existe' }
+            return { success: false, error: 'El usuario ya existe' }
         }
-        return { success: null, error: 'Error al crear el usuario' }
+        return { success: false, error: 'Error al crear el usuario' }
     }
 }
 
-export async function getUserByUsername(username: string) {
+export async function getUserByUsername(username: string): Promise<ActionResult<AdminUserSummary>> {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult<AdminUserSummary>()
+    }
+
     try {
-        const user = await db.user.findUnique({
-            where: { username }
+        const existingUser = await db.user.findUnique({
+            where: { username },
+            select: adminUserSelect,
         })
-        return user
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user by username:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
 export async function getUserById(id: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult()
+    }
+
     try {
-        const user = await db.user.findUnique({
-            where: { id }
+        const existingUser = await db.user.findUnique({
+            where: { id },
+            select: adminUserSelect,
         })
-        return user
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user by id:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
 export async function getUserWithTechnologies(id: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return unauthorizedResult()
+    }
+
     try {
-        const user = await db.user.findUnique({
+        const existingUser = await db.user.findUnique({
             where: { id },
-            include: {
-                technologies: true
-            }
+            select: adminUserWithTechnologiesSelect,
         })
-        return user
+        if (!existingUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+        return { success: true, data: existingUser }
     } catch (error) {
         console.error('Error getting user with technologies:', error)
-        return null
+        return { success: false, error: 'Error al obtener el usuario' }
     }
 }
 
 export async function updateUserPassword(formData: FormData) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     const userId = Number(formData.get('userId'))
     const newPassword = formData.get('newPassword') as string
     
@@ -195,6 +306,11 @@ export async function updateUserPassword(formData: FormData) {
 }
 
 export async function deleteUser(userId: number) {
+    const user = await getAuthenticatedUser()
+    if (!user || !canManageUsers(user.role)) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     try {
         await db.user.delete({
             where: { id: userId }
@@ -208,6 +324,11 @@ export async function deleteUser(userId: number) {
 }
 
 export async function getUserDetails(userId: number) {
+  const user = await getAuthenticatedUser()
+  if (!user || !canManageUsers(user.role)) {
+    return unauthorizedResult<UserDetailsPayload>()
+  }
+
   try {
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -215,46 +336,54 @@ export async function getUserDetails(userId: number) {
         assignments: {
           include: {
             incidence: { include: { externalWorkItem: { include: { workItemType: true } } } },
+            tasks: {
+              select: {
+                id: true,
+                isCompleted: true,
+              },
+            },
           },
           orderBy: { incidence: { updatedAt: 'desc' } },
           take: 5,
-        },
-        _count: {
-          select: {
-            assignments: true,
-          },
         },
       },
     })
 
     if (!user) {
-      return null
+      return { success: false, error: 'Usuario no encontrado' }
     }
 
-    const assignedIncidences = user.assignments.map((a) => ({
+    const activeAssignments = user.assignments.filter((assignment) => assignment.isAssigned)
+    const assignedIncidences = activeAssignments.map((a) => ({
       ...a.incidence,
       externalWorkItem: a.incidence.externalWorkItem ? serializeExternalWorkItem(a.incidence.externalWorkItem) : null,
     }))
-    const totalTasks = user._count.assignments
-    const pendingTasks = assignedIncidences.filter(
-      (i) => i.status !== 'DONE' && i.status !== 'DISMISSED'
-    ).length
-    const completedTasks = assignedIncidences.filter(
-      (i) => i.status === 'DONE'
-    ).length
+    const realTasks = activeAssignments.flatMap((assignment) => assignment.tasks)
+    const totalTasks = realTasks.length
+    const pendingTasks = realTasks.filter((task) => !task.isCompleted).length
+    const completedTasks = realTasks.filter((task) => task.isCompleted).length
 
     return {
-      ...user,
-      metrics: {
-        totalTasks,
-        pendingTasks,
-        completedTasks,
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        metrics: {
+          totalTasks,
+          pendingTasks,
+          completedTasks,
+        },
+        recentIncidences: assignedIncidences,
       },
-      recentIncidences: assignedIncidences,
     }
   } catch (error) {
     console.error('Error getting user details:', error)
-    return null
+    return { success: false, error: 'Error al obtener el detalle del usuario' }
   }
 }
 

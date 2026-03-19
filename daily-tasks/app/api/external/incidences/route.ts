@@ -2,14 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Priority, TaskStatus } from '@/types/enums'
 import { mkdir, writeFile } from 'fs/promises'
-import { join } from 'path'
 import { randomUUID } from 'crypto'
+import { join } from 'path'
+import {
+  createAttachmentUrl,
+  getExternalWorkItemAttachmentsDir,
+  normalizeAttachmentUrl,
+  validateUploadedFile,
+} from '@/lib/attachments'
+import {
+  externalApiDisabledResponse,
+  externalApiUnauthorizedResponse,
+  isExternalApiEnabled,
+  validateExternalApiSecret,
+} from '@/lib/external-api'
+import { parsePositiveIntegerInput } from '@/lib/input-validation'
+import { normalizeUsername } from '@/lib/usernames'
+import { t } from '@/lib/i18n'
 
 const ATTACHMENT_TYPE_FILE = 'FILE' as const
 const ATTACHMENT_TYPE_LINK = 'LINK' as const
 
 async function getUploaderByUsername(username: string) {
-  const normalizedUsername = username.trim()
+  const normalizedUsername = normalizeUsername(username)
   if (!normalizedUsername) return null
 
   const candidateUsernames = Array.from(
@@ -82,20 +97,12 @@ async function parseIncomingPayload(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiSecret = request.headers.get('x-api-secret')
-
-    if (!apiSecret) {
-      return NextResponse.json(
-        { error: 'Header x-api-secret es requerido' },
-        { status: 401 }
-      )
+    if (!isExternalApiEnabled()) {
+      return externalApiDisabledResponse()
     }
 
-    if (apiSecret !== process.env.EXTERNAL_API_SECRET) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      )
+    if (!validateExternalApiSecret(request.headers.get('x-api-secret'))) {
+      return externalApiUnauthorizedResponse()
     }
 
     const payload = await parseIncomingPayload(request)
@@ -129,10 +136,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const parsedExternalId = Number(externalId)
-    if (!Number.isInteger(parsedExternalId)) {
+    const parsedExternalId = parsePositiveIntegerInput(externalId)
+    if (parsedExternalId === null) {
       return NextResponse.json(
-        { success: false, error: `externalId inválido: ${externalId}` },
+        { success: false, error: t('es', 'validation.invalidInteger', { field: 'externalId' }) },
         { status: 400 }
       )
     }
@@ -150,11 +157,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (workItem.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { success: false, error: t('es', 'business.inactiveExternalWorkItem') },
+        { status: 409 }
+      )
+    }
+
     const uploader = await getUploaderByUsername(username)
     if (!uploader) {
       return NextResponse.json(
         { success: false, error: `Usuario no encontrado: ${username}` },
         { status: 400 }
+      )
+    }
+
+    const validatedFiles = await Promise.all(
+      files.map(async (file) => {
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        const fileValidation = validateUploadedFile(file, buffer)
+
+        return {
+          file,
+          buffer,
+          fileValidation,
+        }
+      })
+    )
+
+    const invalidFile = validatedFiles.find(({ fileValidation }) => !fileValidation.valid)
+    if (invalidFile) {
+      return NextResponse.json(
+        { success: false, error: invalidFile.fileValidation.error },
+        { status: 400 }
+      )
+    }
+
+    const normalizedLinks: Array<{ name: string; url: string; description: string | null }> = []
+    for (const link of links as Array<{ name: string; url: string; description?: string | null }>) {
+      const normalizedLink = normalizeAttachmentUrl(link.url)
+      if (!normalizedLink.valid || !normalizedLink.normalizedUrl) {
+        return NextResponse.json(
+          { success: false, error: t('es', 'business.invalidExternalAttachmentLink') },
+          { status: 400 }
+        )
+      }
+
+      normalizedLinks.push({
+        name: link.name,
+        description: link.description || null,
+        url: normalizedLink.normalizedUrl,
+      })
+    }
+
+    const existingIncidence = await db.incidence.findFirst({
+      where: { externalWorkItemId: workItem.id },
+      select: { id: true },
+    })
+
+    if (existingIncidence) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Ya existe una incidencia para ExternalWorkItem=${workItem.id}`,
+        },
+        { status: 409 }
       )
     }
 
@@ -174,21 +242,20 @@ export async function POST(request: NextRequest) {
       return createdIncidence
     })
 
-    for (const file of files) {
+    for (const { file, buffer } of validatedFiles) {
       const originalName = file.name
       const ext = originalName.split('.').pop() || 'bin'
       const uniqueName = `${randomUUID()}.${ext}`
-      const uploadDir = join(process.cwd(), 'public', 'uploads', 'external-work-items', String(workItem.id))
+      const uploadDir = getExternalWorkItemAttachmentsDir(workItem.id)
       await mkdir(uploadDir, { recursive: true })
-      const bytes = await file.arrayBuffer()
-      await writeFile(join(uploadDir, uniqueName), Buffer.from(bytes))
+      await writeFile(join(uploadDir, uniqueName), buffer)
 
       await db.attachment.create({
         data: {
           type: ATTACHMENT_TYPE_FILE,
           name: originalName.replace(/\.[^/.]+$/, '') || originalName,
           originalName,
-          url: `/uploads/external-work-items/${workItem.id}/${uniqueName}`,
+          url: createAttachmentUrl(`external-work-items/${workItem.id}/${uniqueName}`),
           size: file.size,
           mimeType: file.type || null,
           description: null,
@@ -199,31 +266,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    for (const link of links) {
-      let normalizedUrl = link.url
-      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-        normalizedUrl = `https://${normalizedUrl}`
-      }
-
-      try {
-        new URL(normalizedUrl)
-      } catch {
-        continue
-      }
-
-      if (!normalizedUrl.startsWith('https://')) {
-        continue
-      }
-
+    for (const link of normalizedLinks) {
       await db.attachment.create({
         data: {
           type: ATTACHMENT_TYPE_LINK,
           name: link.name,
-          url: normalizedUrl,
+          url: link.url,
           originalName: null,
           size: null,
           mimeType: null,
-          description: link.description || null,
+          description: link.description,
           externalWorkItemId: workItem.id,
           uploadedById: uploader.id,
           isOriginal: true,

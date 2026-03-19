@@ -1,6 +1,5 @@
 import { getUsers } from '@/app/actions/user-actions'
 import { UsersClient } from '@/components/users/users-client'
-
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 
@@ -14,7 +13,7 @@ export default async function UsersPage() {
   }
 
   const usersResult = await getUsers()
-  const users = usersResult.data
+  const users = usersResult.success && usersResult.data ? usersResult.data : []
 
   if (usersResult.error) {
     console.error(usersResult.error)

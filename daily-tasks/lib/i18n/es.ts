@@ -29,6 +29,7 @@ export const es = {
     invalidCredentials: 'Credenciales inválidas',
     emailRequired: 'El correo electrónico es requerido',
     passwordRequired: 'La contraseña es requerida',
+    sessionUserNotFound: 'Usuario de la sesión no encontrado. Inicia sesión de nuevo.',
   },
   errors: {
     unauthorized: 'No autorizado',
@@ -137,6 +138,8 @@ export const es = {
     maxLength: 'Máximo {max} caracteres permitidos',
     invalidEmail: 'Correo electrónico inválido',
     positiveNumber: 'Debe ser un número positivo',
+    invalidInteger: '{field} inválido',
+    minimumLength: 'Debe tener al menos {min} caracteres',
   },
   autoTransitions: {
     workCompleted: '¡Trabajo técnico finalizado! La incidencia pasó a revisión',
@@ -155,6 +158,11 @@ export const es = {
     notAssigned: 'No está asignado a esta incidencia',
     readonlyState: 'No puede modificar tareas en una incidencia finalizada',
     reviewOnlyAdmin: 'Solo los administradores pueden modificar tareas en revisión',
+    incidenceEditRestricted: 'Solo los administradores y desarrolladores asignados pueden editar incidencias',
+    tracklistsManageOnly: 'Solo ADMIN y QA pueden gestionar tracklists',
+    invalidExternalWorkItem: 'El trámite externo no existe',
+    inactiveExternalWorkItem: 'No se puede usar un trámite externo inactivo',
+    invalidExternalAttachmentLink: 'Uno o más enlaces adjuntos no son válidos',
   },
   navigation: {
     dashboard: 'Panel',

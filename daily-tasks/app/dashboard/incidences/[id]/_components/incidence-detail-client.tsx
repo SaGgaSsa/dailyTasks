@@ -14,12 +14,15 @@ import { Check, Loader2 } from 'lucide-react'
 import { getIncidence } from '@/app/actions/incidence-actions'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
+import { UserRole } from '@prisma/client'
 
 interface IncidenceDetailClientProps {
     incidence: IncidenceWithDetails
     allUsers: { id: number; name: string | null; username: string; role: string }[]
     currentUserId: number
     isAdmin: boolean
+    currentUserRole: UserRole
+    isAssignedToCurrentUser: boolean
     hasChanges?: boolean
     isSaving?: boolean
     onSave?: () => void
@@ -33,6 +36,8 @@ export function IncidenceDetailClient({
     allUsers, 
     currentUserId, 
     isAdmin,
+    currentUserRole,
+    isAssignedToCurrentUser,
     hasChanges = false,
     isSaving = false,
     onSave,
@@ -149,6 +154,8 @@ export function IncidenceDetailClient({
                         incidenceDescription={incidenceData.description}
                         currentUserId={currentUserId}
                         isAdmin={isAdmin}
+                        currentUserRole={currentUserRole}
+                        isAssignedToCurrentUser={isAssignedToCurrentUser}
                         onRefresh={handleRefresh}
                     />
                 </TabsContent>
@@ -158,6 +165,8 @@ export function IncidenceDetailClient({
                         incidenceId={incidenceData.id}
                         pages={incidenceData.pages}
                         currentUserId={currentUserId}
+                        currentUserRole={currentUserRole}
+                        isAssignedToCurrentUser={isAssignedToCurrentUser}
                         onRefresh={handleRefresh}
                     />
                 </TabsContent>
@@ -166,7 +175,8 @@ export function IncidenceDetailClient({
                     <AssetsTab
                         externalWorkItemId={incidenceData.externalWorkItem.id}
                         attachments={incidenceData.externalWorkItem.attachments}
-                        currentUserId={currentUserId}
+                        currentUserRole={currentUserRole}
+                        isAssignedToCurrentUser={isAssignedToCurrentUser}
                         onRefresh={handleRefresh}
                     />
                 </TabsContent>

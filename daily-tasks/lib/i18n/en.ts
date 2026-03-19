@@ -29,6 +29,7 @@ export const en = {
     invalidCredentials: 'Invalid credentials',
     emailRequired: 'Email is required',
     passwordRequired: 'Password is required',
+    sessionUserNotFound: 'Session user was not found. Please sign in again.',
   },
   errors: {
     unauthorized: 'Unauthorized',
@@ -137,6 +138,8 @@ export const en = {
     maxLength: 'Maximum {max} characters allowed',
     invalidEmail: 'Invalid email address',
     positiveNumber: 'Must be a positive number',
+    invalidInteger: 'Invalid {field}',
+    minimumLength: 'Must be at least {min} characters long',
   },
   autoTransitions: {
     workCompleted: 'Technical work completed! The incidence moved to review',
@@ -155,6 +158,11 @@ export const en = {
     notAssigned: 'You are not assigned to this incidence',
     readonlyState: 'Cannot modify tasks in a completed incidence',
     reviewOnlyAdmin: 'Only administrators can modify tasks in review',
+    incidenceEditRestricted: 'Only administrators and assigned developers can edit incidences',
+    tracklistsManageOnly: 'Only ADMIN and QA can manage tracklists',
+    invalidExternalWorkItem: 'The external work item does not exist',
+    inactiveExternalWorkItem: 'Inactive external work items cannot be used',
+    invalidExternalAttachmentLink: 'One or more attachment links are invalid',
   },
   navigation: {
     dashboard: 'Dashboard',

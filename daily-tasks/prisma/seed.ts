@@ -9,6 +9,7 @@ const pool = new Pool({
 })
 const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0])
 const prisma = new PrismaClient({ adapter })
+const DEFAULT_SEED_PASSWORD = '12345678'
 
 async function main() {
   await prisma.workItemType.upsert({
@@ -23,7 +24,8 @@ async function main() {
     create: { name: 'Feature', color: 'green' },
   })
 
-  const hashedPassword = await bcrypt.hash('1234', 10)
+  const seedPassword = process.env.SEED_USER_PASSWORD?.trim() || DEFAULT_SEED_PASSWORD
+  const hashedPassword = await bcrypt.hash(seedPassword, 10)
 
   await prisma.user.upsert({
     where: { email: 'admin@dailytasks.com' },
