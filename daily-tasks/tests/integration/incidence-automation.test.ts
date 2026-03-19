@@ -135,7 +135,7 @@ describe('incidence automation integration', () => {
   })
 
   it.each([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW])(
-    'moves %s back to BACKLOG when required conditions are removed',
+    'moves %s back to BACKLOG when assignees are removed',
     async (initialStatus) => {
       const admin = await createUser('ADMIN')
       const dev = await createUser('DEV')
@@ -172,6 +172,46 @@ describe('incidence automation integration', () => {
 
       const updatedIncidence = await getIncidenceState(incidence.id)
       expect(updatedIncidence.status).toBe(TaskStatus.BACKLOG)
+    }
+  )
+
+  it.each([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW])(
+    'keeps %s when estimated time is removed but assignees remain',
+    async (initialStatus) => {
+      const admin = await createUser('ADMIN')
+      const dev = await createUser('DEV')
+      const qa = await createUser('QA')
+      const { technology, module: moduleRecord } = await createTechnologyModule()
+      const workItem = await createExternalWorkItem()
+      const tracklist = await createTracklist(qa.id)
+      const { incidence } = await createIncidenceFixture({
+        technologyId: technology.id,
+        externalWorkItemId: workItem.id,
+        status: initialStatus,
+        estimatedTime: 8,
+        assignees: [{ userId: dev.id, assignedHours: 8 }],
+        tasks: initialStatus === TaskStatus.REVIEW ? [{ userId: dev.id, title: 'Hecha', isCompleted: true }] : [],
+      })
+      await createTicketFixture({
+        tracklistId: tracklist.id,
+        moduleId: moduleRecord.id,
+        reportedById: qa.id,
+        assignedToId: dev.id,
+        incidenceId: incidence.id,
+        externalWorkItemId: workItem.id,
+        status: initialStatus === TaskStatus.REVIEW ? TicketQAStatus.TEST : TicketQAStatus.IN_DEVELOPMENT,
+      })
+
+      actAs(admin)
+      const result = await saveIncidenceTaskChanges({
+        incidenceId: incidence.id,
+        incidencePatch: { estimatedTime: null },
+      })
+
+      expect(result.success).toBe(true)
+
+      const updatedIncidence = await getIncidenceState(incidence.id)
+      expect(updatedIncidence.status).toBe(initialStatus)
     }
   )
 
@@ -532,5 +572,45 @@ describe('incidence automation integration', () => {
 
     const reviewBacklogState = await db.incidence.findUniqueOrThrow({ where: { id: incidence.id } })
     expect(reviewBacklogState.status).toBe(TaskStatus.BACKLOG)
+  })
+
+  it('keeps review when estimated time is removed but assignees remain', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const qa = await createUser('QA')
+    const { technology, module: moduleRecord } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklist(qa.id)
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.REVIEW,
+      estimatedTime: 2,
+      assignees: [{ userId: dev.id, assignedHours: 2 }],
+      tasks: [{ userId: dev.id, title: 'Hecha', isCompleted: true }],
+    })
+    const ticket = await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: moduleRecord.id,
+      reportedById: qa.id,
+      assignedToId: dev.id,
+      incidenceId: incidence.id,
+      externalWorkItemId: workItem.id,
+      status: TicketQAStatus.TEST,
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      incidencePatch: { estimatedTime: null },
+    })
+
+    expect(result.success).toBe(true)
+
+    const updatedTicket = await getTicketState(ticket.id)
+    expect(updatedTicket.status).toBe(TicketQAStatus.TEST)
+
+    const reviewState = await db.incidence.findUniqueOrThrow({ where: { id: incidence.id } })
+    expect(reviewState.status).toBe(TaskStatus.REVIEW)
   })
 })

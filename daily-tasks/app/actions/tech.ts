@@ -284,6 +284,27 @@ export async function deleteTechnology(id: number): Promise<ActionResult> {
       return { success: false, error: 'La tecnología no existe' }
     }
 
+    const incidenceInUse = await db.incidence.findFirst({
+      where: { technologyId: id },
+      select: { id: true },
+    })
+
+    if (incidenceInUse) {
+      return { success: false, error: 'No se puede eliminar la tecnología porque tiene incidencias asociadas o módulos usados en tickets' }
+    }
+
+    const moduleIds = existing.modules.map((moduleRecord) => moduleRecord.id)
+    if (moduleIds.length > 0) {
+      const moduleInUse = await db.ticketQA.findFirst({
+        where: { moduleId: { in: moduleIds } },
+        select: { id: true },
+      })
+
+      if (moduleInUse) {
+        return { success: false, error: 'No se puede eliminar la tecnología porque tiene incidencias asociadas o módulos usados en tickets' }
+      }
+    }
+
     await db.technology.delete({
       where: { id },
     })
@@ -389,6 +410,15 @@ export async function deleteModule(id: number): Promise<ActionResult> {
     const existing = await db.module.findUnique({ where: { id } })
     if (!existing) {
       return { success: false, error: 'El módulo no existe' }
+    }
+
+    const ticketInUse = await db.ticketQA.findFirst({
+      where: { moduleId: id },
+      select: { id: true },
+    })
+
+    if (ticketInUse) {
+      return { success: false, error: 'No se puede eliminar el módulo porque tiene tickets asociados' }
     }
 
     await db.module.delete({

@@ -70,81 +70,100 @@ const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
   [TicketType.CONSULTA]: 'Análisis',
 }
 
+type AssignmentTransactionClient = Pick<typeof db, 'incidence' | 'assignment' | 'task' | 'ticketQA'>
+
+async function assignTicketToNewIncidenceCore(
+  client: AssignmentTransactionClient,
+  ticketId: number,
+  assignedToId: number
+): Promise<{ success: true } | { success: false; error: string }> {
+  const ticket = await client.ticketQA.findUnique({
+    where: { id: ticketId },
+    include: { module: { select: { id: true, name: true, slug: true, technologyId: true } } },
+  })
+
+  if (!ticket) {
+    return { success: false, error: 'Ticket no encontrado' }
+  }
+
+  const workItem = ticket.externalWorkItemId
+    ? await db.externalWorkItem.findUnique({
+      where: { id: ticket.externalWorkItemId },
+      select: externalWorkItemBaseSelect,
+    })
+    : null
+
+  if (!workItem) {
+    return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
+  }
+
+  const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
+  const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
+  const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
+  const serializedWorkItem = serializeExternalWorkItem(workItem)
+  const title = serializedWorkItem.title || `${titlePrefix} – ${serializedWorkItem.type} ${serializedWorkItem.externalId}`
+
+  const newIncidence = await client.incidence.create({
+    data: {
+      externalWorkItemId: workItem.id,
+      description: ticket.description || title,
+      technologyId: ticket.module.technologyId,
+      priority: incidencePriority,
+      status: TaskStatus.BACKLOG,
+    },
+  })
+
+  const assignment = await client.assignment.upsert({
+    where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
+    create: { incidenceId: newIncidence.id, userId: assignedToId, isAssigned: true },
+    update: { isAssigned: true },
+  })
+
+  await client.task.create({
+    data: {
+      title: taskTitle,
+      description: ticket.observations?.trim() || null,
+      assignmentId: assignment.id,
+    },
+  })
+
+  await client.ticketQA.update({
+    where: { id: ticketId },
+    data: {
+      status: TicketQAStatus.ASSIGNED,
+      assignedToId,
+      incidenceId: newIncidence.id,
+      hasUnreadUpdates: false,
+    },
+  })
+
+  return { success: true }
+}
+
 export async function assignTicketToNewIncidence(
   ticketId: number,
   assignedToId: number,
   tracklistId: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const ticket = await db.ticketQA.findUnique({
-      where: { id: ticketId },
-      include: { module: { select: { id: true, name: true, slug: true, technologyId: true } } },
-    })
-
-    if (!ticket) {
-      return { success: false, error: 'Ticket no encontrado' }
-    }
-
-    const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'
-    const titlePrefix = TICKET_TYPE_TITLE_PREFIX[ticket.type as TicketType]
-    const taskTitle = TICKET_TYPE_TASK_TITLE[ticket.type as TicketType]
-
-    const workItem = ticket.externalWorkItemId
-      ? await db.externalWorkItem.findUnique({
-        where: { id: ticket.externalWorkItemId },
-        select: externalWorkItemBaseSelect,
-      })
-      : null
-
-    if (!workItem) {
-      return { success: false, error: 'El ticket no tiene un trámite externo válido. Debe vincularse un ExternalWorkItem existente.' }
-    }
-
-    const serializedWorkItem = serializeExternalWorkItem(workItem)
-    const title = serializedWorkItem.title || `${titlePrefix} – ${serializedWorkItem.type} ${serializedWorkItem.externalId}`
-
-    await db.$transaction(async (tx) => {
-      const newIncidence = await tx.incidence.create({
-        data: {
-          externalWorkItemId: workItem.id,
-          description: ticket.description || title,
-          technologyId: ticket.module.technologyId,
-          priority: incidencePriority,
-          status: TaskStatus.BACKLOG,
-        },
-      })
-
-      const assignment = await tx.assignment.upsert({
-        where: { incidenceId_userId: { incidenceId: newIncidence.id, userId: assignedToId } },
-        create: { incidenceId: newIncidence.id, userId: assignedToId, isAssigned: true },
-        update: { isAssigned: true },
-      })
-
-      await tx.task.create({
-        data: { title: taskTitle, assignmentId: assignment.id },
-      })
-
-      await tx.ticketQA.update({
-        where: { id: ticketId },
-        data: {
-          status: TicketQAStatus.ASSIGNED,
-          assignedToId,
-          incidenceId: newIncidence.id,
-          hasUnreadUpdates: false,
-        },
-      })
+    const result = await db.$transaction(async (tx) => {
+      const assignmentResult = await assignTicketToNewIncidenceCore(tx, ticketId, assignedToId)
+      if (!assignmentResult.success) {
+        throw new Error(assignmentResult.error)
+      }
     })
 
     revalidatePath(`/tracklists/${tracklistId}`)
     revalidatePath('/dashboard')
-    return { success: true }
+    return { success: true, ...(result ?? {}) }
   } catch (error) {
     console.error('Error in assignment transaction:', error)
     if (error instanceof Error && 'code' in error && error.code === 'P2002') {
       return { success: false, error: 'Ya existe una incidencia con ese trámite y tipo' }
     }
-    return { success: false, error: 'Error al ejecutar la asignación' }
+    return { success: false, error: error instanceof Error ? error.message : 'Error al ejecutar la asignación' }
   }
 }
 
 export { ExternalWorkItemStatus }
+export { assignTicketToNewIncidenceCore }

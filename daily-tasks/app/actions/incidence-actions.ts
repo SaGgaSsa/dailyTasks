@@ -10,12 +10,14 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
+    canActivateBacklogIncidence,
     DISMISSED_INCIDENCE_ERROR,
     computeNextIncidenceStatus,
     incidenceDetailsInclude,
     type IncidenceDetailsPayload,
     isDismissedIncidenceStatus,
     serializeIncidence,
+    shouldMoveActiveIncidenceToBacklog,
     syncAssignments,
     syncLinkedTickets,
 } from '@/lib/incidence-management'
@@ -637,12 +639,12 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             if (updatedIncidence) {
                 const hasEstimatedTime = updatedIncidence.estimatedTime && updatedIncidence.estimatedTime > 0
                 const hasAssignees = updatedIncidence.assignments.length > 0
-                const allConditionsMet = hasEstimatedTime && hasAssignees
+                const allConditionsMet = canActivateBacklogIncidence(Boolean(hasEstimatedTime), hasAssignees)
 
                 const isBacklogToTodo = currentIncidence.status === TaskStatus.BACKLOG && allConditionsMet
                 const isActiveToBacklog = (currentIncidence.status === TaskStatus.TODO || 
                                            currentIncidence.status === TaskStatus.IN_PROGRESS || 
-                                           currentIncidence.status === TaskStatus.REVIEW) && !allConditionsMet
+                                           currentIncidence.status === TaskStatus.REVIEW) && shouldMoveActiveIncidenceToBacklog(hasAssignees)
 
                 if (isBacklogToTodo || isActiveToBacklog) {
                     await db.incidence.update({
@@ -1263,7 +1265,7 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
     try {
         const incidence = await db.incidence.findUnique({
             where: { id: incidenceId },
-            select: { id: true, status: true }
+            select: { id: true, status: true, qaTickets: { select: { id: true }, take: 1 } }
         })
 
         if (!incidence) {
@@ -1276,6 +1278,10 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
 
         if (session.user.role !== 'ADMIN') {
             return { success: false, error: t(locale, 'business.adminOnly') }
+        }
+
+        if (incidence.qaTickets.length > 0) {
+            return { success: false, error: 'Las incidencias creadas desde tickets deben completarse desde el flujo QA' }
         }
 
         await completeIncidenceCore(incidenceId)
@@ -1476,11 +1482,7 @@ export async function rejectTicket({ ticketId, description, observations, trackl
         if (!assignment)
             return { success: false, error: 'No se encontró la asignación del DEV responsable' }
 
-        const rejectionDetail = description.trim()
-        const rejectionTitle =
-            rejectionDetail.length > 120
-                ? `${rejectionDetail.slice(0, 117)}...`
-                : rejectionDetail
+        const rejectionTitle = description.trim()
         const rejectionObservations = observations?.trim() || null
 
         await db.$transaction(async (tx) => {

@@ -170,7 +170,7 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
   const hasTaskStructureChanges = createdTasksCount > 0 || deletedTasksCount > 0
   const hasTaskStatusChanges = completionChanged || hasTaskStructureChanges
 
-  if (!allConditionsMet && ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(initialStatus)) {
+  if (!hasAssignees && ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(initialStatus)) {
     return TaskStatus.BACKLOG
   }
 
@@ -187,7 +187,7 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
     return totalTasks > 0 && allTasksCompleted ? TaskStatus.REVIEW : TaskStatus.IN_PROGRESS
   }
 
-  if (!allConditionsMet) {
+  if (!hasEstimatedTime) {
     return initialStatus
   }
 
@@ -208,4 +208,12 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
   }
 
   return initialStatus
+}
+
+export function shouldMoveActiveIncidenceToBacklog(hasAssignees: boolean) {
+  return !hasAssignees
+}
+
+export function canActivateBacklogIncidence(hasEstimatedTime: boolean, hasAssignees: boolean) {
+  return hasEstimatedTime && hasAssignees
 }

@@ -70,7 +70,6 @@ describe('ticket rejection automation integration', () => {
     expect(tasks[1]?.isQaReported).toBe(true)
     expect(tasks[1]?.isCompleted).toBe(false)
     expect(tasks[1]?.description).toBe('Falla todavia en QA')
-    expect(tasks[1]?.title).toHaveLength(120)
-    expect(tasks[1]?.title.endsWith('...')).toBe(true)
+    expect(tasks[1]?.title).toBe(longDescription)
   })
 })

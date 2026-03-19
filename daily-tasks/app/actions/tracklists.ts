@@ -13,6 +13,7 @@ import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
     assignTicketToNewIncidence,
+    assignTicketToNewIncidenceCore,
     enrichTicketScripts,
     ExternalWorkItemStatus,
     ticketDetailsInclude,
@@ -308,26 +309,29 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         })
         const nextTicketNumber = (lastTicket?.ticketNumber ?? 0) + 1
 
-        const ticket = await db.ticketQA.create({
-            data: {
-                tracklistId: tracklistId,
-                ticketNumber: nextTicketNumber,
-                type: data.type,
-                moduleId: data.moduleId,
-                description: data.description,
-                priority: data.priority,
-                externalWorkItemId: data.externalWorkItemId,
-                observations: data.observations,
-                reportedById: sessionUserId,
+        let ticket
+        await db.$transaction(async (tx) => {
+            ticket = await tx.ticketQA.create({
+                data: {
+                    tracklistId: tracklistId,
+                    ticketNumber: nextTicketNumber,
+                    type: data.type,
+                    moduleId: data.moduleId,
+                    description: data.description,
+                    priority: data.priority,
+                    externalWorkItemId: data.externalWorkItemId,
+                    observations: data.observations,
+                    reportedById: sessionUserId,
+                }
+            })
+
+            if (data.assignedToId) {
+                const txResult = await assignTicketToNewIncidenceCore(tx, ticket.id, data.assignedToId)
+                if (!txResult.success) {
+                    throw new Error(txResult.error)
+                }
             }
         })
-
-        if (data.assignedToId) {
-            const txResult = await assignTicketToNewIncidence(ticket.id, data.assignedToId, tracklistId)
-            if (!txResult.success) {
-                console.error('Assignment transaction failed after ticket creation:', txResult.error)
-            }
-        }
 
         // Reactivate tracklist if it was completed or archived
         const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true } })
@@ -343,7 +347,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         return { success: true, data: ticket }
     } catch (error) {
         console.error('Error creating ticket:', error)
-        return { success: false, error: t(locale, 'errors.saveError') }
+        return { success: false, error: error instanceof Error ? error.message : t(locale, 'errors.saveError') }
     }
 }
 
@@ -480,32 +484,37 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
         if (ticket.status !== TicketQAStatus.NEW) {
             return { success: false, error: 'Solo se pueden editar tickets en estado Nuevo' }
         }
+        if (ticket.assignedToId || ticket.incidenceId) {
+            return { success: false, error: 'Solo se pueden editar tickets todavía no asignados' }
+        }
 
-        await db.ticketQA.update({
-            where: { id: ticketId },
-            data: {
-                type: data.type,
-                moduleId: data.moduleId,
-                description: data.description,
-                priority: data.priority,
-                externalWorkItemId: data.externalWorkItemId ?? null,
-                observations: data.observations ?? null,
-                assignedToId: data.assignedToId ?? null,
+        await db.$transaction(async (tx) => {
+            await tx.ticketQA.update({
+                where: { id: ticketId },
+                data: {
+                    type: data.type,
+                    moduleId: data.moduleId,
+                    description: data.description,
+                    priority: data.priority,
+                    externalWorkItemId: data.externalWorkItemId ?? null,
+                    observations: data.observations ?? null,
+                    assignedToId: data.assignedToId ?? null,
+                }
+            })
+
+            if (data.assignedToId) {
+                const txResult = await assignTicketToNewIncidenceCore(tx, ticketId, data.assignedToId)
+                if (!txResult.success) {
+                    throw new Error(txResult.error)
+                }
             }
         })
-
-        if (data.assignedToId) {
-            const txResult = await assignTicketToNewIncidence(ticketId, data.assignedToId, tracklistId)
-            if (!txResult.success) {
-                console.error('Assignment transaction failed after ticket update:', txResult.error)
-            }
-        }
 
         revalidatePath(`/tracklists/${tracklistId}`)
         return { success: true }
     } catch (error) {
         console.error('Error updating ticket:', error)
-        return { success: false, error: t(locale, 'errors.saveError') }
+        return { success: false, error: error instanceof Error ? error.message : t(locale, 'errors.saveError') }
     }
 }
 
