@@ -1423,6 +1423,15 @@ export async function deleteIncidence(incidenceId: number) {
             return { success: false, error: 'No se pueden eliminar incidencias en revisión' }
         }
 
+        const linkedTicket = await db.ticketQA.findFirst({
+            where: { incidenceId },
+            select: { id: true }
+        })
+
+        if (linkedTicket) {
+            return { success: false, error: 'No se pueden eliminar incidencias con tickets QA relacionados' }
+        }
+
         await db.incidence.delete({
             where: { id: incidenceId }
         })

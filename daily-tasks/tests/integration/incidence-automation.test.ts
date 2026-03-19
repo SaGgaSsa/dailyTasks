@@ -371,7 +371,7 @@ describe('incidence automation integration', () => {
     expect(updatedTicket.status).toBe(TicketQAStatus.TEST)
   })
 
-  it('does not change completed or dismissed tickets during incidence sync', async () => {
+  it('does not change a completed ticket during incidence sync', async () => {
     const admin = await createUser('ADMIN')
     const dev = await createUser('DEV')
     const qa = await createUser('QA')
@@ -394,6 +394,39 @@ describe('incidence automation integration', () => {
       incidenceId: incidence.id,
       externalWorkItemId: workItem.id,
       status: TicketQAStatus.COMPLETED,
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      updatedTasks: [
+        {
+          taskId: tasks[0].id,
+          title: tasks[0].title,
+          isCompleted: true,
+        },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+
+    expect((await getTicketState(completedTicket.id)).status).toBe(TicketQAStatus.COMPLETED)
+  })
+
+  it('does not change a dismissed ticket during incidence sync', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const qa = await createUser('QA')
+    const { technology, module: moduleRecord } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklist(qa.id)
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.IN_PROGRESS,
+      estimatedTime: 4,
+      assignees: [{ userId: dev.id, assignedHours: 4 }],
+      tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
     })
     const dismissedTicket = await createTicketFixture({
       tracklistId: tracklist.id,
@@ -419,7 +452,6 @@ describe('incidence automation integration', () => {
 
     expect(result.success).toBe(true)
 
-    expect((await getTicketState(completedTicket.id)).status).toBe(TicketQAStatus.COMPLETED)
     expect((await getTicketState(dismissedTicket.id)).status).toBe(TicketQAStatus.DISMISSED)
   })
 

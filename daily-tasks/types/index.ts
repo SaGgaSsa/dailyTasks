@@ -1,6 +1,7 @@
 import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, ExternalWorkItemStatus, ScriptType } from '.prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
+import { normalizeUsername } from '@/lib/usernames'
 
 export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology, WorkItemType, ExternalWorkItemStatus }
@@ -153,9 +154,13 @@ export type TicketQAWithDetails = TicketQA & {
 
 export const createUserSchema = z.object({
   username: z.string()
-    .min(3, 'Mínimo 3 caracteres')
-    .max(30, 'Máximo 30 caracteres')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y guiones bajos'),
+    .transform(normalizeUsername)
+    .pipe(
+      z.string()
+        .min(3, 'Mínimo 3 caracteres')
+        .max(30, 'Máximo 30 caracteres')
+        .regex(/^[\p{L}]+(?: [\p{L}]+)*$/u, 'Solo letras y espacios')
+    ),
   name: z.string()
     .max(100, 'Máximo 100 caracteres')
     .optional(),

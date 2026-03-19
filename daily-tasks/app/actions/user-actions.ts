@@ -66,25 +66,35 @@ export async function upsertUser(data: UpsertUserData) {
         return { success: false, error: 'No autorizado' }
     }
 
+    const technologyNames = data.technologies.map((technology) => technology.connect.name)
     const schema = data.id ? updateUserSchema : createUserSchema
-    const validation = schema.safeParse(data)
+    const validation = schema.safeParse({
+        username: data.username,
+        name: data.name,
+        email: data.email,
+        ...(data.id ? {} : { password: data.password }),
+        role: data.role,
+        technologies: technologyNames,
+    })
 
     if (!validation.success) {
         const errors = validation.error.issues.map(e => e.message).join(', ')
         return { success: false, error: errors }
     }
 
+    const normalizedData = validation.data
+
     try {
         if (data.id) {
             await db.user.update({
                 where: { id: data.id },
                 data: {
-                    username: data.username,
-                    name: data.name,
-                    email: data.email,
-                    role: data.role,
-                    ...(data.technologies.length > 0
-                        ? { technologies: { set: data.technologies.map(t => ({ name: t.connect.name })) } }
+                    username: normalizedData.username,
+                    name: normalizedData.name,
+                    email: normalizedData.email,
+                    role: normalizedData.role,
+                    ...(technologyNames.length > 0
+                        ? { technologies: { set: technologyNames.map((name) => ({ name })) } }
                         : { technologies: { set: [] } }),
                 }
             })
@@ -94,13 +104,13 @@ export async function upsertUser(data: UpsertUserData) {
             const hashedPassword = await bcrypt.hash(data.password, 10)
             await db.user.create({
                 data: {
-                    username: data.username,
-                    name: data.name,
-                    email: data.email,
+                    username: normalizedData.username,
+                    name: normalizedData.name,
+                    email: normalizedData.email,
                     password: hashedPassword,
-                    role: data.role,
-                    ...(data.technologies.length > 0 && {
-                        technologies: { connect: data.technologies.map(t => ({ name: t.connect.name })) },
+                    role: normalizedData.role,
+                    ...(technologyNames.length > 0 && {
+                        technologies: { connect: technologyNames.map((name) => ({ name })) },
                     }),
                 }
             })
@@ -142,6 +152,8 @@ export async function createUser(formData: FormData) {
         const errors = validation.error.issues.map(e => e.message).join(', ')
         return { success: null, error: errors }
     }
+
+    const normalizedData = validation.data
     
     const techIds = await Promise.all(
         techNames.map(name => db.technology.findUnique({ where: { name } }))
@@ -153,11 +165,11 @@ export async function createUser(formData: FormData) {
     try {
         await db.user.create({
             data: {
-                username,
-                name,
-                email,
+                username: normalizedData.username,
+                name: normalizedData.name,
+                email: normalizedData.email,
                 password: hashedPassword,
-                role,
+                role: normalizedData.role,
                 technologies: technologies as never,
             }
         })

@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { UserRole } from '@prisma/client'
 import { db } from './lib/db'
 import { isPublicPath } from './lib/auth-route-policy'
+import { isExternalApiPath } from './lib/external-api'
 
 interface AuthUser {
   id: string
@@ -85,6 +86,10 @@ export const authConfig: NextAuthConfig = {
     },
     async authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname
+
+      if (isExternalApiPath(pathname)) {
+        return true
+      }
 
       if (isPublicPath(pathname)) {
         return true

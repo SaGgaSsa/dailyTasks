@@ -14,11 +14,32 @@ function nextValue(prefix: string) {
   return value
 }
 
+function nextAlphabeticToken() {
+  let current = sequence
+  sequence += 1
+
+  let token = ''
+  while (current > 0) {
+    const index = (current - 1) % 26
+    token = String.fromCharCode(65 + index) + token
+    current = Math.floor((current - 1) / 26)
+  }
+
+  return token
+}
+
 export async function createUser(role: UserRole, overrides?: Partial<{ name: string; username: string; email: string }>) {
-  const username = overrides?.username ?? nextValue(role.toLowerCase())
+  const roleLabel: Record<UserRole, string> = {
+    ADMIN: 'Admin',
+    DEV: 'Dev',
+    QA: 'Qa',
+  }
+
+  const username = overrides?.username ?? `${roleLabel[role]} ${nextAlphabeticToken()}`
+  const emailLocalPart = username.toLowerCase().replace(/\s+/g, '.')
   return db.user.create({
     data: {
-      email: overrides?.email ?? `${username}@example.com`,
+      email: overrides?.email ?? `${emailLocalPart}@example.com`,
       password: 'test-password',
       name: overrides?.name ?? username,
       username,

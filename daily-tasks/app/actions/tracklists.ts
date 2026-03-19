@@ -74,7 +74,42 @@ export async function clearTicketUnreadUpdates(
     ticketId: number,
     tracklistId: number
 ): Promise<{ success: boolean; error?: string }> {
+    const user = await getAuthenticatedUser()
+    if (!user) {
+        return { success: false, error: 'No autorizado' }
+    }
+
     try {
+        const ticket = await db.ticketQA.findFirst({
+            where: { id: ticketId, tracklistId },
+            select: {
+                assignedToId: true,
+                incidence: {
+                    select: {
+                        assignments: {
+                            where: { userId: user.id, isAssigned: true },
+                            select: { id: true },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        })
+
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' }
+        }
+
+        const canClear =
+            user.role === 'ADMIN' ||
+            user.role === 'QA' ||
+            ticket.assignedToId === user.id ||
+            (user.role === 'DEV' && (ticket.incidence?.assignments.length ?? 0) > 0)
+
+        if (!canClear) {
+            return { success: false, error: 'No autorizado' }
+        }
+
         await db.ticketQA.update({
             where: { id: ticketId },
             data: { hasUnreadUpdates: false },

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { UserRole } from '@/types/enums'
 import bcrypt from 'bcryptjs'
+import { isValidUsername, normalizeUsername } from '@/lib/usernames'
+import {
+  externalApiDisabledResponse,
+  externalApiUnauthorizedResponse,
+  isExternalApiEnabled,
+  validateExternalApiSecret,
+} from '@/lib/external-api'
 
 interface CreateUserRequest {
   email: string
@@ -10,26 +17,20 @@ interface CreateUserRequest {
   password?: string
 }
 
-async function validateApiSecret(request: NextRequest): Promise<boolean> {
-  const apiSecret = request.headers.get('x-api-secret')
-  if (!apiSecret || apiSecret !== process.env.EXTERNAL_API_SECRET) {
-    return false
-  }
-  return true
-}
-
 export async function POST(request: NextRequest) {
   try {
-    if (!(await validateApiSecret(request))) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      )
+    if (!isExternalApiEnabled()) {
+      return externalApiDisabledResponse()
+    }
+
+    if (!validateExternalApiSecret(request.headers.get('x-api-secret'))) {
+      return externalApiUnauthorizedResponse()
     }
 
     const body: CreateUserRequest = await request.json()
 
     const { email, username, name, password } = body
+    const normalizedUsername = normalizeUsername(username)
 
     if (!email || !username || !name) {
       return NextResponse.json(
@@ -46,11 +47,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!isValidUsername(normalizedUsername)) {
+      return NextResponse.json(
+        { error: 'El username solo puede contener letras y espacios' },
+        { status: 400 }
+      )
+    }
+
     const existingUser = await db.user.findFirst({
       where: {
         OR: [
           { email },
-          { username },
+          { username: normalizedUsername },
         ],
       },
     })
@@ -83,7 +91,7 @@ export async function POST(request: NextRequest) {
     const user = await db.user.create({
       data: {
         email,
-        username,
+        username: normalizedUsername,
         name,
         password: hashedPassword,
         role: UserRole.DEV,
@@ -113,11 +121,12 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!(await validateApiSecret(request))) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      )
+    if (!isExternalApiEnabled()) {
+      return externalApiDisabledResponse()
+    }
+
+    if (!validateExternalApiSecret(request.headers.get('x-api-secret'))) {
+      return externalApiUnauthorizedResponse()
     }
 
     const { searchParams } = new URL(request.url)

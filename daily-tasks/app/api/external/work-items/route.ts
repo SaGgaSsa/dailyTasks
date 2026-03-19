@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { ExternalWorkItemStatus } from '.prisma/client'
 import { db } from '@/lib/db'
+import {
+  externalApiDisabledResponse,
+  externalApiUnauthorizedResponse,
+  isExternalApiEnabled,
+  validateExternalApiSecret,
+} from '@/lib/external-api'
 
 interface CreateExternalWorkItemRequest {
   type?: string
@@ -9,18 +15,14 @@ interface CreateExternalWorkItemRequest {
   title?: string
 }
 
-function validateApiSecret(request: NextRequest) {
-  const apiSecret = request.headers.get('x-api-secret')
-  return apiSecret && apiSecret === process.env.EXTERNAL_API_SECRET
-}
-
 export async function POST(request: NextRequest) {
   try {
-    if (!validateApiSecret(request)) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      )
+    if (!isExternalApiEnabled()) {
+      return externalApiDisabledResponse()
+    }
+
+    if (!validateExternalApiSecret(request.headers.get('x-api-secret'))) {
+      return externalApiUnauthorizedResponse()
     }
 
     const body: CreateExternalWorkItemRequest = await request.json()

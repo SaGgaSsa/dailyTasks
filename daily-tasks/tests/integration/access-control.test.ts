@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { Prisma, UserRole } from '@prisma/client'
 
-import { addLinkAttachment, deleteAttachment, updateAttachment } from '@/app/actions/attachment-actions'
+import { addLinkAttachment, deleteAttachment, updateAttachment, uploadAttachment } from '@/app/actions/attachment-actions'
 import { syncNonWorkingDays } from '@/app/actions/non-working-days'
 import { createPage, updatePageContent } from '@/app/actions/pages'
 import { createScript, updateScript } from '@/app/actions/script-actions'
-import { archiveTracklist, completeTracklist, createTracklist } from '@/app/actions/tracklists'
-import { deleteUser, getUsers, upsertUser } from '@/app/actions/user-actions'
+import { archiveTracklist, clearTicketUnreadUpdates, completeTracklist, createTracklist } from '@/app/actions/tracklists'
+import { deleteUser, getUserDetails, getUsers, upsertUser } from '@/app/actions/user-actions'
+import { deleteIncidence } from '@/app/actions/incidence-actions'
 import { db } from '@/lib/db'
-import { actAs, createExternalWorkItem, createIncidenceFixture, createTechnologyModule, createUser } from '@/tests/integration/helpers'
+import { actAs, createExternalWorkItem, createIncidenceFixture, createTechnologyModule, createTicketFixture, createTracklist as createTracklistFixture, createUser } from '@/tests/integration/helpers'
 
 describe('access control integration', () => {
   it('restricts page creation and editing by role, assignment, and authorship', async () => {
@@ -132,6 +133,62 @@ describe('access control integration', () => {
     expect(deleteResult.success).toBe(false)
   })
 
+  it('allows http attachment links and rejects svg uploads', async () => {
+    const assignedDev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: assignedDev.id, assignedHours: 4 }],
+    })
+
+    actAs(assignedDev)
+    const linkResult = await addLinkAttachment({
+      externalWorkItemId: workItem.id,
+      name: 'Link interno',
+      url: 'http://intranet.local/doc',
+    })
+    expect(linkResult.success).toBe(true)
+
+    const formData = new FormData()
+    formData.set('externalWorkItemId', String(workItem.id))
+    formData.set('name', 'SVG bloqueado')
+    formData.set('file', new File(['<svg></svg>'], 'blocked.svg', { type: 'image/svg+xml' }))
+
+    const uploadResult = await uploadAttachment(formData)
+    expect(uploadResult.success).toBe(false)
+    expect(uploadResult.error).toContain('Extensión no permitida')
+  })
+
+  it('rejects deleting file attachments when the stored url escapes the allowed uploads root', async () => {
+    const assignedDev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: assignedDev.id, assignedHours: 4 }],
+    })
+
+    const attachment = await db.attachment.create({
+      data: {
+        type: 'FILE',
+        name: 'malicioso',
+        originalName: 'malicioso.txt',
+        url: '/uploads/../../etc/passwd',
+        externalWorkItemId: workItem.id,
+        uploadedById: assignedDev.id,
+        isOriginal: false,
+      },
+    })
+
+    actAs(assignedDev)
+    const result = await deleteAttachment(attachment.id)
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('La ruta del archivo adjunto no es válida')
+  })
+
   it('limits non-working-day sync and tracklist management to admin and QA', async () => {
     const admin = await createUser(UserRole.ADMIN)
     const dev = await createUser(UserRole.DEV)
@@ -160,6 +217,73 @@ describe('access control integration', () => {
     actAs(admin)
     const adminArchiveResult = await archiveTracklist(qaCreateTracklist.data!.id)
     expect(adminArchiveResult.success).toBe(true)
+  })
+
+  it('limits clearing unread ticket updates to authorized users', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const qa = await createUser(UserRole.QA)
+    const assignedDev = await createUser(UserRole.DEV)
+    const otherDev = await createUser(UserRole.DEV)
+    const { technology, module } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklistFixture(qa.id)
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: assignedDev.id, assignedHours: 2 }],
+    })
+    const ticket = await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: module.id,
+      reportedById: qa.id,
+      assignedToId: assignedDev.id,
+      incidenceId: incidence.id,
+      status: 'ASSIGNED',
+      description: 'ticket con novedades',
+    })
+    await db.ticketQA.update({ where: { id: ticket.id }, data: { hasUnreadUpdates: true } })
+
+    actAs(otherDev)
+    const unauthorizedResult = await clearTicketUnreadUpdates(ticket.id, tracklist.id)
+    expect(unauthorizedResult.success).toBe(false)
+
+    actAs(assignedDev)
+    const assignedResult = await clearTicketUnreadUpdates(ticket.id, tracklist.id)
+    expect(assignedResult.success).toBe(true)
+
+    await db.ticketQA.update({ where: { id: ticket.id }, data: { hasUnreadUpdates: true } })
+
+    actAs(admin)
+    const adminResult = await clearTicketUnreadUpdates(ticket.id, tracklist.id)
+    expect(adminResult.success).toBe(true)
+  })
+
+  it('blocks deleting incidences linked to QA tickets', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const qa = await createUser(UserRole.QA)
+    const dev = await createUser(UserRole.DEV)
+    const { technology, module } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklistFixture(qa.id)
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: dev.id, assignedHours: 3 }],
+    })
+
+    await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: module.id,
+      reportedById: qa.id,
+      assignedToId: dev.id,
+      incidenceId: incidence.id,
+      status: 'ASSIGNED',
+    })
+
+    actAs(admin)
+    const result = await deleteIncidence(incidence.id)
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('No se pueden eliminar incidencias con tickets QA relacionados')
   })
 
   it('keeps user listing and mutations admin-only', async () => {
@@ -194,5 +318,18 @@ describe('access control integration', () => {
 
     const storedQa = await db.user.findUniqueOrThrow({ where: { id: qa.id } })
     expect(storedQa.name).toBe('QA actualizado')
+  })
+
+  it('keeps administrative user detail restricted to admins', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const qa = await createUser(UserRole.QA)
+
+    actAs(qa)
+    const unauthorizedDetails = await getUserDetails(admin.id)
+    expect(unauthorizedDetails).toBeNull()
+
+    actAs(admin)
+    const adminDetails = await getUserDetails(qa.id)
+    expect(adminDetails?.id).toBe(qa.id)
   })
 })
