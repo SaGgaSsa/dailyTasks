@@ -16,9 +16,10 @@ interface UserWithTechs extends User {
 
 interface UsersClientProps {
     initialUsers: User[]
+    techOptions: { value: string; label: string }[]
 }
 
-export function UsersClient({ initialUsers }: UsersClientProps) {
+export function UsersClient({ initialUsers, techOptions }: UsersClientProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
     const [selectedTechNames, setSelectedTechNames] = useState<string[]>([])
@@ -62,6 +63,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 initialData={selectedUser}
+                techOptions={techOptions}
             />
 
             <UserDetailSheet

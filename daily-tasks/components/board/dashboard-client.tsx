@@ -15,13 +15,6 @@ import { SearchBar } from '@/components/ui/search-bar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { TaskStatus } from '@/types/enums'
 
-const TECH_OPTIONS = [
-    { value: 'SISA', label: 'SISA' },
-    { value: 'WEB', label: 'WEB' },
-    { value: 'ANDROID', label: 'ANDROID' },
-    { value: 'ANGULAR', label: 'ANGULAR' },
-    { value: 'SPRING', label: 'SPRING' },
-]
 import { useSearchParamsSync } from '@/hooks/useSearchParamsSync'
 import { getIncidences } from '@/app/actions/incidence-actions'
 
@@ -35,9 +28,10 @@ interface DashboardClientProps {
     backlogTasks: IncidenceWithDetails[]
     kanbanTasks: IncidenceWithDetails[]
     isAdmin: boolean
+    techOptions: { value: string; label: string }[]
 }
 
-export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: DashboardClientProps) {
+export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, techOptions }: DashboardClientProps) {
     const { data: session } = useSession()
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedTask, setSelectedTask] = useState<IncidenceWithDetails | null>(null)
@@ -178,9 +172,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                         <FilterDropdown
                             icon={<BrainCircuit className="h-4 w-4" />}
                             label="Tecnología"
-                        options={TECH_OPTIONS}
+                        options={techOptions}
                             selectedValues={params.tech || []}
-                            allValues={TECH_OPTIONS.map(o => o.value)}
+                            allValues={techOptions.map(o => o.value)}
                             onValuesChange={updateTech}
                         />
                     </div>
@@ -191,7 +185,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     selectedTech={params.tech}
                     selectedStatus={[]}
                     selectedAssignee={[]}
-                    techOptions={TECH_OPTIONS}
+                    techOptions={techOptions}
                     statusOptions={statusOptions}
                     assigneeOptions={[]}
                     onSearchChange={updateSearch}
@@ -268,9 +262,9 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                     <FilterDropdown
                         icon={<BrainCircuit className="h-4 w-4" />}
                         label="Tecnología"
-                        options={TECH_OPTIONS}
+                        options={techOptions}
                         selectedValues={params.tech || []}
-                        allValues={TECH_OPTIONS.map(o => o.value)}
+                        allValues={techOptions.map(o => o.value)}
                         onValuesChange={updateTech}
                     />
                 </div>
@@ -315,7 +309,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin }: Da
                 selectedTech={params.tech}
                 selectedStatus={view === 'BACKLOG' ? params.status : []}
                 selectedAssignee={params.assignee || []}
-                techOptions={TECH_OPTIONS}
+                techOptions={techOptions}
                 statusOptions={statusOptions}
                 assigneeOptions={userOptions}
                 onSearchChange={updateSearch}

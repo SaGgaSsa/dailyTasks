@@ -1,4 +1,5 @@
 import { getUsers } from '@/app/actions/user-actions'
+import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { UsersClient } from '@/components/users/users-client'
 
 import { auth } from '@/auth'
@@ -13,8 +14,12 @@ export default async function UsersPage() {
     redirect('/incidences')
   }
 
-  const usersResult = await getUsers()
+  const [usersResult, techsData] = await Promise.all([
+    getUsers(),
+    getCachedTechsWithModules(),
+  ])
   const users = usersResult.data
+  const techOptions = techsData.techs.map(t => ({ value: t.name, label: t.name }))
 
   if (usersResult.error) {
     console.error(usersResult.error)
@@ -22,7 +27,7 @@ export default async function UsersPage() {
 
   return (
     <div className="flex-1 space-y-4 p-2">
-      <UsersClient initialUsers={users} />
+      <UsersClient initialUsers={users} techOptions={techOptions} />
     </div>
   )
 }

@@ -13,6 +13,7 @@ interface UserFormProps {
     onOpenChange: (open: boolean) => void
     initialData: User | null
     initialTechNames?: string[]
+    techOptions: { value: string; label: string }[]
 }
 
 const roleOptions = [
@@ -21,15 +22,7 @@ const roleOptions = [
     { value: 'QA', label: 'QA' },
 ]
 
-const TECH_OPTIONS = [
-    { value: 'SISA', label: 'SISA' },
-    { value: 'WEB', label: 'WEB' },
-    { value: 'ANDROID', label: 'ANDROID' },
-    { value: 'ANGULAR', label: 'ANGULAR' },
-    { value: 'SPRING', label: 'SPRING' },
-]
-
-export function UserForm({ open, onOpenChange, initialData, initialTechNames = [] }: UserFormProps) {
+export function UserForm({ open, onOpenChange, initialData, initialTechNames = [], techOptions }: UserFormProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -200,7 +193,7 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                 label="Tecnologías"
                 value={formData.technologies[0] || ''}
                 onValueChange={(val) => setFormData({ ...formData, technologies: val ? [val] : [] })}
-                options={TECH_OPTIONS}
+                options={techOptions}
                 placeholder="Seleccionar tecnología"
             />
             </>)

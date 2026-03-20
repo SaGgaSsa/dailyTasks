@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
+import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistViewClient } from './_components/tracklist-view-client'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
@@ -13,7 +14,7 @@ export default async function TracklistDetailPage({ params }: Props) {
   const { tracklistId } = await params
   const numericId = Number(tracklistId)
 
-  const [currentTracklist, tickets, assignableUsers] = await Promise.all([
+  const [currentTracklist, tickets, assignableUsers, techsData] = await Promise.all([
     db.tracklist.findUnique({
       where: { id: numericId },
       select: { id: true, title: true, status: true }
@@ -60,12 +61,15 @@ export default async function TracklistDetailPage({ params }: Props) {
         } : null,
       }
     }))),
-    getCachedAssignableUsers()
+    getCachedAssignableUsers(),
+    getCachedTechsWithModules(),
   ])
 
   if (!currentTracklist) {
     redirect('/tracklists')
   }
+
+  const techOptions = techsData.techs.map(t => ({ value: t.name, label: t.name }))
 
   return (
     <div className="space-y-6">
@@ -75,6 +79,7 @@ export default async function TracklistDetailPage({ params }: Props) {
         status={currentTracklist.status}
         assignableUsers={assignableUsers}
         initialTickets={tickets}
+        techOptions={techOptions}
       />
     </div>
   )

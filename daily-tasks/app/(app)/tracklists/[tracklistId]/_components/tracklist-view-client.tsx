@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ListTodo, LayoutDashboard, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from '@/app/(app)/tracklists/_components/tracklist-toolbar'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, type ViewOption } from '@/app/(app)/tracklists/_components/tracklist-toolbar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { TicketsGrid } from './tickets-grid'
@@ -17,6 +17,7 @@ interface Props {
   status: string
   assignableUsers: AssignableUser[]
   initialTickets: TicketQAWithDetails[]
+  techOptions: { value: string; label: string }[]
 }
 
 export function TracklistViewClient({
@@ -25,6 +26,7 @@ export function TracklistViewClient({
   status,
   assignableUsers,
   initialTickets,
+  techOptions,
 }: Props) {
   const { setBreadcrumbs } = useNavbarBreadcrumbs()
 
@@ -60,6 +62,7 @@ export function TracklistViewClient({
           onUserChange={setSelectedUser}
           selectedTech={selectedTech}
           onTechChange={setSelectedTech}
+          techOptions={techOptions}
           assignableUsers={assignableUsers}
           view={view}
           onViewChange={(v) => setView(v as 'list' | 'kanban')}
@@ -80,7 +83,7 @@ export function TracklistViewClient({
           selectedTech={selectedTech}
           statusOptions={TICKET_STATUS_OPTIONS}
           assigneeOptions={assignableUsers.map(u => ({ value: String(u.id), label: u.name || u.username }))}
-          techOptions={TECH_OPTIONS}
+          techOptions={techOptions}
           onSearchChange={setSearch}
           onStatusChange={setSelectedStatus}
           onAssigneeChange={setSelectedUser}

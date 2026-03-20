@@ -2,12 +2,11 @@ import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getIncidences } from '@/app/actions/incidence-actions'
+import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { DashboardClient } from '@/components/board/dashboard-client'
 import { TaskStatus } from '@/types/enums'
 import { IncidenceWithDetails } from '@/types'
 import { Loader2 } from 'lucide-react'
-
-const TECH_VALUES = ['SISA', 'WEB', 'ANDROID', 'ANGULAR', 'SPRING']
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const session = await auth()
@@ -18,6 +17,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const isAdmin = session.user.role === 'ADMIN'
+
+  const techsData = await getCachedTechsWithModules()
+  const techOptions = techsData.techs.map(t => ({ value: t.name, label: t.name }))
+  const techValues = techOptions.map(t => t.value)
 
   const viewParam = params.view
 
@@ -44,8 +47,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? (Array.isArray(params.tech) ? params.tech : [params.tech])
         .flatMap(t => t.split(','))
         .filter(Boolean)
-        .filter(t => TECH_VALUES.includes(t))
-    : TECH_VALUES
+        .filter(t => techValues.includes(t))
+    : techValues
 
   const statusParam = currentView === 'KANBAN'
     ? []
@@ -108,6 +111,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         backlogTasks={backlogTasks}
         kanbanTasks={kanbanTasks}
         isAdmin={isAdmin}
+        techOptions={techOptions}
       />
     </Suspense>
   )
