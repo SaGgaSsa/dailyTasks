@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCheck, Filter, Search, Users } from 'lucide-react'
+import { CheckCheck, Filter, Users } from 'lucide-react'
 import type { Notification, User } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
-import { Input } from '@/components/ui/input'
+import { FilterToolbar } from '@/components/ui/filter-toolbar'
+import { SearchBar } from '@/components/ui/search-bar'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead } from '@/app/actions/notifications'
 import { NOTIFICATION_EVENT } from '@/components/providers/notification-stream-provider'
 import { toast } from 'sonner'
@@ -56,6 +58,7 @@ export function InboxClient({
     const [searchText, setSearchText] = useState('')
     const [selectedTypes, setSelectedTypes] = useState<string[]>([])
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+    const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'unread'>('all')
     const [isPending, startTransition] = useTransition()
     const currentUser = getCurrentUserSummary(users, currentUserId)
 
@@ -84,9 +87,13 @@ export function InboxClient({
                 return false
             }
 
+            if (visibilityFilter === 'unread' && notification.isRead) {
+                return false
+            }
+
             return true
         })
-    }, [isAdmin, notifications, searchText, selectedTypes, selectedUserIds])
+    }, [isAdmin, notifications, searchText, selectedTypes, selectedUserIds, visibilityFilter])
 
     const effectiveSelectedId = filteredNotifications.some(notification => notification.id === selectedId)
         ? selectedId
@@ -167,51 +174,68 @@ export function InboxClient({
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-semibold">Bandeja de entrada</h1>
-                    {unreadCount > 0 && <Badge variant="secondary">{unreadCount} sin leer</Badge>}
-                </div>
+            <div>
+                <FilterToolbar
+                    startContent={
+                        <>
+                            <SearchBar
+                                value={searchText}
+                                onChange={setSearchText}
+                                placeholder="Buscar notificaciones..."
+                                className="w-[240px]"
+                            />
 
-                <div className="relative min-w-[240px] flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        value={searchText}
-                        onChange={event => setSearchText(event.target.value)}
-                        placeholder="Buscar notificaciones..."
-                        className="pl-9"
-                    />
-                </div>
+                            <FilterDropdown
+                                icon={<Filter className="h-4 w-4" />}
+                                options={typeOptions}
+                                selectedValues={selectedTypes}
+                                allValues={typeValues}
+                                onValuesChange={setSelectedTypes}
+                            />
 
-                <FilterDropdown
-                    icon={<Filter className="h-4 w-4" />}
-                    options={typeOptions}
-                    selectedValues={selectedTypes}
-                    allValues={typeValues}
-                    onValuesChange={setSelectedTypes}
+                            {unreadCount > 0 && <Badge variant="secondary">{unreadCount} sin leer</Badge>}
+
+                            {isAdmin && (
+                                <FilterDropdown
+                                    icon={<Users className="h-4 w-4" />}
+                                    options={userOptions}
+                                    selectedValues={selectedUserIds}
+                                    allValues={userValues}
+                                    onValuesChange={setSelectedUserIds}
+                                />
+                            )}
+                        </>
+                    }
+                    endContent={
+                        <>
+                            {!isAdmin && unreadCount > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleMarkAllAsRead}
+                                    disabled={isPending}
+                                    title="Marcar todas como leídas"
+                                    aria-label="Marcar todas como leídas"
+                                >
+                                    <CheckCheck className="h-4 w-4" />
+                                </Button>
+                            )}
+                            <Tabs
+                                value={visibilityFilter}
+                                onValueChange={value => setVisibilityFilter(value as 'all' | 'unread')}
+                            >
+                                <TabsList className="h-8 border border-border bg-muted">
+                                    <TabsTrigger value="all" className="px-3 data-[state=active]:bg-accent">
+                                        Todos
+                                    </TabsTrigger>
+                                    <TabsTrigger value="unread" className="px-3 data-[state=active]:bg-accent">
+                                        Sin leer
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        </>
+                    }
                 />
-
-                {isAdmin && (
-                    <FilterDropdown
-                        icon={<Users className="h-4 w-4" />}
-                        options={userOptions}
-                        selectedValues={selectedUserIds}
-                        allValues={userValues}
-                        onValuesChange={setSelectedUserIds}
-                    />
-                )}
-
-                {!isAdmin && unreadCount > 0 && (
-                    <Button
-                        variant="outline"
-                        className="ml-auto"
-                        onClick={handleMarkAllAsRead}
-                        disabled={isPending}
-                    >
-                        <CheckCheck className="h-4 w-4" />
-                        Marcar todas como leídas
-                    </Button>
-                )}
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
