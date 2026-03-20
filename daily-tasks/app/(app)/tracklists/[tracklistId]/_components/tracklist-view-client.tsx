@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { ListTodo, LayoutDashboard, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TracklistToolbar, TICKET_STATUS_OPTIONS, type ViewOption } from '@/app/(app)/tracklists/_components/tracklist-toolbar'
@@ -10,6 +11,8 @@ import { TicketsGrid } from './tickets-grid'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
+import { getTicketById } from '@/app/actions/tracklists'
+import { toast } from 'sonner'
 
 interface Props {
   currentId: number
@@ -18,6 +21,8 @@ interface Props {
   assignableUsers: AssignableUser[]
   initialTickets: TicketQAWithDetails[]
   techOptions: { value: string; label: string }[]
+  initialOpenTicketId: number | null
+  initialTicketMode: 'view' | null
 }
 
 export function TracklistViewClient({
@@ -27,8 +32,13 @@ export function TracklistViewClient({
   assignableUsers,
   initialTickets,
   techOptions,
+  initialOpenTicketId,
+  initialTicketMode,
 }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
   const { setBreadcrumbs } = useNavbarBreadcrumbs()
+  const [, startTransition] = useTransition()
 
   useEffect(() => {
     setBreadcrumbs([
@@ -49,6 +59,41 @@ export function TracklistViewClient({
   const [selectedTech, setSelectedTech] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false)
+  const [linkedTicket, setLinkedTicket] = useState<TicketQAWithDetails | null>(null)
+  const hasHandledInitialOpen = useRef(false)
+
+  useEffect(() => {
+    if (hasHandledInitialOpen.current || initialTicketMode !== 'view' || !initialOpenTicketId) {
+      return
+    }
+
+    hasHandledInitialOpen.current = true
+    startTransition(async () => {
+      const result = await getTicketById(initialOpenTicketId)
+      if (!result.success || !result.data) {
+        toast.error(result.error || 'No se pudo abrir el ticket')
+        router.replace(pathname, { scroll: false })
+        return
+      }
+
+      if (result.data.tracklistId !== currentId) {
+        toast.error('El ticket no pertenece a este tracklist')
+        router.replace(pathname, { scroll: false })
+        return
+      }
+
+      setLinkedTicket(result.data)
+    })
+  }, [currentId, initialOpenTicketId, initialTicketMode, pathname, router, startTransition])
+
+  const handleLinkedTicketOpenChange = (open: boolean) => {
+    if (open) {
+      return
+    }
+
+    setLinkedTicket(null)
+    router.replace(pathname, { scroll: false })
+  }
 
   return (
     <>
@@ -107,6 +152,15 @@ export function TracklistViewClient({
         open={isTicketDialogOpen}
         onOpenChange={setIsTicketDialogOpen}
       />
+      {linkedTicket && (
+        <CreateTicketDialog
+          tracklistId={currentId}
+          assignableUsers={assignableUsers}
+          open={!!linkedTicket}
+          onOpenChange={handleLinkedTicketOpenChange}
+          viewMode={linkedTicket}
+        />
+      )}
     </>
   )
 }

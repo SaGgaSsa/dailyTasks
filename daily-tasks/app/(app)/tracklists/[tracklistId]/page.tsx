@@ -8,11 +8,15 @@ import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/wor
 
 interface Props {
   params: Promise<{ tracklistId: string }>
+  searchParams: Promise<{ ticketId?: string; ticketMode?: string }>
 }
 
-export default async function TracklistDetailPage({ params }: Props) {
+export default async function TracklistDetailPage({ params, searchParams }: Props) {
   const { tracklistId } = await params
+  const { ticketId, ticketMode } = await searchParams
   const numericId = Number(tracklistId)
+  const initialOpenTicketId = Number(ticketId)
+  const hasValidInitialTicketId = Number.isInteger(initialOpenTicketId) && initialOpenTicketId > 0
 
   const [currentTracklist, tickets, assignableUsers, techsData] = await Promise.all([
     db.tracklist.findUnique({
@@ -80,6 +84,8 @@ export default async function TracklistDetailPage({ params }: Props) {
         assignableUsers={assignableUsers}
         initialTickets={tickets}
         techOptions={techOptions}
+        initialOpenTicketId={hasValidInitialTicketId ? initialOpenTicketId : null}
+        initialTicketMode={ticketMode === 'view' ? 'view' : null}
       />
     </div>
   )

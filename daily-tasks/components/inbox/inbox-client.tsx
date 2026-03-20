@@ -29,7 +29,7 @@ interface InboxClientProps {
 
 function getInboxMessageHref(message: InboxMessageWithContext): string | null {
     if (message.referenceType === 'TICKET_QA' && message.ticketContext) {
-        return `/tracklists/${message.ticketContext.tracklistId}`
+        return `/tracklists/${message.ticketContext.tracklistId}?ticketId=${message.ticketContext.ticketId}&ticketMode=view`
     }
     if (message.referenceType === 'tracklist') {
         return `/tracklists/${message.referenceId}`

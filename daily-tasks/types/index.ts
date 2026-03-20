@@ -149,6 +149,10 @@ export type TicketQAWithDetails = TicketQA & {
   hasUnreadUpdates: boolean
   hasScripts: boolean
   incidenceGantt: IncidenceGanttData | null
+  latestQaTask?: {
+    title: string
+    description: string | null
+  } | null
 }
 
 export interface InboxMessageTicketContext {

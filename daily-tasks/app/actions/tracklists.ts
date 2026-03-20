@@ -84,6 +84,30 @@ function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     }
 }
 
+async function getLatestQaTask(ticket: {
+    incidenceId: number | null
+    assignedToId: number | null
+}) {
+    if (!ticket.incidenceId || !ticket.assignedToId) {
+        return null
+    }
+
+    return db.task.findFirst({
+        where: {
+            isQaReported: true,
+            assignment: {
+                incidenceId: ticket.incidenceId,
+                userId: ticket.assignedToId,
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+            title: true,
+            description: true,
+        },
+    })
+}
+
 const PRIORITY_MAP: Record<string, PrismaPriority> = {
     LOW: 'LOW',
     MEDIUM: 'MEDIUM',
@@ -371,6 +395,40 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
         return { success: true, data: sorted }
     } catch (error) {
         console.error('Error fetching tickets:', error)
+        return { success: false, error: t(locale, 'errors.fetchError') }
+    }
+}
+
+export async function getTicketById(ticketId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
+    try {
+        const ticket = await db.ticketQA.findUnique({
+            where: { id: ticketId },
+            include: ticketDetailsInclude,
+        })
+
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' }
+        }
+
+        const [enrichedTicket, latestQaTask] = await Promise.all([
+            Promise.resolve(enrichTicketScripts(ticket)),
+            getLatestQaTask(ticket),
+        ])
+
+        return {
+            success: true,
+            data: {
+                ...enrichedTicket,
+                latestQaTask,
+            },
+        }
+    } catch (error) {
+        console.error('Error fetching ticket by id:', error)
         return { success: false, error: t(locale, 'errors.fetchError') }
     }
 }

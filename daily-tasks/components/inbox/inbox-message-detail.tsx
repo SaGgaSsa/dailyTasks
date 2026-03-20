@@ -50,6 +50,9 @@ export function InboxMessageDetail({
     const title = ticketContext?.description || message.message.split('\n')[0].trim()
     const body = ticketContext?.rejectionTask?.description || ticketContext?.observations || message.message
     const assigneeLabel = ticketContext?.assignedTo?.name || ticketContext?.assignedTo?.username || 'Sin responsable'
+    const navigationLabel = ticketContext
+        ? `Ticket ${ticketContext.ticketNumber}`
+        : 'Abrir elemento'
 
     return (
         <div className="flex h-full min-h-[420px] flex-col rounded-2xl border border-border bg-card">
@@ -111,7 +114,7 @@ export function InboxMessageDetail({
                     )}
                     <Button onClick={onNavigate} disabled={isPending}>
                         <ExternalLink className="h-4 w-4" />
-                        Elemento relacionado
+                        {navigationLabel}
                     </Button>
                 </div>
             </div>
