@@ -1,79 +1,142 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { NotificationType } from '@/types/enums'
+import { NotificationType, UserRole } from '@/types/enums'
 import { auth } from '@/auth'
 import { emitNotificationToUsers } from '@/lib/sse/emit'
 
 export async function getUnreadNotificationsCount() {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
 
-    const userId = Number(session.user.id)
-    const count = await db.notification.count({
-        where: { userId, isRead: false }
-    })
-    return { success: true, data: { count } }
+        const userId = Number(session.user.id)
+        const count = await db.notification.count({
+            where: { userId, isRead: false }
+        })
+
+        return { success: true, data: { count } }
+    } catch (error) {
+        console.error('Error getting unread notifications count:', error)
+        return { success: false, error: 'Error al obtener el conteo de notificaciones' }
+    }
 }
 
 export async function getNotifications(page = 1, limit = 20) {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
 
-    const userId = Number(session.user.id)
-    const skip = (page - 1) * limit
+        const userId = Number(session.user.id)
+        const skip = (page - 1) * limit
 
-    const [notifications, total] = await Promise.all([
-        db.notification.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-            skip,
-            take: limit,
-        }),
-        db.notification.count({ where: { userId } }),
-    ])
+        const [notifications, total] = await Promise.all([
+            db.notification.findMany({
+                where: { userId },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            db.notification.count({ where: { userId } }),
+        ])
 
-    return { success: true, data: { notifications, total, page, limit } }
+        return { success: true, data: { notifications, total, page, limit } }
+    } catch (error) {
+        console.error('Error getting notifications:', error)
+        return { success: false, error: 'Error al obtener las notificaciones' }
+    }
+}
+
+export async function getAllNotifications(page = 1, limit = 20, userId?: number) {
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
+        if (session.user.role !== UserRole.ADMIN) {
+            return { success: false, error: 'No autorizado' }
+        }
+
+        const skip = (page - 1) * limit
+        const where = typeof userId === 'number' ? { userId } : {}
+
+        const [notifications, total] = await Promise.all([
+            db.notification.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            db.notification.count({ where }),
+        ])
+
+        return { success: true, data: { notifications, total, page, limit } }
+    } catch (error) {
+        console.error('Error getting all notifications:', error)
+        return { success: false, error: 'Error al obtener las notificaciones' }
+    }
 }
 
 export async function markNotificationAsRead(notificationId: number) {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
 
-    const userId = Number(session.user.id)
-    const notification = await db.notification.findUnique({ where: { id: notificationId } })
-    if (!notification || notification.userId !== userId) {
-        return { success: false, error: 'Notificación no encontrada' }
+        const userId = Number(session.user.id)
+        const notification = await db.notification.findUnique({ where: { id: notificationId } })
+        if (!notification || notification.userId !== userId) {
+            return { success: false, error: 'Notificación no encontrada' }
+        }
+
+        await db.notification.update({ where: { id: notificationId }, data: { isRead: true } })
+        return { success: true }
+    } catch (error) {
+        console.error('Error marking notification as read:', error)
+        return { success: false, error: 'Error al marcar la notificación como leída' }
     }
-
-    await db.notification.update({ where: { id: notificationId }, data: { isRead: true } })
-    return { success: true }
 }
 
 export async function markNotificationAsUnread(notificationId: number) {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
 
-    const userId = Number(session.user.id)
-    const notification = await db.notification.findUnique({ where: { id: notificationId } })
-    if (!notification || notification.userId !== userId) {
-        return { success: false, error: 'Notificación no encontrada' }
+        const userId = Number(session.user.id)
+        const notification = await db.notification.findUnique({ where: { id: notificationId } })
+        if (!notification || notification.userId !== userId) {
+            return { success: false, error: 'Notificación no encontrada' }
+        }
+
+        await db.notification.update({ where: { id: notificationId }, data: { isRead: false } })
+        return { success: true }
+    } catch (error) {
+        console.error('Error marking notification as unread:', error)
+        return { success: false, error: 'Error al marcar la notificación como no leída' }
     }
-
-    await db.notification.update({ where: { id: notificationId }, data: { isRead: false } })
-    return { success: true }
 }
 
 export async function markAllNotificationsAsRead() {
-    const session = await auth()
-    if (!session?.user) return { success: false, error: 'No autorizado' }
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: 'No autorizado' }
 
-    const userId = Number(session.user.id)
-    await db.notification.updateMany({
-        where: { userId, isRead: false },
-        data: { isRead: true },
-    })
-    return { success: true }
+        const userId = Number(session.user.id)
+        await db.notification.updateMany({
+            where: { userId, isRead: false },
+            data: { isRead: true },
+        })
+
+        return { success: true }
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error)
+        return { success: false, error: 'Error al marcar todas las notificaciones como leídas' }
+    }
 }
 
 export async function createNotificationsForUsers(
@@ -85,19 +148,28 @@ export async function createNotificationsForUsers(
 ) {
     if (userIds.length === 0) return
 
-    const created = await db.notification.createMany({
-        data: userIds.map(userId => ({
-            type,
-            referenceId,
-            referenceType,
-            message,
-            userId,
-        })),
-        skipDuplicates: true,
-    })
+    const createdNotifications = await db.$transaction(
+        userIds.map(userId =>
+            db.notification.create({
+                data: {
+                    type,
+                    referenceId,
+                    referenceType,
+                    message,
+                    userId,
+                }
+            })
+        )
+    )
 
-    if (created.count > 0) {
-        const now = new Date()
-        emitNotificationToUsers(userIds, { id: 0, type, message, referenceId, referenceType, createdAt: now })
+    for (const notification of createdNotifications) {
+        emitNotificationToUsers([notification.userId], {
+            id: notification.id,
+            type: notification.type as NotificationType,
+            message: notification.message,
+            referenceId: notification.referenceId,
+            referenceType: notification.referenceType,
+            createdAt: notification.createdAt,
+        })
     }
 }

@@ -88,6 +88,11 @@ export enum NotificationType {
     TICKET_REJECTED = "TICKET_REJECTED",
 }
 
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+    [NotificationType.TICKET_BLOCKER_CREATED]: 'Blocker creado',
+    [NotificationType.TICKET_REJECTED]: 'Ticket rechazado',
+}
+
 export const TRACKLIST_STATUS_LABELS: Record<TracklistStatus, string> = {
     [TracklistStatus.ACTIVE]: 'Activo',
     [TracklistStatus.COMPLETED]: 'Completado',

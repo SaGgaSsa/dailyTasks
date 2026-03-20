@@ -1,19 +1,27 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { Bell, CheckCheck, Circle, Dot } from 'lucide-react'
+import { CheckCheck, Filter, Search, Users } from 'lucide-react'
+import type { Notification, User } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { Input } from '@/components/ui/input'
 import { markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead } from '@/app/actions/notifications'
+import { NOTIFICATION_EVENT } from '@/components/providers/notification-stream-provider'
 import { toast } from 'sonner'
-import type { Notification } from '@prisma/client'
+import type { SSENotificationPayload } from '@/lib/sse/emit'
+import { NOTIFICATION_TYPE_LABELS, NotificationType } from '@/types/enums'
+import { NotificationDetail } from '@/components/inbox/notification-detail'
+import { NotificationListItem, type InboxNotification } from '@/components/inbox/notification-list-item'
 
 interface InboxClientProps {
-    initialNotifications: Notification[]
+    currentUserId: number
+    initialNotifications: InboxNotification[]
+    isAdmin: boolean
     total: number
+    users: User[]
 }
 
 function getNotificationHref(notification: Notification): string | null {
@@ -26,12 +34,87 @@ function getNotificationHref(notification: Notification): string | null {
     return null
 }
 
-export function InboxClient({ initialNotifications, total }: InboxClientProps) {
-    const router = useRouter()
-    const [notifications, setNotifications] = useState(initialNotifications)
-    const [isPending, startTransition] = useTransition()
+function getCurrentUserSummary(users: User[], currentUserId: number) {
+    const user = users.find(item => item.id === currentUserId)
 
-    const unreadCount = notifications.filter(n => !n.isRead).length
+    return {
+        id: currentUserId,
+        name: user?.name ?? null,
+    }
+}
+
+export function InboxClient({
+    currentUserId,
+    initialNotifications,
+    isAdmin,
+    total,
+    users,
+}: InboxClientProps) {
+    const router = useRouter()
+    const [notifications, setNotifications] = useState<InboxNotification[]>(initialNotifications)
+    const [selectedId, setSelectedId] = useState<number | null>(initialNotifications[0]?.id ?? null)
+    const [searchText, setSearchText] = useState('')
+    const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+    const [isPending, startTransition] = useTransition()
+    const currentUser = getCurrentUserSummary(users, currentUserId)
+
+    const unreadCount = notifications.filter(notification => !notification.isRead).length
+    const typeOptions = Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+    const typeValues = Object.values(NotificationType)
+    const userOptions = users.map(user => ({
+        value: String(user.id),
+        label: user.name ?? user.username,
+    }))
+    const userValues = userOptions.map(user => user.value)
+
+    const filteredNotifications = useMemo(() => {
+        const normalizedSearch = searchText.trim().toLowerCase()
+
+        return notifications.filter(notification => {
+            if (normalizedSearch && !notification.message.toLowerCase().includes(normalizedSearch)) {
+                return false
+            }
+
+            if (selectedTypes.length > 0 && !selectedTypes.includes(notification.type)) {
+                return false
+            }
+
+            if (isAdmin && selectedUserIds.length > 0 && !selectedUserIds.includes(String(notification.userId))) {
+                return false
+            }
+
+            return true
+        })
+    }, [isAdmin, notifications, searchText, selectedTypes, selectedUserIds])
+
+    const effectiveSelectedId = filteredNotifications.some(notification => notification.id === selectedId)
+        ? selectedId
+        : (filteredNotifications[0]?.id ?? null)
+    const selectedNotification = filteredNotifications.find(notification => notification.id === effectiveSelectedId) ?? null
+
+    useEffect(() => {
+        const handleNotificationReceived = (event: Event) => {
+            const payload = (event as CustomEvent<SSENotificationPayload>).detail
+            const incoming: InboxNotification = {
+                id: payload.id,
+                type: payload.type,
+                message: payload.message,
+                referenceId: payload.referenceId,
+                referenceType: payload.referenceType,
+                createdAt: new Date(payload.createdAt),
+                isRead: false,
+                userId: currentUserId,
+                ...(isAdmin ? { user: currentUser } : {}),
+            }
+
+            setNotifications(prev => [incoming, ...prev.filter(notification => notification.id !== incoming.id)])
+            setSelectedId(prev => prev ?? incoming.id)
+        }
+
+        window.addEventListener(NOTIFICATION_EVENT, handleNotificationReceived)
+        return () => window.removeEventListener(NOTIFICATION_EVENT, handleNotificationReceived)
+    }, [currentUser, currentUserId, isAdmin])
 
     const handleMarkAsRead = (id: number) => {
         startTransition(async () => {
@@ -71,37 +154,57 @@ export function InboxClient({ initialNotifications, total }: InboxClientProps) {
         })
     }
 
-    const handleNotificationClick = (notification: Notification) => {
-        if (!notification.isRead) {
-            handleMarkAsRead(notification.id)
-        }
-        const href = getNotificationHref(notification)
-        if (href) router.push(href)
-    }
+    const handleToggleRead = (notification: InboxNotification) => {
+        if (notification.userId !== currentUserId) return
 
-    if (notifications.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-muted-foreground">
-                <Bell className="h-12 w-12 opacity-20" />
-                <p className="text-sm">No tienes notificaciones</p>
-            </div>
-        )
+        if (notification.isRead) {
+            handleMarkAsUnread(notification.id)
+            return
+        }
+
+        handleMarkAsRead(notification.id)
     }
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                     <h1 className="text-xl font-semibold">Bandeja de entrada</h1>
-                    {unreadCount > 0 && (
-                        <Badge variant="secondary">{unreadCount} sin leer</Badge>
-                    )}
+                    {unreadCount > 0 && <Badge variant="secondary">{unreadCount} sin leer</Badge>}
                 </div>
-                {unreadCount > 0 && (
+
+                <div className="relative min-w-[240px] flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        value={searchText}
+                        onChange={event => setSearchText(event.target.value)}
+                        placeholder="Buscar notificaciones..."
+                        className="pl-9"
+                    />
+                </div>
+
+                <FilterDropdown
+                    icon={<Filter className="h-4 w-4" />}
+                    options={typeOptions}
+                    selectedValues={selectedTypes}
+                    allValues={typeValues}
+                    onValuesChange={setSelectedTypes}
+                />
+
+                {isAdmin && (
+                    <FilterDropdown
+                        icon={<Users className="h-4 w-4" />}
+                        options={userOptions}
+                        selectedValues={selectedUserIds}
+                        allValues={userValues}
+                        onValuesChange={setSelectedUserIds}
+                    />
+                )}
+
+                {!isAdmin && unreadCount > 0 && (
                     <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2 text-muted-foreground hover:text-foreground"
+                        variant="outline"
+                        className="ml-auto"
                         onClick={handleMarkAllAsRead}
                         disabled={isPending}
                     >
@@ -111,60 +214,47 @@ export function InboxClient({ initialNotifications, total }: InboxClientProps) {
                 )}
             </div>
 
-            <div className="flex flex-col gap-1">
-                {notifications.map(notification => (
-                    <div
-                        key={notification.id}
-                        className={`group flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                            notification.isRead
-                                ? 'hover:bg-muted/50'
-                                : 'bg-primary/5 hover:bg-primary/10'
-                        }`}
-                        onClick={() => handleNotificationClick(notification)}
-                    >
-                        <div className="mt-1 flex-shrink-0">
-                            {notification.isRead
-                                ? <Circle className="h-2 w-2 text-transparent" />
-                                : <Dot className="h-4 w-4 text-primary -ml-1" />
-                            }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${notification.isRead ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>
-                                {notification.message}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es })}
-                            </p>
-                        </div>
-                        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                            {notification.isRead ? (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs text-muted-foreground"
-                                    onClick={() => handleMarkAsUnread(notification.id)}
-                                    disabled={isPending}
-                                >
-                                    Marcar como no leída
-                                </Button>
-                            ) : (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs text-muted-foreground"
-                                    onClick={() => handleMarkAsRead(notification.id)}
-                                    disabled={isPending}
-                                >
-                                    Marcar como leída
-                                </Button>
-                            )}
-                        </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+                <div className="rounded-2xl border border-border bg-card">
+                    <div className="max-h-[70vh] overflow-y-auto p-3">
+                        {filteredNotifications.length === 0 ? (
+                            <div className="flex min-h-[420px] items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                                No hay notificaciones que coincidan con los filtros actuales.
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredNotifications.map(notification => (
+                                    <NotificationListItem
+                                        key={notification.id}
+                                        notification={notification}
+                                        isSelected={notification.id === effectiveSelectedId}
+                                        onClick={() => setSelectedId(notification.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                ))}
+                </div>
+
+                <NotificationDetail
+                    notification={selectedNotification}
+                    onNavigate={() => {
+                        if (!selectedNotification) return
+
+                        const href = getNotificationHref(selectedNotification)
+                        if (href) router.push(href)
+                    }}
+                    onToggleRead={() => {
+                        if (!selectedNotification) return
+                        handleToggleRead(selectedNotification)
+                    }}
+                    isPending={isPending}
+                    canToggleRead={selectedNotification?.userId === currentUserId}
+                />
             </div>
 
             {total > notifications.length && (
-                <p className="text-center text-xs text-muted-foreground mt-6">
+                <p className="text-center text-xs text-muted-foreground">
                     Mostrando {notifications.length} de {total} notificaciones
                 </p>
             )}
