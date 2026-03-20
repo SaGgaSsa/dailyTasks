@@ -83,6 +83,11 @@ export enum TracklistStatus {
     ARCHIVED = "ARCHIVED",
 }
 
+export enum NotificationType {
+    TICKET_BLOCKER_CREATED = "TICKET_BLOCKER_CREATED",
+    TICKET_REJECTED = "TICKET_REJECTED",
+}
+
 export const TRACKLIST_STATUS_LABELS: Record<TracklistStatus, string> = {
     [TracklistStatus.ACTIVE]: 'Activo',
     [TracklistStatus.COMPLETED]: 'Completado',

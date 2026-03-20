@@ -3,5 +3,5 @@ import { unstable_noStore } from 'next/cache'
 
 export default function HomePage() {
   unstable_noStore()
-  redirect('/dashboard')
+  redirect('/dashboard/inbox')
 }

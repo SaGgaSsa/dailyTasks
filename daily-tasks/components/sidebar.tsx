@@ -11,6 +11,7 @@ import {
   Settings,
   Terminal,
   BarChart3,
+  Inbox,
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
@@ -49,6 +50,16 @@ export function Sidebar({ userId, initialTracklists = [], initialIncidences = []
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-1 px-2">
+          <Link href="/dashboard/inbox">
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/inbox' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+            >
+              <Inbox className="h-4 w-4" />
+              {isOpen && <span>Bandeja de entrada</span>}
+            </Button>
+          </Link>
+
           <SidebarTopSection
             isOpen={isOpen}
             label={t.incidences.title}

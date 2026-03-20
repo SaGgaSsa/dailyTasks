@@ -7,7 +7,8 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
-import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
+import { TicketType, TicketQAStatus, Priority, TracklistStatus, NotificationType } from '@/types/enums'
+import { createNotificationsForUsers } from '@/app/actions/notifications'
 import { TaskStatus, Priority as PrismaPriority, Prisma, ExternalWorkItemStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
@@ -424,12 +425,29 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         }
 
         // Reactivate tracklist if it was completed or archived
-        const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true } })
+        const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true, title: true } })
         if (tracklist && tracklist.status !== TracklistStatus.ACTIVE) {
             await db.tracklist.update({
                 where: { id: tracklistId },
                 data: { status: TracklistStatus.ACTIVE, completedAt: null, completedById: null },
             })
+        }
+
+        if (data.priority === Priority.BLOCKER) {
+            const admins = await db.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+            const recipientIds = new Set<number>(admins.map(a => a.id))
+            if (data.assignedToId) recipientIds.add(data.assignedToId)
+            recipientIds.delete(sessionUserId)
+            if (recipientIds.size > 0) {
+                const tracklistTitle = tracklist?.title ?? `#${tracklistId}`
+                await createNotificationsForUsers(
+                    Array.from(recipientIds),
+                    NotificationType.TICKET_BLOCKER_CREATED,
+                    ticket.id,
+                    'TICKET_QA',
+                    `Nuevo ticket bloqueante #${ticket.ticketNumber} creado en ${tracklistTitle}`,
+                )
+            }
         }
 
         revalidatePath('/tracklists')
