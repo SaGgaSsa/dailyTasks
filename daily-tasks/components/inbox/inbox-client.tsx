@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCheck, Filter, Users } from 'lucide-react'
-import type { InboxMessage, User } from '@prisma/client'
+import type { User } from '@prisma/client'
+import type { InboxMessageWithContext } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
@@ -16,17 +17,20 @@ import { toast } from 'sonner'
 import type { SSEInboxMessagePayload } from '@/lib/sse/emit'
 import { INBOX_MESSAGE_TYPE_LABELS, InboxMessageType } from '@/types/enums'
 import { InboxMessageDetail } from '@/components/inbox/inbox-message-detail'
-import { InboxMessageListItem, type InboxMessageRecord } from '@/components/inbox/inbox-message-list-item'
+import { InboxMessageListItem } from '@/components/inbox/inbox-message-list-item'
 
 interface InboxClientProps {
     currentUserId: number
-    initialMessages: InboxMessageRecord[]
+    initialMessages: InboxMessageWithContext[]
     isAdmin: boolean
     total: number
     users: User[]
 }
 
-function getInboxMessageHref(message: InboxMessage): string | null {
+function getInboxMessageHref(message: InboxMessageWithContext): string | null {
+    if (message.referenceType === 'TICKET_QA' && message.ticketContext) {
+        return `/tracklists/${message.ticketContext.tracklistId}`
+    }
     if (message.referenceType === 'tracklist') {
         return `/tracklists/${message.referenceId}`
     }
@@ -53,7 +57,7 @@ export function InboxClient({
     users,
 }: InboxClientProps) {
     const router = useRouter()
-    const [messages, setMessages] = useState<InboxMessageRecord[]>(initialMessages)
+    const [messages, setMessages] = useState<InboxMessageWithContext[]>(initialMessages)
     const [selectedId, setSelectedId] = useState<number | null>(initialMessages[0]?.id ?? null)
     const [searchText, setSearchText] = useState('')
     const [selectedTypes, setSelectedTypes] = useState<string[]>([])
@@ -75,7 +79,19 @@ export function InboxClient({
         const normalizedSearch = searchText.trim().toLowerCase()
 
         return messages.filter(message => {
-            if (normalizedSearch && !message.message.toLowerCase().includes(normalizedSearch)) {
+            const searchableContent = [
+                message.message,
+                message.ticketContext?.description,
+                message.ticketContext?.observations,
+                message.ticketContext?.rejectionTask?.title,
+                message.ticketContext?.rejectionTask?.description,
+                message.ticketContext?.assignedTo?.name,
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase()
+
+            if (normalizedSearch && !searchableContent.includes(normalizedSearch)) {
                 return false
             }
 
@@ -103,7 +119,7 @@ export function InboxClient({
     useEffect(() => {
         const handleInboxMessageReceived = (event: Event) => {
             const payload = (event as CustomEvent<SSEInboxMessagePayload>).detail
-            const incoming: InboxMessageRecord = {
+            const incoming: InboxMessageWithContext = {
                 id: payload.id,
                 type: payload.type,
                 message: payload.message,
@@ -112,6 +128,7 @@ export function InboxClient({
                 createdAt: new Date(payload.createdAt),
                 isRead: false,
                 userId: currentUserId,
+                ticketContext: null,
                 ...(isAdmin ? { user: currentUser } : {}),
             }
 
@@ -161,7 +178,7 @@ export function InboxClient({
         })
     }
 
-    const handleToggleRead = (message: InboxMessageRecord) => {
+    const handleToggleRead = (message: InboxMessageWithContext) => {
         if (message.userId !== currentUserId) return
 
         if (message.isRead) {
@@ -193,8 +210,6 @@ export function InboxClient({
                                 onValuesChange={setSelectedTypes}
                             />
 
-                            {unreadCount > 0 && <Badge variant="secondary">{unreadCount} sin leer</Badge>}
-
                             {isAdmin && (
                                 <FilterDropdown
                                     icon={<Users className="h-4 w-4" />}
@@ -204,6 +219,8 @@ export function InboxClient({
                                     onValuesChange={setSelectedUserIds}
                                 />
                             )}
+
+                            {unreadCount > 0 && <Badge variant="secondary">{unreadCount} sin leer</Badge>}
                         </>
                     }
                     endContent={

@@ -1694,7 +1694,7 @@ export async function rejectTicket({ ticketId, description, observations, trackl
                     InboxMessageType.TICKET_REJECTED,
                     ticket.id,
                     'TICKET_QA',
-                    `El ticket #${ticket.ticketNumber} fue rechazado`,
+                    ticket.description,
                 )
             }
         }

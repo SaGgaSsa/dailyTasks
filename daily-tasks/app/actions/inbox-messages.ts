@@ -2,8 +2,102 @@
 
 import { db } from '@/lib/db'
 import { InboxMessageType, UserRole } from '@/types/enums'
+import type { InboxMessageTicketContext, InboxMessageWithContext } from '@/types'
 import { auth } from '@/auth'
 import { emitInboxMessageToUsers } from '@/lib/sse/emit'
+
+async function enrichInboxMessages(messages: InboxMessageWithContext[]): Promise<InboxMessageWithContext[]> {
+    const ticketIds = messages
+        .filter(message => message.referenceType === 'TICKET_QA')
+        .map(message => message.referenceId)
+
+    if (ticketIds.length === 0) {
+        return messages
+    }
+
+    const tickets = await db.ticketQA.findMany({
+        where: { id: { in: ticketIds } },
+        select: {
+            id: true,
+            ticketNumber: true,
+            description: true,
+            observations: true,
+            tracklistId: true,
+            assignedToId: true,
+            assignedTo: {
+                select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                },
+            },
+            externalWorkItem: {
+                select: {
+                    id: true,
+                    externalId: true,
+                    workItemType: {
+                        select: {
+                            name: true,
+                            color: true,
+                        },
+                    },
+                },
+            },
+            incidence: {
+                select: {
+                    assignments: {
+                        select: {
+                            userId: true,
+                            tasks: {
+                                where: { isQaReported: true },
+                                orderBy: { createdAt: 'desc' },
+                                select: {
+                                    title: true,
+                                    description: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+
+    const ticketContextById = new Map<number, InboxMessageTicketContext>()
+
+    for (const ticket of tickets) {
+        const rejectionAssignment = ticket.assignedToId
+            ? ticket.incidence?.assignments.find(assignment => assignment.userId === ticket.assignedToId)
+            : null
+        const rejectionTask = rejectionAssignment?.tasks[0] ?? null
+
+        ticketContextById.set(ticket.id, {
+            ticketId: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            description: ticket.description,
+            observations: ticket.observations,
+            tracklistId: ticket.tracklistId,
+            assignedTo: ticket.assignedTo,
+            externalWorkItem: ticket.externalWorkItem ? {
+                id: ticket.externalWorkItem.id,
+                type: ticket.externalWorkItem.workItemType.name,
+                externalId: ticket.externalWorkItem.externalId,
+                color: ticket.externalWorkItem.workItemType.color,
+            } : null,
+            rejectionTask: rejectionTask ? {
+                title: rejectionTask.title,
+                description: rejectionTask.description,
+            } : null,
+        })
+    }
+
+    return messages.map(message => ({
+        ...message,
+        ticketContext: message.referenceType === 'TICKET_QA'
+            ? (ticketContextById.get(message.referenceId) ?? null)
+            : null,
+    }))
+}
 
 export async function getUnreadInboxMessagesCount() {
     try {
@@ -40,7 +134,9 @@ export async function getInboxMessages(page = 1, limit = 20) {
             db.inboxMessage.count({ where: { userId } }),
         ])
 
-        return { success: true, data: { messages, total, page, limit } }
+        const enrichedMessages = await enrichInboxMessages(messages)
+
+        return { success: true, data: { messages: enrichedMessages, total, page, limit } }
     } catch (error) {
         console.error('Error getting inbox messages:', error)
         return { success: false, error: 'Error al obtener los mensajes' }
@@ -76,7 +172,9 @@ export async function getAllInboxMessages(page = 1, limit = 20, userId?: number)
             db.inboxMessage.count({ where }),
         ])
 
-        return { success: true, data: { messages, total, page, limit } }
+        const enrichedMessages = await enrichInboxMessages(messages)
+
+        return { success: true, data: { messages: enrichedMessages, total, page, limit } }
     } catch (error) {
         console.error('Error getting all inbox messages:', error)
         return { success: false, error: 'Error al obtener los mensajes' }
