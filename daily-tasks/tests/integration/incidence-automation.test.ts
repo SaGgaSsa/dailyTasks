@@ -371,7 +371,9 @@ describe('incidence automation integration', () => {
     expect(updatedTicket.status).toBe(TicketQAStatus.TEST)
   })
 
-  it('does not change completed or dismissed tickets during incidence sync', async () => {
+  it.each([TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED])(
+    'does not change %s tickets during incidence sync',
+    async (terminalStatus) => {
     const admin = await createUser('ADMIN')
     const dev = await createUser('DEV')
     const qa = await createUser('QA')
@@ -386,23 +388,14 @@ describe('incidence automation integration', () => {
       assignees: [{ userId: dev.id, assignedHours: 4 }],
       tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
     })
-    const completedTicket = await createTicketFixture({
+    const ticket = await createTicketFixture({
       tracklistId: tracklist.id,
       moduleId: moduleRecord.id,
       reportedById: qa.id,
       assignedToId: dev.id,
       incidenceId: incidence.id,
       externalWorkItemId: workItem.id,
-      status: TicketQAStatus.COMPLETED,
-    })
-    const dismissedTicket = await createTicketFixture({
-      tracklistId: tracklist.id,
-      moduleId: moduleRecord.id,
-      reportedById: qa.id,
-      assignedToId: dev.id,
-      incidenceId: incidence.id,
-      externalWorkItemId: workItem.id,
-      status: TicketQAStatus.DISMISSED,
+      status: terminalStatus,
     })
 
     actAs(admin)
@@ -419,8 +412,7 @@ describe('incidence automation integration', () => {
 
     expect(result.success).toBe(true)
 
-    expect((await getTicketState(completedTicket.id)).status).toBe(TicketQAStatus.COMPLETED)
-    expect((await getTicketState(dismissedTicket.id)).status).toBe(TicketQAStatus.DISMISSED)
+    expect((await getTicketState(ticket.id)).status).toBe(terminalStatus)
   })
 
   it('creates REVIEW directly from TODO when toggling the only pending task', async () => {
