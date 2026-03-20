@@ -75,7 +75,7 @@ export async function createScript(data: {
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, data: script }
     } catch (error) {
         console.error('Error creating script:', error)
@@ -124,7 +124,7 @@ export async function updateScript(
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, data: updated }
     } catch (error) {
         console.error('Error updating script:', error)
@@ -164,7 +164,7 @@ export async function deleteScript(scriptId: number) {
 
         await db.script.delete({ where: { id: scriptId } })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error deleting script:', error)

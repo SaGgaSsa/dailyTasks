@@ -50,10 +50,10 @@ export function Sidebar({ userId, initialTracklists = [], initialIncidences = []
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="space-y-1 px-2">
-          <Link href="/dashboard/inbox">
+          <Link href="/inbox">
             <Button
               variant="ghost"
-              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/dashboard/inbox' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+              className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/inbox' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
             >
               <Inbox className="h-4 w-4" />
               {isOpen && <span>Bandeja de entrada</span>}
@@ -63,14 +63,14 @@ export function Sidebar({ userId, initialTracklists = [], initialIncidences = []
           <SidebarTopSection
             isOpen={isOpen}
             label={t.incidences.title}
-            href="/dashboard"
+            href="/incidences"
             icon={Layers}
-            isActive={pathname === '/dashboard'}
+            isActive={pathname === '/incidences'}
             childrenItems={initialIncidences.map((incidence) => ({
               id: incidence.id,
               label: incidence.label,
-              href: `/dashboard/incidences/${incidence.id}#tasks`,
-              isActive: pathname === `/dashboard/incidences/${incidence.id}`,
+              href: `/incidences/${incidence.id}#tasks`,
+              isActive: pathname === `/incidences/${incidence.id}`,
               showActions: false,
             }))}
           />

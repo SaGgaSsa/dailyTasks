@@ -49,7 +49,7 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
         try {
             const result = await createPage(incidenceId, '')
             if (result.success && result.data) {
-                router.push(`/dashboard/incidences/${incidenceId}/pages/${result.data.id}`)
+                router.push(`/incidences/${incidenceId}/pages/${result.data.id}`)
                 onRefresh?.()
             }
         } finally {
@@ -83,7 +83,7 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
 
     const handleCopyLink = async (page: IncidencePageWithAuthor, e: React.MouseEvent) => {
         e.stopPropagation()
-        const url = `${window.location.origin}/dashboard/incidences/${incidenceId}/pages/${page.id}`
+        const url = `${window.location.origin}/incidences/${incidenceId}/pages/${page.id}`
         await navigator.clipboard.writeText(url)
         toast.success('Enlace copiado al portapapeles')
     }
@@ -134,7 +134,7 @@ export function PagesTab({ incidenceId, pages, onRefresh }: PagesTabProps) {
                     {sortedPages.map(page => (
                         <div
                             key={page.id}
-                            onClick={() => router.push(`/dashboard/incidences/${incidenceId}/pages/${page.id}`)}
+                            onClick={() => router.push(`/incidences/${incidenceId}/pages/${page.id}`)}
                             className="flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                         >
                             <div className="flex items-start gap-3">

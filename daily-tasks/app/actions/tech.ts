@@ -163,7 +163,7 @@ function validateModuleInput(data: ModuleInput) {
 function revalidateTechCaches() {
   revalidateTag(TECH_TAG, 'default')
   revalidateTag(MODULE_TAG, 'default')
-  revalidatePath('/dashboard')
+  revalidatePath('/incidences')
   revalidatePath('/tracklists')
 }
 

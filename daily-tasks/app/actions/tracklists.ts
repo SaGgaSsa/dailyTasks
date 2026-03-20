@@ -167,7 +167,7 @@ async function runAssignmentTransaction(
         })
 
         revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error in assignment transaction:', error)
@@ -524,7 +524,7 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
             }
         })
         revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error dismissing ticket:', error)
@@ -672,7 +672,7 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
 
         if (ticket.incidenceId) {
             await completeIncidenceCore(ticket.incidenceId)
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
         }
 
         revalidatePath('/tracklists')
@@ -714,7 +714,7 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
             },
         })
         revalidatePath('/tracklists')
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error completing tracklist:', error)
@@ -829,7 +829,7 @@ export async function uncompleteTicket(ticketId: number, tracklistId: number, lo
                 where: { id: ticket.incidenceId, status: TaskStatus.DONE },
                 data: { status: TaskStatus.REVIEW, completedAt: null },
             })
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
         }
 
         revalidatePath('/tracklists')

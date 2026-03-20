@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ListTodo, LayoutDashboard, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from '@/app/tracklists/_components/tracklist-toolbar'
+import { TracklistToolbar, TICKET_STATUS_OPTIONS, TECH_OPTIONS, type ViewOption } from '@/app/(app)/tracklists/_components/tracklist-toolbar'
 import { FilterChips } from '@/components/ui/filter-chips'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { TicketsGrid } from './tickets-grid'

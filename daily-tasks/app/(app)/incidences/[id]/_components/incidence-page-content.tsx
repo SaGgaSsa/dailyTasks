@@ -33,7 +33,7 @@ export function IncidencePageContent({ incidence, allUsers, currentUserId, isAdm
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: 'Incidencias', href: '/dashboard' },
+            { label: 'Incidencias', href: '/incidences' },
             { label: incidence.description },
         ])
         return () => setBreadcrumbs([])

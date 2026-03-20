@@ -61,7 +61,7 @@ export function NotificationsPopover() {
         if (notification.referenceType === 'tracklist') {
             router.push(`/tracklists/${notification.referenceId}`)
         } else if (notification.referenceType === 'incidence') {
-            router.push(`/dashboard/incidences/${notification.referenceId}`)
+            router.push(`/incidences/${notification.referenceId}`)
         }
     }
 
@@ -124,7 +124,7 @@ export function NotificationsPopover() {
                 </div>
 
                 <div className="border-t border-border px-4 py-2">
-                    <Link href="/dashboard/inbox" onClick={() => setOpen(false)}>
+                    <Link href="/inbox" onClick={() => setOpen(false)}>
                         <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground">
                             Ver bandeja de entrada
                         </Button>

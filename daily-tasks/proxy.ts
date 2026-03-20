@@ -14,8 +14,8 @@ export default auth((req) => {
     return // Deja pasar
   }
 
-  // Para rutas protegidas (dashboard, tracklists, analytics), verificar autenticación
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/tracklists') || pathname.startsWith('/analytics')) {
+  // Para rutas protegidas, verificar autenticación
+  if (pathname.startsWith('/incidences') || pathname.startsWith('/inbox') || pathname.startsWith('/shared-pages') || pathname.startsWith('/tracklists') || pathname.startsWith('/analytics') || pathname.startsWith('/users')) {
     if (!isLoggedIn) return NextResponse.redirect(new URL("/auth/login", req.nextUrl))
   }
   

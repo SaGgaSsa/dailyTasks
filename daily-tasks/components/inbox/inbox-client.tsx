@@ -21,7 +21,7 @@ function getNotificationHref(notification: Notification): string | null {
         return `/tracklists/${notification.referenceId}`
     }
     if (notification.referenceType === 'incidence') {
-        return `/dashboard/incidences/${notification.referenceId}`
+        return `/incidences/${notification.referenceId}`
     }
     return null
 }

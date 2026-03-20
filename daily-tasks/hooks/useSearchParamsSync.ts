@@ -70,7 +70,7 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
     })
 
     const queryString = urlParams.toString()
-    const newUrl = queryString ? `/dashboard?${queryString}` : '/dashboard'
+    const newUrl = queryString ? `/incidences?${queryString}` : '/incidences'
 
     // Only update URL if it's different from current and from last update
     const currentUrl = window.location.pathname + window.location.search
@@ -115,7 +115,7 @@ export function useSearchParamsSync(): UseSearchParamsSyncReturn {
   const resetFilters = useCallback(() => {
     // Keep the current view parameter when resetting filters
     const viewParam = params.view ? `?view=${params.view}` : ''
-    router.replace(`/dashboard${viewParam}`, { scroll: false })
+    router.replace(`/incidences${viewParam}`, { scroll: false })
   }, [router, params.view])
 
   const updateView = useCallback((value: 'backlog' | 'kanban') => {

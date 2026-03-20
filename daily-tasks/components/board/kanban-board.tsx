@@ -212,7 +212,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         if (onCardClick) {
             onCardClick(task)
         } else {
-            router.push(`/dashboard/incidences/${task.id}`)
+            router.push(`/incidences/${task.id}`)
         }
     }
 

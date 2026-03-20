@@ -12,10 +12,10 @@ interface PageEditorContentProps {
     incidenceTitle: string
 }
 
-export function PageEditorContent({ 
-    initialContent, 
-    initialTitle, 
-    pageId, 
+export function PageEditorContent({
+    initialContent,
+    initialTitle,
+    pageId,
     incidenceId,
     incidenceTitle,
 }: PageEditorContentProps) {
@@ -23,8 +23,8 @@ export function PageEditorContent({
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: 'Incidencias', href: '/dashboard' },
-            { label: incidenceTitle, href: `/dashboard/incidences/${incidenceId}` },
+            { label: 'Incidencias', href: '/incidences' },
+            { label: incidenceTitle, href: `/incidences/${incidenceId}` },
             { label: initialTitle },
         ])
 

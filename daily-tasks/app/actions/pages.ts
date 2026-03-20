@@ -48,7 +48,7 @@ export async function createPage(incidenceId: number, title: string) {
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, data: page }
     } catch (error) {
         console.error('Error creating page:', error)
@@ -138,7 +138,7 @@ export async function deletePage(pageId: number) {
             where: { id: pageId }
         })
 
-        revalidatePath(`/dashboard`)
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error deleting page:', error)
@@ -187,7 +187,7 @@ export async function setMainIncidencePage(incidenceId: number, pageId: number) 
             })
         ])
 
-        revalidatePath(`/dashboard`)
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error setting main page:', error)

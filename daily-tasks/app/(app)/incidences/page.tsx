@@ -14,7 +14,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const params = await searchParams
 
   if (!session?.user) {
-    redirect('/login')
+    redirect('/auth/login')
   }
 
   const isAdmin = session.user.role === 'ADMIN'
@@ -25,45 +25,45 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   if (!isAdmin && currentView === 'BACKLOG') {
     const otherParams = new URLSearchParams()
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (key !== 'view' && value) {
         otherParams.set(key, value)
       }
     })
-    
+
     const queryString = otherParams.toString()
-    const redirectUrl = queryString 
-      ? `/dashboard?view=kanban&${queryString}`
-      : '/dashboard?view=kanban'
-    
+    const redirectUrl = queryString
+      ? `/incidences?view=kanban&${queryString}`
+      : '/incidences?view=kanban'
+
     redirect(redirectUrl)
   }
 
-  const tech = params.tech 
+  const tech = params.tech
     ? (Array.isArray(params.tech) ? params.tech : [params.tech])
         .flatMap(t => t.split(','))
         .filter(Boolean)
         .filter(t => TECH_VALUES.includes(t))
     : TECH_VALUES
-  
-  const statusParam = currentView === 'KANBAN' 
-    ? [] 
-    : params.status 
+
+  const statusParam = currentView === 'KANBAN'
+    ? []
+    : params.status
       ? (Array.isArray(params.status) ? params.status : [params.status])
           .flatMap(s => s.split(','))
           .filter(Boolean)
           .filter(s => Object.values(TaskStatus).includes(s as TaskStatus))
       : ['BACKLOG']
-  
-  const assignee = params.assignee 
+
+  const assignee = params.assignee
     ? (Array.isArray(params.assignee) ? params.assignee : [params.assignee])
         .flatMap(a => a.split(','))
         .filter(Boolean)
     : []
-  
+
   const mine = params.mine === 'true'
-  
+
   const search = params.search || ''
 
   let backlogTasks: IncidenceWithDetails[] = []

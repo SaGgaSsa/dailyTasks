@@ -71,7 +71,7 @@ export function TicketActionsMenu({
   const handleOpenScripts = () => {
     setMenuOpen(false)
     if (!ticket.incidenceId) return
-    router.push(`/dashboard/incidences/${ticket.incidenceId}#scripts`)
+    router.push(`/incidences/${ticket.incidenceId}#scripts`)
   }
 
   const buttonClass = triggerSize === 'sm' ? 'h-6 w-6' : 'h-8 w-8'
@@ -127,7 +127,7 @@ export function TicketActionsMenu({
             </DropdownMenuItem>
           )}
           {ticket.incidenceId && (
-            <DropdownMenuItem onClick={() => { setMenuOpen(false); router.push(`/dashboard/incidences/${ticket.incidenceId}`) }}>
+            <DropdownMenuItem onClick={() => { setMenuOpen(false); router.push(`/incidences/${ticket.incidenceId}`) }}>
               <Layers className="mr-2 h-4 w-4" />
               Ver Incidencia
             </DropdownMenuItem>

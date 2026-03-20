@@ -47,11 +47,11 @@ export function Navbar() {
   }
 
   const getPageTitle = () => {
-    if (pathname === '/dashboard') return t.incidences.title
+    if (pathname === '/incidences') return t.incidences.title
     if (pathname === '/analytics') return 'Métricas'
     if (pathname === '/users') return 'Usuarios'
     if (pathname.startsWith('/tracklists')) return 'Tracklists'
-    if (pathname === '/dashboard/inbox') return 'Bandeja de entrada'
+    if (pathname === '/inbox') return 'Bandeja de entrada'
     return ''
   }
 

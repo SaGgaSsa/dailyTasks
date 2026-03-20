@@ -78,7 +78,7 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
 
   const handleOpenScripts = (ticket: TicketQAWithDetails) => {
     if (!ticket.incidenceId) return
-    router.push(`/dashboard/incidences/${ticket.incidenceId}#scripts`)
+    router.push(`/incidences/${ticket.incidenceId}#scripts`)
   }
 
   return (
@@ -190,7 +190,7 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                             Ver ticket
                           </DropdownMenuItem>
                           {ticket.incidenceId && (
-                            <DropdownMenuItem onClick={() => router.push(`/dashboard/incidences/${ticket.incidenceId}`)}>
+                            <DropdownMenuItem onClick={() => router.push(`/incidences/${ticket.incidenceId}`)}>
                               <Layers className="mr-2 h-4 w-4" />
                               Ver Incidencia
                             </DropdownMenuItem>
