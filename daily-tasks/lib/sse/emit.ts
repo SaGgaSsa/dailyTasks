@@ -1,16 +1,16 @@
 import { getConnections } from './connections'
-import { NotificationType } from '@/types/enums'
+import { InboxMessageType } from '@/types/enums'
 
-export interface SSENotificationPayload {
+export interface SSEInboxMessagePayload {
   id: number
-  type: NotificationType
+  type: InboxMessageType
   message: string
   referenceId: number
   referenceType: string
   createdAt: Date
 }
 
-export function emitNotificationToUsers(userIds: number[], data: SSENotificationPayload): void {
+export function emitInboxMessageToUsers(userIds: number[], data: SSEInboxMessagePayload): void {
   const eventData = `data: ${JSON.stringify(data)}\n\n`
 
   for (const userId of userIds) {

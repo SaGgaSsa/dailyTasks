@@ -7,8 +7,8 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
-import { TicketType, TicketQAStatus, Priority, TracklistStatus, NotificationType } from '@/types/enums'
-import { createNotificationsForUsers } from '@/app/actions/notifications'
+import { TicketType, TicketQAStatus, Priority, TracklistStatus, InboxMessageType } from '@/types/enums'
+import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { TaskStatus, Priority as PrismaPriority, Prisma, ExternalWorkItemStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
@@ -440,9 +440,9 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
             recipientIds.delete(sessionUserId)
             if (recipientIds.size > 0) {
                 const tracklistTitle = tracklist?.title ?? `#${tracklistId}`
-                await createNotificationsForUsers(
+                await createInboxMessagesForUsers(
                     Array.from(recipientIds),
-                    NotificationType.TICKET_BLOCKER_CREATED,
+                    InboxMessageType.TICKET_BLOCKER_CREATED,
                     ticket.id,
                     'TICKET_QA',
                     `Nuevo ticket bloqueante #${ticket.ticketNumber} creado en ${tracklistTitle}`,

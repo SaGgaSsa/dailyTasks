@@ -1,19 +1,19 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { SSENotificationPayload } from '@/lib/sse/emit'
+import type { SSEInboxMessagePayload } from '@/lib/sse/emit'
 
 const MAX_BACKOFF_MS = 30_000
 const BASE_BACKOFF_MS = 1_000
 
-interface UseNotificationStreamOptions {
+interface UseInboxMessageStreamOptions {
   enabled: boolean
-  onNotification: (payload: SSENotificationPayload) => void
+  onInboxMessage: (payload: SSEInboxMessagePayload) => void
 }
 
-export function useNotificationStream({ enabled, onNotification }: UseNotificationStreamOptions): void {
-  const onNotificationRef = useRef(onNotification)
-  onNotificationRef.current = onNotification
+export function useInboxMessageStream({ enabled, onInboxMessage }: UseInboxMessageStreamOptions): void {
+  const onInboxMessageRef = useRef(onInboxMessage)
+  onInboxMessageRef.current = onInboxMessage
 
   useEffect(() => {
     if (!enabled) return
@@ -26,7 +26,7 @@ export function useNotificationStream({ enabled, onNotification }: UseNotificati
     function connect() {
       if (stopped) return
 
-      es = new EventSource('/api/notifications/stream')
+      es = new EventSource('/api/inbox-messages/stream')
 
       es.addEventListener('connected', () => {
         retryCount = 0
@@ -34,8 +34,8 @@ export function useNotificationStream({ enabled, onNotification }: UseNotificati
 
       es.onmessage = (event) => {
         try {
-          const payload = JSON.parse(event.data) as SSENotificationPayload
-          onNotificationRef.current(payload)
+          const payload = JSON.parse(event.data) as SSEInboxMessagePayload
+          onInboxMessageRef.current(payload)
         } catch {
           // Ignore malformed events
         }

@@ -27,7 +27,7 @@ model User {
   attachments        Attachment[]
   pages              IncidencePage[]
   scripts            Script[]
-  notifications      Notification[]
+  inboxMessages      InboxMessage[]
 
   @@map("users")
 }
@@ -324,14 +324,14 @@ model NonWorkingDay {
   @@map("non_working_days")
 }
 
-enum NotificationType {
+enum InboxMessageType {
   TICKET_BLOCKER_CREATED
   TICKET_REJECTED
 }
 
-model Notification {
+model InboxMessage {
   id            Int              @id @default(autoincrement())
-  type          NotificationType
+  type          InboxMessageType
   referenceId   Int
   referenceType String
   message       String
@@ -342,5 +342,5 @@ model Notification {
 
   createdAt     DateTime         @default(now())
 
-  @@map("notifications")
+  @@map("inbox_messages")
 }

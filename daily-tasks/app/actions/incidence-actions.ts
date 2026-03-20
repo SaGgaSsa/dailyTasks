@@ -4,8 +4,8 @@ import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
-import { Priority, NotificationType } from '@/types/enums'
-import { createNotificationsForUsers } from '@/app/actions/notifications'
+import { Priority, InboxMessageType } from '@/types/enums'
+import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -1689,9 +1689,9 @@ export async function rejectTicket({ ticketId, description, observations, trackl
             const sessionUserId = Number(session.user.id)
             const recipientIds = ticket.assignedToId !== sessionUserId ? [ticket.assignedToId] : []
             if (recipientIds.length > 0) {
-                await createNotificationsForUsers(
+                await createInboxMessagesForUsers(
                     recipientIds,
-                    NotificationType.TICKET_REJECTED,
+                    InboxMessageType.TICKET_REJECTED,
                     ticket.id,
                     'TICKET_QA',
                     `El ticket #${ticket.ticketNumber} fue rechazado`,

@@ -3,35 +3,35 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCheck, Filter, Users } from 'lucide-react'
-import type { Notification, User } from '@prisma/client'
+import type { InboxMessage, User } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { FilterToolbar } from '@/components/ui/filter-toolbar'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead } from '@/app/actions/notifications'
-import { NOTIFICATION_EVENT } from '@/components/providers/notification-stream-provider'
+import { markInboxMessageAsRead, markInboxMessageAsUnread, markAllInboxMessagesAsRead } from '@/app/actions/inbox-messages'
+import { INBOX_MESSAGE_EVENT } from '@/components/providers/inbox-message-stream-provider'
 import { toast } from 'sonner'
-import type { SSENotificationPayload } from '@/lib/sse/emit'
-import { NOTIFICATION_TYPE_LABELS, NotificationType } from '@/types/enums'
-import { NotificationDetail } from '@/components/inbox/notification-detail'
-import { NotificationListItem, type InboxNotification } from '@/components/inbox/notification-list-item'
+import type { SSEInboxMessagePayload } from '@/lib/sse/emit'
+import { INBOX_MESSAGE_TYPE_LABELS, InboxMessageType } from '@/types/enums'
+import { InboxMessageDetail } from '@/components/inbox/inbox-message-detail'
+import { InboxMessageListItem, type InboxMessageRecord } from '@/components/inbox/inbox-message-list-item'
 
 interface InboxClientProps {
     currentUserId: number
-    initialNotifications: InboxNotification[]
+    initialMessages: InboxMessageRecord[]
     isAdmin: boolean
     total: number
     users: User[]
 }
 
-function getNotificationHref(notification: Notification): string | null {
-    if (notification.referenceType === 'tracklist') {
-        return `/tracklists/${notification.referenceId}`
+function getInboxMessageHref(message: InboxMessage): string | null {
+    if (message.referenceType === 'tracklist') {
+        return `/tracklists/${message.referenceId}`
     }
-    if (notification.referenceType === 'incidence') {
-        return `/incidences/${notification.referenceId}`
+    if (message.referenceType === 'incidence') {
+        return `/incidences/${message.referenceId}`
     }
     return null
 }
@@ -47,14 +47,14 @@ function getCurrentUserSummary(users: User[], currentUserId: number) {
 
 export function InboxClient({
     currentUserId,
-    initialNotifications,
+    initialMessages,
     isAdmin,
     total,
     users,
 }: InboxClientProps) {
     const router = useRouter()
-    const [notifications, setNotifications] = useState<InboxNotification[]>(initialNotifications)
-    const [selectedId, setSelectedId] = useState<number | null>(initialNotifications[0]?.id ?? null)
+    const [messages, setMessages] = useState<InboxMessageRecord[]>(initialMessages)
+    const [selectedId, setSelectedId] = useState<number | null>(initialMessages[0]?.id ?? null)
     const [searchText, setSearchText] = useState('')
     const [selectedTypes, setSelectedTypes] = useState<string[]>([])
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
@@ -62,48 +62,48 @@ export function InboxClient({
     const [isPending, startTransition] = useTransition()
     const currentUser = getCurrentUserSummary(users, currentUserId)
 
-    const unreadCount = notifications.filter(notification => !notification.isRead).length
-    const typeOptions = Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))
-    const typeValues = Object.values(NotificationType)
+    const unreadCount = messages.filter(message => !message.isRead).length
+    const typeOptions = Object.entries(INBOX_MESSAGE_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+    const typeValues = Object.values(InboxMessageType)
     const userOptions = users.map(user => ({
         value: String(user.id),
         label: user.name ?? user.username,
     }))
     const userValues = userOptions.map(user => user.value)
 
-    const filteredNotifications = useMemo(() => {
+    const filteredMessages = useMemo(() => {
         const normalizedSearch = searchText.trim().toLowerCase()
 
-        return notifications.filter(notification => {
-            if (normalizedSearch && !notification.message.toLowerCase().includes(normalizedSearch)) {
+        return messages.filter(message => {
+            if (normalizedSearch && !message.message.toLowerCase().includes(normalizedSearch)) {
                 return false
             }
 
-            if (selectedTypes.length > 0 && !selectedTypes.includes(notification.type)) {
+            if (selectedTypes.length > 0 && !selectedTypes.includes(message.type)) {
                 return false
             }
 
-            if (isAdmin && selectedUserIds.length > 0 && !selectedUserIds.includes(String(notification.userId))) {
+            if (isAdmin && selectedUserIds.length > 0 && !selectedUserIds.includes(String(message.userId))) {
                 return false
             }
 
-            if (visibilityFilter === 'unread' && notification.isRead) {
+            if (visibilityFilter === 'unread' && message.isRead) {
                 return false
             }
 
             return true
         })
-    }, [isAdmin, notifications, searchText, selectedTypes, selectedUserIds, visibilityFilter])
+    }, [isAdmin, messages, searchText, selectedTypes, selectedUserIds, visibilityFilter])
 
-    const effectiveSelectedId = filteredNotifications.some(notification => notification.id === selectedId)
+    const effectiveSelectedId = filteredMessages.some(message => message.id === selectedId)
         ? selectedId
-        : (filteredNotifications[0]?.id ?? null)
-    const selectedNotification = filteredNotifications.find(notification => notification.id === effectiveSelectedId) ?? null
+        : (filteredMessages[0]?.id ?? null)
+    const selectedMessage = filteredMessages.find(message => message.id === effectiveSelectedId) ?? null
 
     useEffect(() => {
-        const handleNotificationReceived = (event: Event) => {
-            const payload = (event as CustomEvent<SSENotificationPayload>).detail
-            const incoming: InboxNotification = {
+        const handleInboxMessageReceived = (event: Event) => {
+            const payload = (event as CustomEvent<SSEInboxMessagePayload>).detail
+            const incoming: InboxMessageRecord = {
                 id: payload.id,
                 type: payload.type,
                 message: payload.message,
@@ -115,61 +115,61 @@ export function InboxClient({
                 ...(isAdmin ? { user: currentUser } : {}),
             }
 
-            setNotifications(prev => [incoming, ...prev.filter(notification => notification.id !== incoming.id)])
+            setMessages(prev => [incoming, ...prev.filter(message => message.id !== incoming.id)])
             setSelectedId(prev => prev ?? incoming.id)
         }
 
-        window.addEventListener(NOTIFICATION_EVENT, handleNotificationReceived)
-        return () => window.removeEventListener(NOTIFICATION_EVENT, handleNotificationReceived)
+        window.addEventListener(INBOX_MESSAGE_EVENT, handleInboxMessageReceived)
+        return () => window.removeEventListener(INBOX_MESSAGE_EVENT, handleInboxMessageReceived)
     }, [currentUser, currentUserId, isAdmin])
 
     const handleMarkAsRead = (id: number) => {
         startTransition(async () => {
-            const result = await markNotificationAsRead(id)
+            const result = await markInboxMessageAsRead(id)
             if (result.success) {
-                setNotifications(prev =>
+                setMessages(prev =>
                     prev.map(n => n.id === id ? { ...n, isRead: true } : n)
                 )
             } else {
-                toast.error(result.error || 'Error al marcar como leída')
+                toast.error(result.error || 'Error al marcar como leído')
             }
         })
     }
 
     const handleMarkAsUnread = (id: number) => {
         startTransition(async () => {
-            const result = await markNotificationAsUnread(id)
+            const result = await markInboxMessageAsUnread(id)
             if (result.success) {
-                setNotifications(prev =>
+                setMessages(prev =>
                     prev.map(n => n.id === id ? { ...n, isRead: false } : n)
                 )
             } else {
-                toast.error(result.error || 'Error al marcar como no leída')
+                toast.error(result.error || 'Error al marcar como no leído')
             }
         })
     }
 
     const handleMarkAllAsRead = () => {
         startTransition(async () => {
-            const result = await markAllNotificationsAsRead()
+            const result = await markAllInboxMessagesAsRead()
             if (result.success) {
-                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-                toast.success('Todas las notificaciones marcadas como leídas')
+                setMessages(prev => prev.map(n => ({ ...n, isRead: true })))
+                toast.success('Todos los mensajes marcados como leídos')
             } else {
-                toast.error(result.error || 'Error al marcar todas como leídas')
+                toast.error(result.error || 'Error al marcar todos como leídos')
             }
         })
     }
 
-    const handleToggleRead = (notification: InboxNotification) => {
-        if (notification.userId !== currentUserId) return
+    const handleToggleRead = (message: InboxMessageRecord) => {
+        if (message.userId !== currentUserId) return
 
-        if (notification.isRead) {
-            handleMarkAsUnread(notification.id)
+        if (message.isRead) {
+            handleMarkAsUnread(message.id)
             return
         }
 
-        handleMarkAsRead(notification.id)
+        handleMarkAsRead(message.id)
     }
 
     return (
@@ -181,7 +181,7 @@ export function InboxClient({
                             <SearchBar
                                 value={searchText}
                                 onChange={setSearchText}
-                                placeholder="Buscar notificaciones..."
+                                placeholder="Buscar mensajes..."
                                 className="w-[240px]"
                             />
 
@@ -214,8 +214,8 @@ export function InboxClient({
                                     size="icon"
                                     onClick={handleMarkAllAsRead}
                                     disabled={isPending}
-                                    title="Marcar todas como leídas"
-                                    aria-label="Marcar todas como leídas"
+                                    title="Marcar todos como leídos"
+                                    aria-label="Marcar todos como leídos"
                                 >
                                     <CheckCheck className="h-4 w-4" />
                                 </Button>
@@ -241,18 +241,18 @@ export function InboxClient({
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
                 <div className="rounded-2xl border border-border bg-card">
                     <div className="max-h-[70vh] overflow-y-auto p-3">
-                        {filteredNotifications.length === 0 ? (
+                        {filteredMessages.length === 0 ? (
                             <div className="flex min-h-[420px] items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                                No hay notificaciones que coincidan con los filtros actuales.
+                                No hay mensajes que coincidan con los filtros actuales.
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {filteredNotifications.map(notification => (
-                                    <NotificationListItem
-                                        key={notification.id}
-                                        notification={notification}
-                                        isSelected={notification.id === effectiveSelectedId}
-                                        onClick={() => setSelectedId(notification.id)}
+                                {filteredMessages.map(message => (
+                                    <InboxMessageListItem
+                                        key={message.id}
+                                        message={message}
+                                        isSelected={message.id === effectiveSelectedId}
+                                        onClick={() => setSelectedId(message.id)}
                                     />
                                 ))}
                             </div>
@@ -260,26 +260,26 @@ export function InboxClient({
                     </div>
                 </div>
 
-                <NotificationDetail
-                    notification={selectedNotification}
+                <InboxMessageDetail
+                    message={selectedMessage}
                     onNavigate={() => {
-                        if (!selectedNotification) return
+                        if (!selectedMessage) return
 
-                        const href = getNotificationHref(selectedNotification)
+                        const href = getInboxMessageHref(selectedMessage)
                         if (href) router.push(href)
                     }}
                     onToggleRead={() => {
-                        if (!selectedNotification) return
-                        handleToggleRead(selectedNotification)
+                        if (!selectedMessage) return
+                        handleToggleRead(selectedMessage)
                     }}
                     isPending={isPending}
-                    canToggleRead={selectedNotification?.userId === currentUserId}
+                    canToggleRead={selectedMessage?.userId === currentUserId}
                 />
             </div>
 
-            {total > notifications.length && (
+            {total > messages.length && (
                 <p className="text-center text-xs text-muted-foreground">
-                    Mostrando {notifications.length} de {total} notificaciones
+                    Mostrando {messages.length} de {total} mensajes
                 </p>
             )}
         </div>

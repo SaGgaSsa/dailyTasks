@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { getAllNotifications, getNotifications } from '@/app/actions/notifications'
+import { getAllInboxMessages, getInboxMessages } from '@/app/actions/inbox-messages'
 import { getUsers } from '@/app/actions/user-actions'
 import { InboxClient } from '@/components/inbox/inbox-client'
 import { UserRole } from '@/types/enums'
@@ -11,10 +11,10 @@ export default async function InboxPage() {
 
     const isAdmin = session.user.role === UserRole.ADMIN
     const result = isAdmin
-        ? await getAllNotifications(1, 200)
-        : await getNotifications(1, 50)
+        ? await getAllInboxMessages(1, 200)
+        : await getInboxMessages(1, 50)
 
-    const notifications = result.success && result.data ? result.data.notifications : []
+    const messages = result.success && result.data ? result.data.messages : []
     const total = result.success && result.data ? result.data.total : 0
     const usersResult = isAdmin ? await getUsers() : { data: [] }
     const users = isAdmin ? usersResult.data : []
@@ -22,7 +22,7 @@ export default async function InboxPage() {
     return (
         <InboxClient
             currentUserId={Number(session.user.id)}
-            initialNotifications={notifications}
+            initialMessages={messages}
             isAdmin={isAdmin}
             total={total}
             users={users}

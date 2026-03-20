@@ -83,14 +83,14 @@ export enum TracklistStatus {
     ARCHIVED = "ARCHIVED",
 }
 
-export enum NotificationType {
+export enum InboxMessageType {
     TICKET_BLOCKER_CREATED = "TICKET_BLOCKER_CREATED",
     TICKET_REJECTED = "TICKET_REJECTED",
 }
 
-export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
-    [NotificationType.TICKET_BLOCKER_CREATED]: 'Blocker creado',
-    [NotificationType.TICKET_REJECTED]: 'Ticket rechazado',
+export const INBOX_MESSAGE_TYPE_LABELS: Record<InboxMessageType, string> = {
+    [InboxMessageType.TICKET_BLOCKER_CREATED]: 'Blocker creado',
+    [InboxMessageType.TICKET_REJECTED]: 'Ticket rechazado',
 }
 
 export const TRACKLIST_STATUS_LABELS: Record<TracklistStatus, string> = {

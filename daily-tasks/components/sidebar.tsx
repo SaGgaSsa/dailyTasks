@@ -56,7 +56,7 @@ export function Sidebar({ userId, initialTracklists = [], initialIncidences = []
               className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/inbox' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
             >
               <Inbox className="h-4 w-4" />
-              {isOpen && <span>Bandeja de entrada</span>}
+              {isOpen && <span>Mensajes</span>}
             </Button>
           </Link>
 

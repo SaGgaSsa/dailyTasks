@@ -8,40 +8,40 @@ import { es } from 'date-fns/locale'
 import { Bell, CheckCheck, Dot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { getUnreadNotificationsCount, getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/app/actions/notifications'
-import { NOTIFICATION_EVENT } from '@/components/providers/notification-stream-provider'
-import type { SSENotificationPayload } from '@/lib/sse/emit'
-import type { Notification } from '@prisma/client'
+import { getUnreadInboxMessagesCount, getInboxMessages, markInboxMessageAsRead, markAllInboxMessagesAsRead } from '@/app/actions/inbox-messages'
+import { INBOX_MESSAGE_EVENT } from '@/components/providers/inbox-message-stream-provider'
+import type { SSEInboxMessagePayload } from '@/lib/sse/emit'
+import type { InboxMessage } from '@prisma/client'
 
 export function NotificationsPopover() {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [unreadCount, setUnreadCount] = useState(0)
-    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [messages, setMessages] = useState<InboxMessage[]>([])
     const [isPending, startTransition] = useTransition()
 
     useEffect(() => {
-        getUnreadNotificationsCount().then(result => {
+        getUnreadInboxMessagesCount().then(result => {
             if (result.success && result.data) setUnreadCount(result.data.count)
         })
     }, [])
 
     useEffect(() => {
         if (!open) return
-        getNotifications(1, 10).then(result => {
+        getInboxMessages(1, 10).then(result => {
             if (result.success && result.data) {
-                setNotifications(result.data.notifications)
-                setUnreadCount(result.data.notifications.filter(n => !n.isRead).length)
+                setMessages(result.data.messages)
+                setUnreadCount(result.data.messages.filter(message => !message.isRead).length)
             }
         })
     }, [open])
 
     useEffect(() => {
-        const handleSSENotification = (e: Event) => {
-            const payload = (e as CustomEvent<SSENotificationPayload>).detail
+        const handleSSEInboxMessage = (e: Event) => {
+            const payload = (e as CustomEvent<SSEInboxMessagePayload>).detail
             setUnreadCount(prev => prev + 1)
             if (open) {
-                const incoming: Notification = {
+                const incoming: InboxMessage = {
                     id: payload.id,
                     type: payload.type,
                     message: payload.message,
@@ -51,19 +51,19 @@ export function NotificationsPopover() {
                     isRead: false,
                     userId: 0,
                 }
-                setNotifications(prev => [incoming, ...prev])
+                setMessages(prev => [incoming, ...prev])
             }
         }
 
-        window.addEventListener(NOTIFICATION_EVENT, handleSSENotification)
-        return () => window.removeEventListener(NOTIFICATION_EVENT, handleSSENotification)
+        window.addEventListener(INBOX_MESSAGE_EVENT, handleSSEInboxMessage)
+        return () => window.removeEventListener(INBOX_MESSAGE_EVENT, handleSSEInboxMessage)
     }, [open])
 
     const handleMarkAsRead = (id: number) => {
         startTransition(async () => {
-            const result = await markNotificationAsRead(id)
+            const result = await markInboxMessageAsRead(id)
             if (result.success) {
-                setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+                setMessages(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
                 setUnreadCount(prev => Math.max(0, prev - 1))
             }
         })
@@ -71,22 +71,22 @@ export function NotificationsPopover() {
 
     const handleMarkAllAsRead = () => {
         startTransition(async () => {
-            const result = await markAllNotificationsAsRead()
+            const result = await markAllInboxMessagesAsRead()
             if (result.success) {
-                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+                setMessages(prev => prev.map(n => ({ ...n, isRead: true })))
                 setUnreadCount(0)
             }
         })
     }
 
-    const handleNotificationClick = (notification: Notification) => {
-        if (!notification.isRead) handleMarkAsRead(notification.id)
+    const handleMessageClick = (message: InboxMessage) => {
+        if (!message.isRead) handleMarkAsRead(message.id)
         setOpen(false)
 
-        if (notification.referenceType === 'tracklist') {
-            router.push(`/tracklists/${notification.referenceId}`)
-        } else if (notification.referenceType === 'incidence') {
-            router.push(`/incidences/${notification.referenceId}`)
+        if (message.referenceType === 'tracklist') {
+            router.push(`/tracklists/${message.referenceId}`)
+        } else if (message.referenceType === 'incidence') {
+            router.push(`/incidences/${message.referenceId}`)
         }
     }
 
@@ -118,29 +118,29 @@ export function NotificationsPopover() {
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
                             <Bell className="h-6 w-6 opacity-20" />
                             <p className="text-xs">Sin notificaciones</p>
                         </div>
                     ) : (
-                        notifications.map(notification => (
+                        messages.map(message => (
                             <div
-                                key={notification.id}
+                                key={message.id}
                                 className={`flex items-start gap-2 px-4 py-3 cursor-pointer transition-colors border-b border-border last:border-0 ${
-                                    notification.isRead ? 'hover:bg-muted/50' : 'bg-primary/5 hover:bg-primary/10'
+                                    message.isRead ? 'hover:bg-muted/50' : 'bg-primary/5 hover:bg-primary/10'
                                 }`}
-                                onClick={() => handleNotificationClick(notification)}
+                                onClick={() => handleMessageClick(message)}
                             >
                                 <div className="mt-1 flex-shrink-0">
-                                    {!notification.isRead && <Dot className="h-4 w-4 text-primary -ml-1" />}
+                                    {!message.isRead && <Dot className="h-4 w-4 text-primary -ml-1" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-xs leading-relaxed ${notification.isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                        {notification.message}
+                                    <p className={`text-xs leading-relaxed ${message.isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                        {message.message}
                                     </p>
                                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es })}
+                                        {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: es })}
                                     </p>
                                 </div>
                             </div>
@@ -151,7 +151,7 @@ export function NotificationsPopover() {
                 <div className="border-t border-border px-4 py-2">
                     <Link href="/inbox" onClick={() => setOpen(false)}>
                         <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground">
-                            Ver bandeja de entrada
+                            Ver mensajes
                         </Button>
                     </Link>
                 </div>

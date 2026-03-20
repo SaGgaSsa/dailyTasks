@@ -51,7 +51,7 @@ export function Navbar() {
     if (pathname === '/analytics') return 'Métricas'
     if (pathname === '/users') return 'Usuarios'
     if (pathname.startsWith('/tracklists')) return 'Tracklists'
-    if (pathname === '/inbox') return 'Bandeja de entrada'
+    if (pathname === '/inbox') return 'Mensajes'
     return ''
   }
 
