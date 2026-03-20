@@ -12,6 +12,7 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcrumb-provider"
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider";
+import { NotificationStreamProvider } from "@/components/providers/notification-stream-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -118,6 +119,7 @@ export default async function RootLayout({
                   <SettingsDialogProvider>
                     <PerformanceErrorBoundary>
                       <ThemeSync />
+                      <NotificationStreamProvider />
                       {children}
                       <Toaster />
                     </PerformanceErrorBoundary>

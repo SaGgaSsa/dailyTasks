@@ -9,6 +9,8 @@ import { Bell, CheckCheck, Dot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getUnreadNotificationsCount, getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/app/actions/notifications'
+import { NOTIFICATION_EVENT } from '@/components/providers/notification-stream-provider'
+import type { SSENotificationPayload } from '@/lib/sse/emit'
 import type { Notification } from '@prisma/client'
 
 export function NotificationsPopover() {
@@ -32,6 +34,29 @@ export function NotificationsPopover() {
                 setUnreadCount(result.data.notifications.filter(n => !n.isRead).length)
             }
         })
+    }, [open])
+
+    useEffect(() => {
+        const handleSSENotification = (e: Event) => {
+            const payload = (e as CustomEvent<SSENotificationPayload>).detail
+            setUnreadCount(prev => prev + 1)
+            if (open) {
+                const incoming: Notification = {
+                    id: payload.id,
+                    type: payload.type,
+                    message: payload.message,
+                    referenceId: payload.referenceId,
+                    referenceType: payload.referenceType,
+                    createdAt: new Date(payload.createdAt),
+                    isRead: false,
+                    userId: 0,
+                }
+                setNotifications(prev => [incoming, ...prev])
+            }
+        }
+
+        window.addEventListener(NOTIFICATION_EVENT, handleSSENotification)
+        return () => window.removeEventListener(NOTIFICATION_EVENT, handleSSENotification)
     }, [open])
 
     const handleMarkAsRead = (id: number) => {

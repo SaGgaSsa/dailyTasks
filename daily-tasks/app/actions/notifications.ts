@@ -3,6 +3,7 @@
 import { db } from '@/lib/db'
 import { NotificationType } from '@/types/enums'
 import { auth } from '@/auth'
+import { emitNotificationToUsers } from '@/lib/sse/emit'
 
 export async function getUnreadNotificationsCount() {
     const session = await auth()
@@ -84,7 +85,7 @@ export async function createNotificationsForUsers(
 ) {
     if (userIds.length === 0) return
 
-    await db.notification.createMany({
+    const created = await db.notification.createMany({
         data: userIds.map(userId => ({
             type,
             referenceId,
@@ -92,5 +93,11 @@ export async function createNotificationsForUsers(
             message,
             userId,
         })),
+        skipDuplicates: true,
     })
+
+    if (created.count > 0) {
+        const now = new Date()
+        emitNotificationToUsers(userIds, { id: 0, type, message, referenceId, referenceType, createdAt: now })
+    }
 }
