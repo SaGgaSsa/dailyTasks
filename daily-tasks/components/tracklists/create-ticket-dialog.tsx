@@ -92,6 +92,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const effectiveViewMode = resolvedViewMode ?? viewMode ?? null
 
   useEffect(() => {
+    if (!open || rejectMode || viewMode) {
+      return
+    }
+
     async function loadData() {
       const result = await getTicketFormData(tracklistId)
       if (!result.success) {
@@ -112,7 +116,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         const matchingTech = formData.techs.find(t => t.modules.some(m => m.id === editMode.module.id)) || null
         setSelectedTech(matchingTech)
         setSelectedModule({ id: editMode.module.id, name: editMode.module.name })
-      } else if (!selectedTech && formData.defaultTech) {
+      } else if (formData.defaultTech) {
         const defaultTechWithModules = formData.techs.find(t => t.id === formData.defaultTech!.id) || null
         setSelectedTech(defaultTechWithModules)
         const defaultForTech = formData.defaultModules.find(dm => dm.techId === formData.defaultTech!.id)
@@ -121,10 +125,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         }
       }
     }
-    if (open && !rejectMode && !viewMode) {
-      loadData()
-    }
-  }, [open, rejectMode, editMode, selectedTech, tracklistId, viewMode])
+    void loadData()
+  }, [open, rejectMode, editMode, tracklistId, viewMode])
 
   useEffect(() => {
     if (!open || !viewMode) return
