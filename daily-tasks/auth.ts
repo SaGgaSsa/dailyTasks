@@ -11,6 +11,7 @@ declare module 'next-auth' {
       name: string
       username: string
       role: UserRole
+      mustChangePassword: boolean
     }
   }
 
@@ -20,6 +21,7 @@ declare module 'next-auth' {
     name: string
     username: string
     role: UserRole
+    mustChangePassword: boolean
   }
 }
 
@@ -29,6 +31,7 @@ declare module '@auth/core/jwt' {
     email?: string
     username?: string
     role?: UserRole
+    mustChangePassword?: boolean
   }
 }
 

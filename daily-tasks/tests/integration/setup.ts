@@ -19,6 +19,7 @@ export type MockSession = {
     name: string
     username: string
     role: UserRole
+    mustChangePassword?: boolean
   }
 } | null
 

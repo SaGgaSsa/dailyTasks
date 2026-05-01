@@ -9,7 +9,8 @@ import {
   X,
   Globe,
   PanelLeft,
-  ChevronRight
+  ChevronRight,
+  KeyRound
 } from 'lucide-react'
 import { NotificationsPopover } from '@/components/notifications-popover'
 import Link from 'next/link'
@@ -21,6 +22,7 @@ import { useI18n } from '@/components/providers/i18n-provider'
 import { Locale } from '@/lib/i18n'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
 import { useSidebar } from '@/components/providers/sidebar-provider'
+import { usePasswordChangeDialog } from '@/components/providers/password-change-dialog-provider'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +42,9 @@ export function Navbar() {
   const { locale, setLocale, t } = useI18n()
   const { breadcrumbs } = useNavbarBreadcrumbs()
   const { toggle } = useSidebar()
+  const { openPasswordChangeDialog } = usePasswordChangeDialog()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const mustChangePassword = session?.user?.mustChangePassword === true
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -139,6 +143,11 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <UserAvatar username={session?.user?.username} size="sm" />
+                  {mustChangePassword && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-black">
+                      !
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -157,6 +166,15 @@ export function Navbar() {
                     )}
                   </svg>
                   {!mounted ? 'Cambiar tema' : isDark ? 'Cambiar a Claro' : 'Cambiar a Oscuro'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={openPasswordChangeDialog}>
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Cambiar password
+                  {mustChangePassword && (
+                    <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                      !
+                    </span>
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowLogoutConfirm(true)}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -8,6 +8,7 @@ import { createUserSchema, updateUserSchema } from '@/types'
 import bcrypt from 'bcryptjs'
 import { serializeExternalWorkItem } from '@/lib/work-item-types'
 import { canManageUsers, getAuthenticatedUser } from '@/lib/authorization'
+import { getTemporaryUserPassword, validateNewUserPassword } from '@/lib/passwords'
 
 type ActionResult<T = undefined> = {
     success: boolean
@@ -21,6 +22,7 @@ export interface AdminUserSummary {
     name: string | null
     username: string
     role: UserRole
+    mustChangePassword: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -31,6 +33,7 @@ const adminUserSelect = {
     name: true,
     username: true,
     role: true,
+    mustChangePassword: true,
     createdAt: true,
     updatedAt: true,
 } as const
@@ -90,7 +93,6 @@ interface UpsertUserData {
     username: string
     name: string
     email: string
-    password: string
     role: UserRole
     technologies: { connect: { name: string } }[]
 }
@@ -107,7 +109,6 @@ export async function upsertUser(data: UpsertUserData) {
         username: data.username,
         name: data.name,
         email: data.email,
-        ...(data.id ? {} : { password: data.password }),
         role: data.role,
         technologies: technologyNames,
     })
@@ -136,13 +137,14 @@ export async function upsertUser(data: UpsertUserData) {
             revalidatePath('/incidences')
             return { success: true }
         } else {
-            const hashedPassword = await bcrypt.hash(data.password, 10)
+            const hashedPassword = await bcrypt.hash(getTemporaryUserPassword(), 10)
             await db.user.create({
                 data: {
                     username: normalizedData.username,
                     name: normalizedData.name,
                     email: normalizedData.email,
                     password: hashedPassword,
+                    mustChangePassword: true,
                     role: normalizedData.role,
                     ...(technologyNames.length > 0 && {
                         technologies: { connect: technologyNames.map((name) => ({ name })) },
@@ -170,7 +172,6 @@ export async function createUser(formData: FormData) {
     const username = formData.get('username') as string
     const name = formData.get('name') as string
     const email = formData.get('email') as string
-    const password = formData.get('password') as string
     const role = formData.get('role') as UserRole
     const techNames = formData.getAll('technologies') as string[]
 
@@ -178,7 +179,6 @@ export async function createUser(formData: FormData) {
         username,
         name,
         email,
-        password,
         role,
         technologies: techNames,
     })
@@ -195,7 +195,7 @@ export async function createUser(formData: FormData) {
     )
     const technologies = techIds.filter((t): t is NonNullable<typeof t> => t !== null).map(t => ({ connect: { id: t.id } }))
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(getTemporaryUserPassword(), 10)
 
     try {
         await db.user.create({
@@ -204,6 +204,7 @@ export async function createUser(formData: FormData) {
                 name: normalizedData.name,
                 email: normalizedData.email,
                 password: hashedPassword,
+                mustChangePassword: true,
                 role: normalizedData.role,
                 technologies: technologies as never,
             }
@@ -282,26 +283,55 @@ export async function getUserWithTechnologies(id: number) {
     }
 }
 
-export async function updateUserPassword(formData: FormData) {
+export async function resetUserPassword(userId: number) {
     const user = await getAuthenticatedUser()
     if (!user || !canManageUsers(user.role)) {
-        return { success: false, error: 'No autorizado' }
+        return unauthorizedResult()
     }
 
-    const userId = Number(formData.get('userId'))
-    const newPassword = formData.get('newPassword') as string
-    
-    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    const hashedPassword = await bcrypt.hash(getTemporaryUserPassword(), 10)
 
     try {
         await db.user.update({
             where: { id: userId },
-            data: { password: hashedPassword }
+            data: {
+                password: hashedPassword,
+                mustChangePassword: true,
+            }
+        })
+        revalidatePath('/users')
+        return { success: true }
+    } catch (error) {
+        console.error('Error resetting user password:', error)
+        return { success: false, error: 'Error al resetear la contraseña' }
+    }
+}
+
+export async function changeOwnPassword(input: { newPassword: string }) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
+        return unauthorizedResult()
+    }
+
+    const validationError = validateNewUserPassword(input.newPassword)
+    if (validationError) {
+        return { success: false, error: validationError }
+    }
+
+    const hashedPassword = await bcrypt.hash(input.newPassword, 10)
+
+    try {
+        await db.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                mustChangePassword: false,
+            }
         })
         return { success: true }
     } catch (error) {
-        console.error('Error updating user password:', error)
-        return { success: false, error: 'Error al actualizar la contraseña' }
+        console.error('Error changing own password:', error)
+        return { success: false, error: 'Error al cambiar la contraseña' }
     }
 }
 

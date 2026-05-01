@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { getSidebarData } from '@/lib/queries/sidebar'
 import { Navbar } from '@/components/navbar'
 import { Sidebar } from '@/components/sidebar'
+import { PasswordChangeNotice } from '@/components/password-change-notice'
 
 interface AppShellProps {
   children: ReactNode
@@ -20,6 +21,7 @@ export async function AppShell({ children }: AppShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
         <main className="relative flex-1 overflow-y-auto p-4">
+          <PasswordChangeNotice />
           {children}
         </main>
       </div>

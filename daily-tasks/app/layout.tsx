@@ -13,6 +13,7 @@ import { NavbarBreadcrumbProvider } from "@/components/providers/navbar-breadcru
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider";
 import { InboxMessageStreamProvider } from "@/components/providers/inbox-message-stream-provider";
+import { PasswordChangeDialogProvider } from "@/components/providers/password-change-dialog-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -84,12 +85,14 @@ export default async function RootLayout({
               <NavbarBreadcrumbProvider>
                 <SidebarProvider defaultOpen={defaultSidebarOpen}>
                   <SettingsDialogProvider>
-                    <PerformanceErrorBoundary>
-                      <ThemeSync />
-                      <InboxMessageStreamProvider />
-                      {children}
-                      <Toaster />
-                    </PerformanceErrorBoundary>
+                    <PasswordChangeDialogProvider>
+                      <PerformanceErrorBoundary>
+                        <ThemeSync />
+                        <InboxMessageStreamProvider />
+                        {children}
+                        <Toaster />
+                      </PerformanceErrorBoundary>
+                    </PasswordChangeDialogProvider>
                   </SettingsDialogProvider>
                 </SidebarProvider>
               </NavbarBreadcrumbProvider>

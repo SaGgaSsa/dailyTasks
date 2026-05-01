@@ -417,7 +417,6 @@ describe('access control integration', () => {
       username: qa.username,
       name: 'QA actualizado',
       email: qa.email,
-      password: '',
       role: UserRole.QA,
       technologies: [],
     })
