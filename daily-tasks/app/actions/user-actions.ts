@@ -133,7 +133,7 @@ export async function upsertUser(data: UpsertUserData) {
                         : { technologies: { set: [] } }),
                 }
             })
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
             return { success: true }
         } else {
             const hashedPassword = await bcrypt.hash(data.password, 10)
@@ -149,7 +149,7 @@ export async function upsertUser(data: UpsertUserData) {
                     }),
                 }
             })
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
             return { success: true }
         }
     } catch (error) {
@@ -208,7 +208,7 @@ export async function createUser(formData: FormData) {
                 technologies: technologies as never,
             }
         })
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error creating user:', error)
@@ -315,7 +315,7 @@ export async function deleteUser(userId: number) {
         await db.user.delete({
             where: { id: userId }
         })
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error deleting user:', error)

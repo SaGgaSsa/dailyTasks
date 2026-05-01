@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
-  Bell,
   Menu,
   X,
   Globe,
   PanelLeft,
   ChevronRight
 } from 'lucide-react'
+import { NotificationsPopover } from '@/components/notifications-popover'
 import Link from 'next/link'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/lib/use-theme'
@@ -47,10 +47,11 @@ export function Navbar() {
   }
 
   const getPageTitle = () => {
-    if (pathname === '/dashboard') return t.incidences.title
+    if (pathname === '/incidences') return t.incidences.title
     if (pathname === '/analytics') return 'Métricas'
     if (pathname === '/users') return 'Usuarios'
     if (pathname.startsWith('/tracklists')) return 'Tracklists'
+    if (pathname === '/inbox') return 'Mensajes'
     return ''
   }
 
@@ -131,9 +132,7 @@ export function Navbar() {
           </DropdownMenu>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon">
-            <Bell className="h-4 w-4" />
-          </Button>
+          <NotificationsPopover />
 
             {/* User menu */}
             <DropdownMenu>

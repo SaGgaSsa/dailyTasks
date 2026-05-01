@@ -4,7 +4,8 @@ import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
-import { Priority } from '@/types/enums'
+import { Priority, InboxMessageType } from '@/types/enums'
+import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -136,7 +137,7 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
 
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error creating incidence:', error)
@@ -434,7 +435,7 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
 
         await syncLinkedTickets(incidenceId, newStatus)
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         revalidatePath('/tracklists')
         return { success: true }
     } catch (error) {
@@ -558,7 +559,7 @@ export async function updateTaskOrder({ taskId, overTaskId }: UpdateTaskOrderPar
             data: { position: newPosition }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, newPosition }
     } catch (error) {
         console.error('Error updating task order:', error)
@@ -678,7 +679,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             return { success: false, error: t(locale, 'errors.notFound') }
         }
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         revalidatePath('/tracklists')
         return { success: true, data: serializeIncidence(finalIncidence) }
     } catch (error) {
@@ -955,7 +956,7 @@ export async function saveIncidenceTaskChanges(
             throw new Error('Incidencia no encontrada')
         }
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         revalidatePath('/tracklists')
 
         const message = txResult.autoTransitionedToReview
@@ -1004,7 +1005,7 @@ export async function updateIncidenceComment(incidenceId: number, comment: strin
             data: { comment }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error updating comment:', error)
@@ -1108,7 +1109,7 @@ export async function createTask(assignmentId: number, title: string, isComplete
             }
         }
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         revalidatePath('/tracklists')
         return {
             success: true,
@@ -1212,7 +1213,7 @@ export async function toggleTask(taskId: number) {
             message = 'Incidencia regresada a progreso'
         }
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         revalidatePath('/tracklists')
         return {
             success: true,
@@ -1295,7 +1296,7 @@ export async function completeIncidence(incidenceId: number, locale: Locale = 'e
 
         await completeIncidenceCore(incidenceId)
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error completing incidence:', error)
@@ -1346,7 +1347,7 @@ export async function deleteTask(taskId: number) {
             where: { id: taskId }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, message: 'Tarea eliminada' }
     } catch (error) {
         console.error('Error deleting task:', error)
@@ -1401,7 +1402,7 @@ export async function updateTaskTitle(taskId: number, newTitle: string) {
             data: { title: newTitle }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, message: 'Tarea actualizada' }
     } catch (error) {
         console.error('Error updating task title:', error)
@@ -1451,7 +1452,7 @@ export async function deleteIncidence(incidenceId: number) {
             where: { id: incidenceId }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, message: 'Incidencia eliminada' }
     } catch (error) {
         console.error('Error deleting incidence:', error)
@@ -1512,8 +1513,22 @@ export async function rejectTicket({ ticketId, description, observations, trackl
 
         await syncLinkedTickets(ticket.incidenceId, TaskStatus.IN_PROGRESS)
 
+        if (ticket.assignedToId) {
+            const sessionUserId = Number(session.user.id)
+            const recipientIds = ticket.assignedToId !== sessionUserId ? [ticket.assignedToId] : []
+            if (recipientIds.length > 0) {
+                await createInboxMessagesForUsers(
+                    recipientIds,
+                    InboxMessageType.TICKET_REJECTED,
+                    ticket.id,
+                    'TICKET_QA',
+                    ticket.description,
+                )
+            }
+        }
+
         revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error rejecting ticket:', error)

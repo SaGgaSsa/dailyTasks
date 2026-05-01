@@ -27,6 +27,7 @@ model User {
   attachments        Attachment[]
   pages              IncidencePage[]
   scripts            Script[]
+  inboxMessages      InboxMessage[]
 
   @@map("users")
 }
@@ -321,4 +322,25 @@ model NonWorkingDay {
   createdAt   DateTime  @default(now())
 
   @@map("non_working_days")
+}
+
+enum InboxMessageType {
+  TICKET_BLOCKER_CREATED
+  TICKET_REJECTED
+}
+
+model InboxMessage {
+  id            Int              @id @default(autoincrement())
+  type          InboxMessageType
+  referenceId   Int
+  referenceType String
+  message       String
+  isRead        Boolean          @default(false)
+
+  userId        Int
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime         @default(now())
+
+  @@map("inbox_messages")
 }

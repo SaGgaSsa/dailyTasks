@@ -7,7 +7,8 @@ import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { createTicketSchema } from '@/types'
-import { TicketType, TicketQAStatus, Priority, TracklistStatus } from '@/types/enums'
+import { TicketType, TicketQAStatus, Priority, TracklistStatus, InboxMessageType } from '@/types/enums'
+import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { TaskStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
@@ -78,6 +79,30 @@ async function ensureActiveExternalWorkItem(
     }
 
     return { success: true }
+}
+
+async function getLatestQaTask(ticket: {
+    incidenceId: number | null
+    assignedToId: number | null
+}) {
+    if (!ticket.incidenceId || !ticket.assignedToId) {
+        return null
+    }
+
+    return db.task.findFirst({
+        where: {
+            isQaReported: true,
+            assignment: {
+                incidenceId: ticket.incidenceId,
+                userId: ticket.assignedToId,
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+            title: true,
+            description: true,
+        },
+    })
 }
 
 export async function assignTicket(
@@ -325,6 +350,40 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
     }
 }
 
+export async function getTicketById(ticketId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) {
+        return { success: false, error: t(locale, 'auth.unauthorized') }
+    }
+
+    try {
+        const ticket = await db.ticketQA.findUnique({
+            where: { id: ticketId },
+            include: ticketDetailsInclude,
+        })
+
+        if (!ticket) {
+            return { success: false, error: 'Ticket no encontrado' }
+        }
+
+        const [enrichedTicket, latestQaTask] = await Promise.all([
+            Promise.resolve(enrichTicketScripts(ticket)),
+            getLatestQaTask(ticket),
+        ])
+
+        return {
+            success: true,
+            data: {
+                ...enrichedTicket,
+                latestQaTask,
+            },
+        }
+    } catch (error) {
+        console.error('Error fetching ticket by id:', error)
+        return { success: false, error: t(locale, 'errors.fetchError') }
+    }
+}
+
 export async function createTicket(tracklistId: number, data: CreateTicketData, locale: Locale = 'es') {
     const access = await requireTracklistManager(locale)
     if (!access.success) return access
@@ -349,9 +408,8 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         })
         const nextTicketNumber = (lastTicket?.ticketNumber ?? 0) + 1
 
-        let ticket
-        await db.$transaction(async (tx) => {
-            ticket = await tx.ticketQA.create({
+        const ticket = await db.$transaction(async (tx) => {
+            const createdTicket = await tx.ticketQA.create({
                 data: {
                     tracklistId: tracklistId,
                     ticketNumber: nextTicketNumber,
@@ -366,20 +424,39 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
             })
 
             if (data.assignedToId) {
-                const txResult = await assignTicketToNewIncidenceCore(tx, ticket.id, data.assignedToId)
+                const txResult = await assignTicketToNewIncidenceCore(tx, createdTicket.id, data.assignedToId)
                 if (!txResult.success) {
                     throw new Error(txResult.error)
                 }
             }
+
+            return createdTicket
         })
 
         // Reactivate tracklist if it was completed or archived
-        const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true } })
+        const tracklist = await db.tracklist.findUnique({ where: { id: tracklistId }, select: { status: true, title: true } })
         if (tracklist && tracklist.status !== TracklistStatus.ACTIVE) {
             await db.tracklist.update({
                 where: { id: tracklistId },
                 data: { status: TracklistStatus.ACTIVE, completedAt: null, completedById: null },
             })
+        }
+
+        if (data.priority === Priority.BLOCKER) {
+            const admins = await db.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+            const recipientIds = new Set<number>(admins.map(a => a.id))
+            if (data.assignedToId) recipientIds.add(data.assignedToId)
+            recipientIds.delete(sessionUserId)
+            if (recipientIds.size > 0) {
+                const tracklistTitle = tracklist?.title ?? `#${tracklistId}`
+                await createInboxMessagesForUsers(
+                    Array.from(recipientIds),
+                    InboxMessageType.TICKET_BLOCKER_CREATED,
+                    ticket.id,
+                    'TICKET_QA',
+                    `Nuevo ticket bloqueante #${ticket.ticketNumber} creado en ${tracklistTitle}`,
+                )
+            }
         }
 
         revalidatePath('/tracklists')
@@ -454,7 +531,7 @@ export async function dismissTicket(ticketId: number, reason: string, tracklistI
             }
         })
         revalidatePath(`/tracklists/${tracklistId}`)
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error dismissing ticket:', error)
@@ -608,7 +685,7 @@ export async function completeTicket(ticketId: number, tracklistId: number, loca
 
         if (ticket.incidenceId) {
             await completeIncidenceCore(ticket.incidenceId)
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
         }
 
         revalidatePath('/tracklists')
@@ -650,7 +727,7 @@ export async function completeTracklist(id: number, locale: Locale = 'es') {
             },
         })
         revalidatePath('/tracklists')
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error completing tracklist:', error)
@@ -763,7 +840,7 @@ export async function uncompleteTicket(ticketId: number, tracklistId: number, lo
                 where: { id: ticket.incidenceId, status: TaskStatus.DONE },
                 data: { status: TaskStatus.REVIEW, completedAt: null },
             })
-            revalidatePath('/dashboard')
+            revalidatePath('/incidences')
         }
 
         revalidatePath('/tracklists')
