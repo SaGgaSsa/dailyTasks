@@ -79,6 +79,14 @@ model Module {
   @@map("modules")
 }
 
+model Environment {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  isEnabled     Boolean       @default(true)
+
+  @@map("environments")
+}
+
 model WorkItemType {
   id                Int                @id @default(autoincrement())
   name              String             @unique

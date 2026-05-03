@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { User, FileText, CalendarDays, Blocks, Layers } from 'lucide-react'
-import { Module, Technology } from '@prisma/client'
+import { User, FileText, CalendarDays, Blocks, Layers, Server } from 'lucide-react'
+import type { Environment, Module, Technology } from '@prisma/client'
 import { getExternalWorkItemsSettingsData, getWorkItemTypes } from '@/app/actions/external-work-items'
+import { getEnvironmentsForSettings } from '@/app/actions/environments'
 import { getTechsAndModulesForSettings } from '@/app/actions/tech'
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { SettingsNav, type SettingsSection } from '@/components/settings/setting
 import { AccountProfileSection } from '@/components/settings/account-profile-section'
 import { ExternalWorkItemsSection } from '@/components/settings/external-work-items-section'
 import { CalendarSection } from '@/components/settings/calendar-section'
+import { EnvironmentsSection } from '@/components/settings/environments-section'
 import { TechModulesSection } from '@/components/settings/tech-modules-section'
 import { WorkItemTypesSection } from '@/components/settings/work-item-types-section'
 import type { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
@@ -26,6 +28,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'calendar', label: 'Calendario', icon: CalendarDays, groupLabel: 'Administración' },
   { id: 'technologies', label: 'Tecnologías', icon: Layers, groupLabel: 'Administración' },
   { id: 'modules', label: 'Módulos', icon: Blocks, groupLabel: 'Administración' },
+  { id: 'environments', label: 'Ambientes', icon: Server, groupLabel: 'Administración', adminOnly: true },
 ]
 
 interface TechnologyWithModules extends Technology {
@@ -42,9 +45,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [workItems, setWorkItems] = useState<ExternalWorkItemSummary[]>([])
   const [workItemTypes, setWorkItemTypes] = useState<WorkItemTypeOption[]>([])
   const [techs, setTechs] = useState<TechnologyWithModules[]>([])
+  const [environments, setEnvironments] = useState<Environment[]>([])
   const workItemsSettingsRequestRef = useRef<Promise<void> | null>(null)
   const workItemTypesRequestRef = useRef<Promise<void> | null>(null)
   const techsRequestRef = useRef<Promise<void> | null>(null)
+  const environmentsRequestRef = useRef<Promise<void> | null>(null)
   const { data: session } = useSession()
   const userRole = session?.user?.role
   const isAdmin = userRole === 'ADMIN'
@@ -116,6 +121,27 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [])
 
+  const loadEnvironments = useCallback(async () => {
+    if (environmentsRequestRef.current) {
+      return environmentsRequestRef.current
+    }
+
+    const request = (async () => {
+      const result = await getEnvironmentsForSettings()
+      if (result.success && result.data) {
+        setEnvironments(result.data)
+      }
+    })()
+
+    environmentsRequestRef.current = request
+
+    try {
+      await request
+    } finally {
+      environmentsRequestRef.current = null
+    }
+  }, [])
+
   const handleSectionSelect = useCallback(async (id: string) => {
     if (id === activeSection) {
       return
@@ -131,7 +157,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (id === 'technologies' || id === 'modules') {
       await loadTechsAndModules()
     }
-  }, [activeSection, loadTechsAndModules, loadWorkItemTypes, loadWorkItemsSettingsData])
+    if (id === 'environments') {
+      await loadEnvironments()
+    }
+  }, [activeSection, loadEnvironments, loadTechsAndModules, loadWorkItemTypes, loadWorkItemsSettingsData])
 
   const renderSection = () => {
     switch (activeSection) {
@@ -147,6 +176,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return <TechModulesSection techs={techs} onRefresh={loadTechsAndModules} canManage={canManageTechModules} mode="technologies" />
       case 'modules':
         return <TechModulesSection techs={techs} onRefresh={loadTechsAndModules} canManage={canManageTechModules} mode="modules" />
+      case 'environments':
+        return <EnvironmentsSection environments={environments} onRefresh={loadEnvironments} />
       default:
         return null
     }
