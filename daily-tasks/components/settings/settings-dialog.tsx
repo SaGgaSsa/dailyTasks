@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { User, FileText, CalendarDays, Blocks, Layers, Server } from 'lucide-react'
 import type { Environment, Module, Technology } from '@prisma/client'
@@ -141,6 +141,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       environmentsRequestRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (open && activeSection === 'environments') {
+      void loadEnvironments()
+    }
+  }, [activeSection, loadEnvironments, open])
 
   const handleSectionSelect = useCallback(async (id: string) => {
     if (id === activeSection) {

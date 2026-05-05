@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getIncidencePageData } from '@/app/actions/incidence-actions'
+import { getEnvironmentAvailability } from '@/app/actions/environment-log'
 import { auth } from '@/auth'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -39,6 +40,41 @@ function formatDate(date: Date): string {
         month: 'short',
         year: 'numeric',
     })
+}
+
+async function EnvironmentAvailability({ incidenceId }: { incidenceId: number }) {
+    const availability = await getEnvironmentAvailability({ incidenceId })
+    const environments = availability.success ? availability.data ?? [] : []
+
+    if (environments.length === 0) {
+        return null
+    }
+
+    return (
+        <>
+            <Separator className="my-6" />
+            <div className="space-y-2">
+                <div className="text-sm font-medium">Disponibilidad</div>
+                <div className="space-y-2">
+                    {environments.map((environment) => (
+                        <div key={environment.environmentId} className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-muted-foreground">{environment.environmentName}</span>
+                            <Badge
+                                variant="outline"
+                                className={
+                                    environment.isAvailable
+                                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                        : 'border-zinc-500/20 bg-zinc-500/10 text-zinc-500'
+                                }
+                            >
+                                {environment.isAvailable ? 'Disponible' : 'Pendiente'}
+                            </Badge>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </>
+    )
 }
 
 interface PageProps {
@@ -199,6 +235,8 @@ export default async function IncidenceDetailPage({ params }: PageProps) {
                             {completedTasks}/{totalTasks}
                         </span>
                     </div>
+
+                    <EnvironmentAvailability incidenceId={incidence.id} />
                 </div>
             </div>
         </>

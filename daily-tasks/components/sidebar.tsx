@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   Layers,
-  BookOpen,
   Users,
   Settings,
   Terminal,
   BarChart3,
   Inbox,
+  History,
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
@@ -20,12 +20,16 @@ import { useSidebar } from '@/components/providers/sidebar-provider'
 import { useSettingsDialog } from '@/components/providers/settings-dialog-provider'
 
 interface SidebarProps {
-  userId?: string
   initialTracklists?: { id: number; title: string }[]
   initialIncidences?: { id: number; label: string }[]
+  initialFavoriteEnvironments?: { id: number; name: string }[]
 }
 
-export function Sidebar({ userId, initialTracklists = [], initialIncidences = [] }: SidebarProps) {
+export function Sidebar({
+  initialTracklists = [],
+  initialIncidences = [],
+  initialFavoriteEnvironments = [],
+}: SidebarProps) {
   const { data: session } = useSession()
   const { isOpen } = useSidebar()
   const { openSettings } = useSettingsDialog()
@@ -76,6 +80,21 @@ export function Sidebar({ userId, initialTracklists = [], initialIncidences = []
           />
 
           <TracklistSidebarSection isOpen={isOpen} initialTracklists={initialTracklists} />
+
+          <SidebarTopSection
+            isOpen={isOpen}
+            label="Bitácora"
+            href="/bitacora"
+            icon={History}
+            isActive={pathname === '/bitacora' || pathname.startsWith('/bitacora/')}
+            childrenItems={initialFavoriteEnvironments.map((environment) => ({
+              id: environment.id,
+              label: environment.name,
+              href: `/bitacora/${environment.id}`,
+              isActive: pathname === `/bitacora/${environment.id}`,
+              showActions: false,
+            }))}
+          />
 
           <hr className="border-sidebar-border my-2" />
 

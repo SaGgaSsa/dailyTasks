@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { createTicket, updateTicket, getTicketFormData, clearTicketUnreadUpdates, getTicketById } from '@/app/actions/tracklists'
+import { getEnvironmentAvailability, type EnvironmentAvailabilityItem } from '@/app/actions/environment-log'
 import { rejectTicket } from '@/app/actions/incidence-actions'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails } from '@/types'
@@ -88,6 +89,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [workItemOpen, setWorkItemOpen] = useState(false)
   const [selectedWorkItem, setSelectedWorkItem] = useState<ExternalWorkItem | null>(null)
   const [workItemsList, setWorkItemsList] = useState<ExternalWorkItem[]>([])
+  const [environmentAvailability, setEnvironmentAvailability] = useState<EnvironmentAvailabilityItem[]>([])
 
   const effectiveViewMode = resolvedViewMode ?? viewMode ?? null
 
@@ -183,6 +185,27 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       clearTicketUnreadUpdates(ticket.id, ticket.tracklistId)
     }
   }, [open, effectiveViewMode, editMode])
+
+  useEffect(() => {
+    if (!open || !effectiveViewMode) {
+      setEnvironmentAvailability([])
+      return
+    }
+
+    let isActive = true
+
+    const loadAvailability = async () => {
+      const result = await getEnvironmentAvailability({ ticketId: effectiveViewMode.id })
+      if (!isActive) return
+      setEnvironmentAvailability(result.success ? result.data ?? [] : [])
+    }
+
+    void loadAvailability()
+
+    return () => {
+      isActive = false
+    }
+  }, [effectiveViewMode, open])
 
   useEffect(() => {
     if (!editMode) return
@@ -597,6 +620,29 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               </PopoverContent>
             </Popover>
           </div>
+
+          {effectiveViewMode && environmentAvailability.length > 0 ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="text-sm font-medium">Disponibilidad por ambiente</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {environmentAvailability.map((environment) => (
+                  <div key={environment.environmentId} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground">{environment.environmentName}</span>
+                    <span
+                      className={cn(
+                        'rounded-full border px-2 py-0.5 text-xs font-medium',
+                        environment.isAvailable
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                          : 'border-zinc-500/20 bg-zinc-500/10 text-zinc-500'
+                      )}
+                    >
+                      {environment.isAvailable ? 'Disponible' : 'Pendiente'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
         <DialogFooter>
           {effectiveViewMode ? (

@@ -15,6 +15,7 @@ import {
     canActivateBacklogIncidence,
     DISMISSED_INCIDENCE_ERROR,
     computeNextIncidenceStatus,
+    getReadyForDeployAtPatch,
     incidenceDetailsInclude,
     type IncidenceDetailsPayload,
     isDismissedIncidenceStatus,
@@ -420,8 +421,9 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             data: {
                 status: newStatus,
                 position: newPosition,
+                ...getReadyForDeployAtPatch(incidence.status, newStatus),
                 ...(incidence.status === TaskStatus.BACKLOG &&
-                    ([TaskStatus.TODO, TaskStatus.IN_PROGRESS] as TaskStatus[]).includes(newStatus) &&
+                    ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(newStatus) &&
                     !incidence.startedAt
                       ? { startedAt: new Date() }
                       : {})
@@ -612,6 +614,7 @@ export async function updateIncidence(id: number, data: UpdateIncidenceData, loc
             estimatedTime: data.estimatedTime,
             description: data.description,
             technology: techConnect,
+            ...(data.status ? getReadyForDeployAtPatch(currentIncidence.status, data.status) : {}),
         }
 
         if (data.assignees) {
@@ -927,6 +930,7 @@ export async function saveIncidenceTaskChanges(
                     data: {
                         status: nextStatus,
                         completedAt: nextStatus === TaskStatus.DONE ? finalIncidence.completedAt : null,
+                        ...getReadyForDeployAtPatch(finalIncidence.status, nextStatus),
                         ...(currentIncidence.status === TaskStatus.BACKLOG &&
                             ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(nextStatus) &&
                             !currentIncidence.startedAt
@@ -1101,7 +1105,10 @@ export async function createTask(assignmentId: number, title: string, isComplete
             if (allCompleted) {
                 await db.incidence.update({
                     where: { id: assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
+                    data: {
+                        status: TaskStatus.REVIEW,
+                        ...getReadyForDeployAtPatch(currentStatus, TaskStatus.REVIEW),
+                    }
                 })
                 await syncLinkedTickets(assignment.incidenceId, TaskStatus.REVIEW)
                 autoTransitionedToReview = true
@@ -1196,7 +1203,10 @@ export async function toggleTask(taskId: number) {
             if (allCompleted) {
                 await db.incidence.update({
                     where: { id: task.assignment.incidenceId },
-                    data: { status: TaskStatus.REVIEW }
+                    data: {
+                        status: TaskStatus.REVIEW,
+                        ...getReadyForDeployAtPatch(currentStatus, TaskStatus.REVIEW),
+                    }
                 })
                 await syncLinkedTickets(task.assignment.incidenceId, TaskStatus.REVIEW)
                 autoTransitionedToReview = true

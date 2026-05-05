@@ -11,6 +11,7 @@ import { TicketType, TicketQAStatus, Priority, TracklistStatus, InboxMessageType
 import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { TaskStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
+import { getReadyForDeployAtPatch } from '@/lib/incidence-management'
 import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
@@ -838,7 +839,11 @@ export async function uncompleteTicket(ticketId: number, tracklistId: number, lo
         if (ticket.incidenceId) {
             await db.incidence.update({
                 where: { id: ticket.incidenceId, status: TaskStatus.DONE },
-                data: { status: TaskStatus.REVIEW, completedAt: null },
+                data: {
+                    status: TaskStatus.REVIEW,
+                    completedAt: null,
+                    ...getReadyForDeployAtPatch(TaskStatus.DONE, TaskStatus.REVIEW),
+                },
             })
             revalidatePath('/incidences')
         }

@@ -1,7 +1,6 @@
 'use server'
 
 import { Environment, Prisma, UserRole } from '@prisma/client'
-import { revalidateTag, unstable_cache } from 'next/cache'
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
@@ -25,21 +24,11 @@ type ActionResult<T = undefined> = {
   data?: T
 }
 
-const ENVIRONMENTS_TAG = 'environments'
-
-export const getCachedEnvironmentsForSettings = unstable_cache(
-  async (): Promise<Environment[]> => {
-    return db.environment.findMany({
-      orderBy: { name: 'asc' },
-    })
-  },
-  ['environments-settings-cache-key'],
-  { tags: [ENVIRONMENTS_TAG] }
-)
-
 export async function getEnvironmentsForSettings(): Promise<ActionResult<Environment[]>> {
   try {
-    const environments = await getCachedEnvironmentsForSettings()
+    const environments = await db.environment.findMany({
+      orderBy: { name: 'asc' },
+    })
     return { success: true, data: environments }
   } catch {
     return { success: false, error: 'Error al obtener ambientes' }
@@ -78,10 +67,6 @@ function validateEnvironmentId(id: number) {
   return Number.isInteger(id) && id > 0
 }
 
-function revalidateEnvironmentCaches() {
-  revalidateTag(ENVIRONMENTS_TAG, 'default')
-}
-
 function withoutData<T>(result: ActionResult): ActionResult<T> {
   return {
     success: result.success,
@@ -111,7 +96,6 @@ export async function createEnvironment(data: EnvironmentInput): Promise<ActionR
       },
     })
 
-    revalidateEnvironmentCaches()
     return { success: true, data: environment }
   } catch (error) {
     if (isPrismaError(error, 'P2002')) {
@@ -150,7 +134,6 @@ export async function updateEnvironment(data: UpdateEnvironmentInput): Promise<A
       },
     })
 
-    revalidateEnvironmentCaches()
     return { success: true, data: environment }
   } catch (error) {
     if (isPrismaError(error, 'P2002')) {
@@ -188,7 +171,6 @@ export async function setEnvironmentEnabled(data: EnvironmentEnabledInput): Prom
       },
     })
 
-    revalidateEnvironmentCaches()
     return { success: true, data: environment }
   } catch {
     return { success: false, error: 'Error al actualizar el ambiente' }

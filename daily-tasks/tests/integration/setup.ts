@@ -59,6 +59,8 @@ beforeEach(async () => {
   const { db } = await import('@/lib/db')
   await db.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "user_environment_favorites",
+      "environment_log_entries",
       "tickets_qa",
       "tasks",
       "assignments",

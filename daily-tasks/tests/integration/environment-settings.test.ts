@@ -19,7 +19,7 @@ describe('environment settings automation', () => {
     expect(created.success).toBe(true)
     expect(created.data?.name).toBe('Producción Principal')
     expect(created.data?.isEnabled).toBe(true)
-    expect(revalidateTagMock).toHaveBeenCalledWith('environments', 'default')
+    expect(revalidateTagMock).not.toHaveBeenCalled()
 
     const renamed = await updateEnvironment({
       id: created.data!.id,
@@ -42,7 +42,7 @@ describe('environment settings automation', () => {
     expect(enabled.success).toBe(true)
     expect(enabled.data?.isEnabled).toBe(true)
 
-    expect(revalidateTagMock).toHaveBeenCalledTimes(4)
+    expect(revalidateTagMock).not.toHaveBeenCalled()
   })
 
   it('rejects environment mutations for QA, DEV and anonymous users', async () => {
