@@ -1,13 +1,16 @@
-import { TaskStatus, TicketQAStatus, UserRole } from '@prisma/client'
+import { EnvironmentLogEntryType, TaskStatus, TicketQAStatus, UserRole } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 
 import {
+  createEnvironmentConfigurationLog,
   getEnvironmentAvailability,
   getEnvironmentLogEntries,
   getPendingEnvironmentDeployItems,
+  getEnvironmentDeployBatchSql,
   getSidebarFavoriteEnvironments,
   registerEnvironmentDeploys,
   toggleEnvironmentFavorite,
+  validateEnvironmentConfigurationLog,
 } from '@/app/actions/environment-log'
 import { updateIncidenceStatus } from '@/app/actions/incidence-actions'
 import { db } from '@/lib/db'
@@ -98,6 +101,31 @@ describe('environment log', () => {
     expect(remaining.data?.map((item) => item.incidenceId)).toEqual([second.incidence.id])
   })
 
+  it('assigns the same batch id to all items registered together', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const first = await createReviewIncidenceWithUser(dev.id)
+    const second = await createReviewIncidenceWithUser(dev.id)
+
+    const result = await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [
+        { incidenceId: first.incidence.id },
+        { incidenceId: second.incidence.id },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    const entries = await db.environmentLogEntry.findMany({
+      orderBy: { id: 'asc' },
+      select: { batchId: true },
+    })
+    expect(entries).toHaveLength(2)
+    expect(entries[0].batchId).toBeTruthy()
+    expect(entries[0].batchId).toBe(entries[1].batchId)
+  })
+
   it('does not mix environment histories', async () => {
     const dev = await createUser(UserRole.DEV)
     actAs(dev)
@@ -115,6 +143,244 @@ describe('environment log', () => {
 
     expect(firstHistory.data).toHaveLength(1)
     expect(secondHistory.data).toHaveLength(0)
+  })
+
+  it('returns grouped deploy batches and legacy rows as individual batches', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const first = await createReviewIncidenceWithUser(dev.id)
+    const second = await createReviewIncidenceWithUser(dev.id)
+    const legacy = await createReviewIncidenceWithUser(dev.id)
+
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [
+        { incidenceId: first.incidence.id },
+        { incidenceId: second.incidence.id },
+      ],
+    })
+    await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.DEPLOY,
+        environmentId: environment.id,
+        incidenceId: legacy.incidence.id,
+        createdById: dev.id,
+        batchId: null,
+      },
+    })
+
+    const result = await getEnvironmentLogEntries(environment.id)
+
+    expect(result.success).toBe(true)
+    expect(result.data).toHaveLength(2)
+    expect(result.data?.map((batch) => batch.items).map((items) => items.length).sort()).toEqual([1, 2])
+    expect(result.data?.find((batch) => batch.batchId === null)?.items).toHaveLength(1)
+    expect(result.data?.find((batch) => batch.batchId !== null)?.items.map((item) => item.incidence?.id).sort()).toEqual([
+      first.incidence.id,
+      second.incidence.id,
+    ].sort())
+  })
+
+  it('returns log events from oldest to newest so the latest renders at the bottom', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const { incidence } = await createReviewIncidenceWithUser(dev.id)
+
+    const oldest = await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.CONFIGURATION,
+        environmentId: environment.id,
+        subject: 'Primer ajuste',
+        body: '<p>Inicio.</p>',
+        createdById: dev.id,
+        occurredAt: new Date('2026-05-05T08:00:00.000Z'),
+      },
+    })
+    const middle = await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.DEPLOY,
+        environmentId: environment.id,
+        incidenceId: incidence.id,
+        createdById: dev.id,
+        occurredAt: new Date('2026-05-05T09:00:00.000Z'),
+      },
+    })
+    const newest = await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.CONFIGURATION,
+        environmentId: environment.id,
+        subject: 'Ultimo ajuste',
+        body: '<p>Cierre.</p>',
+        createdById: dev.id,
+        occurredAt: new Date('2026-05-05T10:00:00.000Z'),
+      },
+    })
+
+    const result = await getEnvironmentLogEntries(environment.id)
+
+    expect(result.success).toBe(true)
+    expect(result.data?.map((event) => event.legacyEntryId)).toEqual([oldest.id, middle.id, newest.id])
+  })
+
+  it.each([UserRole.ADMIN, UserRole.QA])('%s can create configuration log entries', async (role) => {
+    const user = await createUser(role)
+    actAs(user)
+    const environment = await createEnabledEnvironment()
+
+    const result = await createEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      subject: ' Cache de parámetros ',
+      body: '<p>Actualizar TTL a 15 minutos.</p>',
+    })
+
+    expect(result.success).toBe(true)
+    const entry = await db.environmentLogEntry.findFirstOrThrow()
+    expect(entry).toMatchObject({
+      type: EnvironmentLogEntryType.CONFIGURATION,
+      environmentId: environment.id,
+      subject: 'Cache de parámetros',
+      body: '<p>Actualizar TTL a 15 minutos.</p>',
+      createdById: user.id,
+      ticketId: null,
+      incidenceId: null,
+      batchId: null,
+      validatedAt: null,
+      validatedById: null,
+      validationNote: null,
+    })
+  })
+
+  it.each([UserRole.DEV, null])('%s cannot create configuration log entries', async (role) => {
+    if (role) {
+      const user = await createUser(role)
+      actAs(user)
+    }
+    const environment = await createEnabledEnvironment()
+
+    const result = await createEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      subject: 'Parámetro',
+      body: '<p>Detalle</p>',
+    })
+
+    expect(result.success).toBe(false)
+    expect(await db.environmentLogEntry.count()).toBe(0)
+  })
+
+  it('returns deploy batches and configuration entries without mixing them', async () => {
+    const dev = await createUser(UserRole.DEV)
+    const qa = await createUser(UserRole.QA)
+    const environment = await createEnabledEnvironment()
+    const { incidence } = await createReviewIncidenceWithUser(dev.id)
+
+    actAs(dev)
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [{ incidenceId: incidence.id }],
+    })
+
+    actAs(qa)
+    await createEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      subject: 'Endpoint de pagos',
+      body: '<p>Apuntar a sandbox.</p>',
+    })
+
+    const result = await getEnvironmentLogEntries(environment.id)
+
+    expect(result.success).toBe(true)
+    expect(result.data).toHaveLength(2)
+    const deployEvent = result.data?.find((event) => event.type === EnvironmentLogEntryType.DEPLOY)
+    const configurationEvent = result.data?.find((event) => event.type === EnvironmentLogEntryType.CONFIGURATION)
+    expect(deployEvent?.items).toHaveLength(1)
+    expect(configurationEvent).toMatchObject({
+      type: EnvironmentLogEntryType.CONFIGURATION,
+      subject: 'Endpoint de pagos',
+      body: '<p>Apuntar a sandbox.</p>',
+      validatedAt: null,
+      validatedBy: null,
+      validationNote: null,
+    })
+    expect(configurationEvent?.items).toEqual([])
+  })
+
+  it.each([UserRole.ADMIN, UserRole.QA])('%s can validate configuration log entries', async (role) => {
+    const creator = await createUser(UserRole.QA)
+    const validator = await createUser(role)
+    const environment = await createEnabledEnvironment()
+
+    actAs(creator)
+    await createEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      subject: 'Puerto API',
+      body: '<p>Usar 8443.</p>',
+    })
+    const entry = await db.environmentLogEntry.findFirstOrThrow()
+
+    actAs(validator)
+    const result = await validateEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      entryId: entry.id,
+    })
+
+    expect(result.success).toBe(true)
+    const updated = await db.environmentLogEntry.findUniqueOrThrow({ where: { id: entry.id } })
+    expect(updated.validatedAt).toBeInstanceOf(Date)
+    expect(updated.validatedById).toBe(validator.id)
+  })
+
+  it('does not validate an already validated configuration entry twice', async () => {
+    const qa = await createUser(UserRole.QA)
+    const admin = await createUser(UserRole.ADMIN)
+    const environment = await createEnabledEnvironment()
+
+    actAs(qa)
+    await createEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      subject: 'Feature flag',
+      body: '<p>Activar beta.</p>',
+    })
+    const entry = await db.environmentLogEntry.findFirstOrThrow()
+    await validateEnvironmentConfigurationLog({ environmentId: environment.id, entryId: entry.id })
+    const firstValidated = await db.environmentLogEntry.findUniqueOrThrow({ where: { id: entry.id } })
+
+    actAs(admin)
+    const result = await validateEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      entryId: entry.id,
+    })
+
+    expect(result.success).toBe(false)
+    const afterSecondAttempt = await db.environmentLogEntry.findUniqueOrThrow({ where: { id: entry.id } })
+    expect(afterSecondAttempt.validatedAt).toEqual(firstValidated.validatedAt)
+    expect(afterSecondAttempt.validatedById).toBe(firstValidated.validatedById)
+  })
+
+  it('does not validate deploy entries as configurations', async () => {
+    const dev = await createUser(UserRole.DEV)
+    const qa = await createUser(UserRole.QA)
+    const environment = await createEnabledEnvironment()
+    const { incidence } = await createReviewIncidenceWithUser(dev.id)
+
+    actAs(dev)
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [{ incidenceId: incidence.id }],
+    })
+    const deployEntry = await db.environmentLogEntry.findFirstOrThrow()
+
+    actAs(qa)
+    const result = await validateEnvironmentConfigurationLog({
+      environmentId: environment.id,
+      entryId: deployEntry.id,
+    })
+
+    expect(result.success).toBe(false)
+    const unchanged = await db.environmentLogEntry.findUniqueOrThrow({ where: { id: deployEntry.id } })
+    expect(unchanged.validatedAt).toBeNull()
+    expect(unchanged.validatedById).toBeNull()
   })
 
   it('uses the linked ticket as the deploy subject for incidence availability', async () => {
@@ -177,6 +443,83 @@ describe('environment log', () => {
 
     const pending = await getPendingEnvironmentDeployItems(environment.id)
     expect(pending.data?.map((item) => item.incidenceId)).toEqual([incidence.id])
+  })
+
+  it('builds deploy batch SQL ordered by work item type and number', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const consWorkItem = await createExternalWorkItem('I_CONS')
+    const modaplWorkItem = await createExternalWorkItem('I_MODAPL')
+    const { technology } = await createTechnologyModule()
+    const cons = await createIncidenceFixture({
+      externalWorkItemId: consWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    const modapl = await createIncidenceFixture({
+      externalWorkItemId: modaplWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    await db.script.createMany({
+      data: [
+        { incidenceId: cons.incidence.id, createdById: dev.id, type: 'SQL', content: 'select 2;' },
+        { incidenceId: modapl.incidence.id, createdById: dev.id, type: 'SQL', content: 'select 1;' },
+      ],
+    })
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [
+        { incidenceId: cons.incidence.id },
+        { incidenceId: modapl.incidence.id },
+      ],
+    })
+    const [{ batchId }] = await db.environmentLogEntry.findMany({ select: { batchId: true }, take: 1 })
+
+    const result = await getEnvironmentDeployBatchSql({ environmentId: environment.id, batchId })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.sql).toBe([
+      `--I_MODAPL ${modaplWorkItem.externalId} ${modapl.incidence.description}`,
+      '',
+      'select 1;',
+      '',
+      `--I_CONS ${consWorkItem.externalId} ${cons.incidence.description}`,
+      '',
+      'select 2;',
+    ].join('\n'))
+  })
+
+  it('uses only SQL scripts when building deploy batch SQL', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const { incidence, workItem } = await createReviewIncidenceWithUser(dev.id)
+    await db.script.createMany({
+      data: [
+        { incidenceId: incidence.id, createdById: dev.id, type: 'CODE', content: 'console.log("skip")' },
+        { incidenceId: incidence.id, createdById: dev.id, type: 'SQL', content: 'select 1;' },
+      ],
+    })
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [{ incidenceId: incidence.id }],
+    })
+    const [{ batchId }] = await db.environmentLogEntry.findMany({ select: { batchId: true }, take: 1 })
+
+    const result = await getEnvironmentDeployBatchSql({ environmentId: environment.id, batchId })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.sql).toBe([
+      `--I_MODAPL ${workItem.externalId} ${incidence.description}`,
+      '',
+      'select 1;',
+    ].join('\n'))
   })
 
   it('stores favorite environments per user', async () => {

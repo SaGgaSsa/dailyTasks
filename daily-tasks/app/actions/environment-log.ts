@@ -2,6 +2,7 @@
 
 import { EnvironmentLogEntryType, TaskStatus, UserRole } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { randomUUID } from 'node:crypto'
 
 import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/authorization'
@@ -35,7 +36,7 @@ export interface PendingEnvironmentDeployItem {
 
 export interface EnvironmentLogEntryView {
   id: number
-  type: EnvironmentLogEntryType
+  type: 'DEPLOY'
   occurredAt: Date
   createdBy: { id: number; name: string | null; username: string }
   incidence: {
@@ -50,6 +51,34 @@ export interface EnvironmentLogEntryView {
     tracklistId: number
   } | null
 }
+
+interface EnvironmentLogEventBase {
+  id: string
+  type: EnvironmentLogEntryType
+  occurredAt: Date
+  createdBy: { id: number; name: string | null; username: string }
+}
+
+export interface EnvironmentLogDeployBatchView extends EnvironmentLogEventBase {
+  type: 'DEPLOY'
+  batchId: string | null
+  legacyEntryId: number | null
+  items: EnvironmentLogEntryView[]
+}
+
+export interface EnvironmentLogConfigurationView extends EnvironmentLogEventBase {
+  type: 'CONFIGURATION'
+  batchId: null
+  legacyEntryId: number
+  items: []
+  subject: string
+  body: string
+  validatedAt: Date | null
+  validatedBy: { id: number; name: string | null; username: string } | null
+  validationNote: string | null
+}
+
+export type EnvironmentLogBatchView = EnvironmentLogDeployBatchView | EnvironmentLogConfigurationView
 
 export interface EnvironmentAvailabilityItem {
   environmentId: number
@@ -68,6 +97,23 @@ interface RegisterDeployInput {
   items: DeployItemInput[]
 }
 
+interface CreateEnvironmentConfigurationInput {
+  environmentId: number
+  subject: string
+  body: string
+}
+
+interface ValidateEnvironmentConfigurationInput {
+  environmentId: number
+  entryId: number
+}
+
+interface DeployBatchSqlInput {
+  environmentId: number
+  batchId?: string | null
+  entryId?: number | null
+}
+
 interface AvailabilityInput {
   incidenceId?: number
   ticketId?: number
@@ -75,6 +121,69 @@ interface AvailabilityInput {
 
 function isValidId(id: number) {
   return Number.isInteger(id) && id > 0
+}
+
+function mapEnvironmentLogEntry(entry: {
+  id: number
+  occurredAt: Date
+  createdBy: { id: number; name: string | null; username: string }
+  ticket: { id: number; ticketNumber: number; description: string; tracklistId: number } | null
+  incidence: {
+    id: number
+    description: string
+    externalWorkItem: {
+      externalId: number
+      workItemType: { name: string; color: string | null }
+    }
+  } | null
+}): EnvironmentLogEntryView {
+  return {
+    id: entry.id,
+    type: EnvironmentLogEntryType.DEPLOY,
+    occurredAt: entry.occurredAt,
+    createdBy: entry.createdBy,
+    ticket: entry.ticket,
+    incidence: entry.incidence
+      ? {
+          id: entry.incidence.id,
+          description: entry.incidence.description,
+          workItem: {
+            type: entry.incidence.externalWorkItem.workItemType.name,
+            externalId: entry.incidence.externalWorkItem.externalId,
+            color: entry.incidence.externalWorkItem.workItemType.color,
+          },
+        }
+      : null,
+  }
+}
+
+function sortDeployEntriesByWorkItem<T extends {
+  incidence: {
+    externalWorkItem: {
+      externalId: number
+      workItemType: { name: string }
+    }
+  } | null
+}>(entries: T[]) {
+  return [...entries].sort((a, b) => {
+    const typeA = a.incidence?.externalWorkItem.workItemType.name ?? ''
+    const typeB = b.incidence?.externalWorkItem.workItemType.name ?? ''
+    const typeComparison = typeA.localeCompare(typeB, 'es')
+    if (typeComparison !== 0) return typeComparison
+
+    const numberA = a.incidence?.externalWorkItem.externalId ?? 0
+    const numberB = b.incidence?.externalWorkItem.externalId ?? 0
+    return numberA - numberB
+  })
+}
+
+function sortEnvironmentLogEntryViews(entries: EnvironmentLogEntryView[]) {
+  return [...entries].sort((a, b) => {
+    const typeComparison = (a.incidence?.workItem.type ?? '').localeCompare(b.incidence?.workItem.type ?? '', 'es')
+    if (typeComparison !== 0) return typeComparison
+
+    return (a.incidence?.workItem.externalId ?? 0) - (b.incidence?.workItem.externalId ?? 0)
+  })
 }
 
 async function requireAuthenticatedUser() {
@@ -92,6 +201,17 @@ async function requireDeployPermission() {
 
   if (access.user.role !== UserRole.ADMIN && access.user.role !== UserRole.DEV) {
     return { success: false, error: 'No autorizado para registrar deploys' } as const
+  }
+
+  return access
+}
+
+async function requireConfigurationPermission() {
+  const access = await requireAuthenticatedUser()
+  if (!access.success) return access
+
+  if (access.user.role !== UserRole.ADMIN && access.user.role !== UserRole.QA) {
+    return { success: false, error: 'No autorizado para registrar configuraciones' } as const
   }
 
   return access
@@ -231,7 +351,7 @@ export async function toggleEnvironmentFavorite(environmentId: number): Promise<
   }
 }
 
-export async function getEnvironmentLogEntries(environmentId: number): Promise<ActionResult<EnvironmentLogEntryView[]>> {
+export async function getEnvironmentLogEntries(environmentId: number): Promise<ActionResult<EnvironmentLogBatchView[]>> {
   const access = await requireAuthenticatedUser()
   if (!access.success) return withoutData(access)
 
@@ -243,10 +363,14 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
   try {
     const entries = await db.environmentLogEntry.findMany({
       where: { environmentId },
-      orderBy: { occurredAt: 'desc' },
+      orderBy: [
+        { occurredAt: 'asc' },
+        { id: 'asc' },
+      ],
       include: {
         createdBy: { select: { id: true, name: true, username: true } },
         ticket: { select: { id: true, ticketNumber: true, description: true, tracklistId: true } },
+        validatedBy: { select: { id: true, name: true, username: true } },
         incidence: {
           select: {
             id: true,
@@ -262,30 +386,175 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
       },
     })
 
-    return {
-      success: true,
-      data: entries.map((entry) => ({
-        id: entry.id,
-        type: entry.type,
+    const deployBatches = new Map<string, EnvironmentLogDeployBatchView>()
+    const configurationEvents: EnvironmentLogConfigurationView[] = []
+
+    for (const entry of entries) {
+      if (entry.type === EnvironmentLogEntryType.CONFIGURATION) {
+        configurationEvents.push({
+          id: `configuration-${entry.id}`,
+          type: EnvironmentLogEntryType.CONFIGURATION,
+          batchId: null,
+          legacyEntryId: entry.id,
+          occurredAt: entry.occurredAt,
+          createdBy: entry.createdBy,
+          items: [],
+          subject: entry.subject ?? '',
+          body: entry.body ?? '',
+          validatedAt: entry.validatedAt,
+          validatedBy: entry.validatedBy,
+          validationNote: entry.validationNote,
+        })
+        continue
+      }
+
+      const batchId = entry.batchId ?? null
+      const key = batchId ?? `legacy-${entry.id}`
+      const item = mapEnvironmentLogEntry(entry)
+      const existing = deployBatches.get(key)
+
+      if (existing) {
+        existing.items.push(item)
+        if (entry.occurredAt > existing.occurredAt) {
+          existing.occurredAt = entry.occurredAt
+        }
+        continue
+      }
+
+      deployBatches.set(key, {
+        id: key,
+        type: EnvironmentLogEntryType.DEPLOY,
+        batchId,
+        legacyEntryId: batchId ? null : entry.id,
         occurredAt: entry.occurredAt,
         createdBy: entry.createdBy,
-        ticket: entry.ticket,
-        incidence: entry.incidence
-          ? {
-              id: entry.incidence.id,
-              description: entry.incidence.description,
-              workItem: {
-                type: entry.incidence.externalWorkItem.workItemType.name,
-                externalId: entry.incidence.externalWorkItem.externalId,
-                color: entry.incidence.externalWorkItem.workItemType.color,
-              },
-            }
-          : null,
-      })),
+        items: [item],
+      })
+    }
+
+    const deployEvents = [...deployBatches.values()].map((batch) => ({
+      ...batch,
+      items: sortEnvironmentLogEntryViews(batch.items),
+    }))
+
+    return {
+      success: true,
+      data: [...deployEvents, ...configurationEvents].sort((a, b) => {
+        const occurredComparison = a.occurredAt.getTime() - b.occurredAt.getTime()
+        if (occurredComparison !== 0) return occurredComparison
+        return (a.legacyEntryId ?? 0) - (b.legacyEntryId ?? 0)
+      }),
     }
   } catch (error) {
     console.error('Error fetching environment log entries:', error)
     return { success: false, error: 'Error al obtener historial' }
+  }
+}
+
+export async function createEnvironmentConfigurationLog(
+  input: CreateEnvironmentConfigurationInput
+): Promise<ActionResult<{ id: number }>> {
+  const access = await requireConfigurationPermission()
+  if (!access.success) return withoutData(access)
+
+  const environment = await getEnabledEnvironment(input.environmentId)
+  if (!environment) {
+    return { success: false, error: 'Ambiente no encontrado' }
+  }
+
+  const subject = input.subject.trim()
+  const body = input.body.trim()
+
+  if (!subject) {
+    return { success: false, error: 'Objeto requerido' }
+  }
+
+  if (subject.length > 500) {
+    return { success: false, error: 'Objeto no puede superar 500 caracteres' }
+  }
+
+  if (!body) {
+    return { success: false, error: 'Detalle requerido' }
+  }
+
+  try {
+    const entry = await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.CONFIGURATION,
+        environmentId: input.environmentId,
+        subject,
+        body,
+        createdById: access.user.id,
+      },
+      select: { id: true },
+    })
+
+    revalidateEnvironmentLogPaths(input.environmentId)
+    return { success: true, data: entry }
+  } catch (error) {
+    console.error('Error creating environment configuration log:', error)
+    return { success: false, error: 'Error al registrar configuración' }
+  }
+}
+
+export async function validateEnvironmentConfigurationLog(
+  input: ValidateEnvironmentConfigurationInput
+): Promise<ActionResult<{ id: number }>> {
+  const access = await requireConfigurationPermission()
+  if (!access.success) return withoutData(access)
+
+  const environment = await getEnabledEnvironment(input.environmentId)
+  if (!environment) {
+    return { success: false, error: 'Ambiente no encontrado' }
+  }
+
+  if (!isValidId(input.entryId)) {
+    return { success: false, error: 'Entrada no encontrada' }
+  }
+
+  try {
+    const entry = await db.environmentLogEntry.findFirst({
+      where: {
+        id: input.entryId,
+        environmentId: input.environmentId,
+      },
+      select: {
+        id: true,
+        type: true,
+        validatedAt: true,
+      },
+    })
+
+    if (!entry || entry.type !== EnvironmentLogEntryType.CONFIGURATION) {
+      return { success: false, error: 'Configuración no encontrada' }
+    }
+
+    if (entry.validatedAt) {
+      return { success: false, error: 'La configuración ya fue validada' }
+    }
+
+    const result = await db.environmentLogEntry.updateMany({
+      where: {
+        id: input.entryId,
+        environmentId: input.environmentId,
+        type: EnvironmentLogEntryType.CONFIGURATION,
+        validatedAt: null,
+      },
+      data: {
+        validatedAt: new Date(),
+        validatedById: access.user.id,
+      },
+    })
+
+    if (result.count === 0) {
+      return { success: false, error: 'La configuración ya fue validada' }
+    }
+
+    revalidateEnvironmentLogPaths(input.environmentId)
+    return { success: true, data: { id: input.entryId } }
+  } catch (error) {
+    console.error('Error validating environment configuration log:', error)
+    return { success: false, error: 'Error al validar configuración' }
   }
 }
 
@@ -431,6 +700,8 @@ export async function registerEnvironmentDeploys(input: RegisterDeployInput): Pr
       : []
     const tracklistIds = ticketTracklists.map((ticket) => ticket.tracklistId)
 
+    const batchId = randomUUID()
+
     await db.environmentLogEntry.createMany({
       data: selected.map((item) => ({
         type: EnvironmentLogEntryType.DEPLOY,
@@ -438,6 +709,7 @@ export async function registerEnvironmentDeploys(input: RegisterDeployInput): Pr
         ticketId: item.ticketId,
         incidenceId: item.incidenceId,
         createdById: access.user.id,
+        batchId,
       })),
     })
 
@@ -446,6 +718,80 @@ export async function registerEnvironmentDeploys(input: RegisterDeployInput): Pr
   } catch (error) {
     console.error('Error registering environment deploys:', error)
     return { success: false, error: 'Error al registrar deploy' }
+  }
+}
+
+export async function getEnvironmentDeployBatchSql(
+  input: DeployBatchSqlInput
+): Promise<ActionResult<{ sql: string; hasSql: boolean }>> {
+  const access = await requireAuthenticatedUser()
+  if (!access.success) return withoutData(access)
+
+  const environment = await getEnabledEnvironment(input.environmentId)
+  if (!environment) {
+    return { success: false, error: 'Ambiente no encontrado' }
+  }
+
+  if (!input.batchId && !input.entryId) {
+    return { success: false, error: 'Batch no encontrado' }
+  }
+
+  try {
+    const entries = await db.environmentLogEntry.findMany({
+      where: {
+        environmentId: input.environmentId,
+        type: EnvironmentLogEntryType.DEPLOY,
+        ...(input.batchId
+          ? { batchId: input.batchId }
+          : { id: input.entryId ?? undefined, batchId: null }),
+      },
+      include: {
+        incidence: {
+          include: {
+            externalWorkItem: {
+              include: {
+                workItemType: true,
+              },
+            },
+            scripts: {
+              where: { type: 'SQL' },
+              select: {
+                content: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const sections = sortDeployEntriesByWorkItem(entries)
+      .flatMap((entry) => {
+        if (!entry.incidence || entry.incidence.scripts.length === 0) {
+          return []
+        }
+
+        const scripts = [...entry.incidence.scripts].sort((a, b) => {
+          const aTime = Math.max(a.createdAt.getTime(), a.updatedAt.getTime())
+          const bTime = Math.max(b.createdAt.getTime(), b.updatedAt.getTime())
+          return aTime - bTime
+        })
+        const workItem = entry.incidence.externalWorkItem
+        const header = `--${workItem.workItemType.name} ${workItem.externalId} ${entry.incidence.description}`
+        return [`${header}\n\n${scripts.map((script) => script.content).join('\n\n')}`]
+      })
+
+    return {
+      success: true,
+      data: {
+        sql: sections.join('\n\n'),
+        hasSql: sections.length > 0,
+      },
+    }
+  } catch (error) {
+    console.error('Error building environment deploy SQL:', error)
+    return { success: false, error: 'Error al preparar SQL del deploy' }
   }
 }
 

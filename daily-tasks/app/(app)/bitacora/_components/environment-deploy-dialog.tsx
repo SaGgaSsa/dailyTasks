@@ -27,6 +27,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface EnvironmentDeployDialogProps {
   environmentId: number
@@ -104,15 +109,21 @@ export function EnvironmentDeployDialog({
 
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        onClick={() => handleOpenChange(true)}
-        disabled={!canRegisterDeploy}
-      >
-        <Rocket className="h-4 w-4" />
-        Registrar deploy
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => handleOpenChange(true)}
+            disabled={!canRegisterDeploy}
+            aria-label="Registrar deploy"
+          >
+            <Rocket className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Registrar deploy</TooltipContent>
+      </Tooltip>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-4xl">

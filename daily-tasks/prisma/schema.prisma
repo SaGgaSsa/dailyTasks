@@ -29,7 +29,8 @@ model User {
   pages              IncidencePage[]
   scripts            Script[]
   inboxMessages      InboxMessage[]
-  environmentLogEntries EnvironmentLogEntry[]
+  createdEnvironmentLogEntries EnvironmentLogEntry[] @relation("CreatedEnvironmentLogEntries")
+  validatedEnvironmentLogEntries EnvironmentLogEntry[] @relation("ValidatedEnvironmentLogEntries")
   environmentFavorites  UserEnvironmentFavorite[]
 
   @@map("users")
@@ -93,6 +94,7 @@ model Environment {
 
 enum EnvironmentLogEntryType {
   DEPLOY
+  CONFIGURATION
 }
 
 model WorkItemType {
@@ -345,11 +347,20 @@ model EnvironmentLogEntry {
   incidenceId   Int?
   incidence     Incidence?              @relation(fields: [incidenceId], references: [id])
   createdById   Int
-  createdBy     User                    @relation(fields: [createdById], references: [id])
+  createdBy     User                    @relation("CreatedEnvironmentLogEntries", fields: [createdById], references: [id])
+  batchId       String?                 @db.Uuid
+  subject       String?
+  body          String?                 @db.Text
+  validatedAt   DateTime?
+  validatedById Int?
+  validatedBy   User?                   @relation("ValidatedEnvironmentLogEntries", fields: [validatedById], references: [id])
+  validationNote String?                @db.Text
   occurredAt    DateTime                @default(now())
   createdAt     DateTime                @default(now())
 
   @@index([environmentId, occurredAt])
+  @@index([batchId])
+  @@index([validatedById])
   @@index([ticketId, environmentId, occurredAt])
   @@index([incidenceId, environmentId, occurredAt])
   @@map("environment_log_entries")
