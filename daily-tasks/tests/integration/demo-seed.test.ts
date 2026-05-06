@@ -1,81 +1,139 @@
-import { TaskStatus, TicketQAStatus } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 
-import { seedDemoData } from '@/prisma/seed'
 import { db } from '@/lib/db'
+import { seedInitialData } from '@/prisma/seed'
 
-describe('demo seed data', () => {
-  it('creates repeatable navigable demo data without duplicating records', async () => {
-    await seedDemoData(db)
-    await seedDemoData(db)
+const DEMO_PREFIX = 'Seed demo'
+
+async function createLegacyDemoRecords() {
+  const dev = await db.user.findUniqueOrThrow({ where: { email: 'dev@dailytasks.com' } })
+  const qa = await db.user.findUniqueOrThrow({ where: { email: 'qa@dailytasks.com' } })
+  const workItemType = await db.workItemType.findUniqueOrThrow({ where: { name: 'I_MODAPL' } })
+
+  const technology = await db.technology.create({
+    data: {
+      name: `${DEMO_PREFIX} technology`,
+      users: {
+        connect: { id: dev.id },
+      },
+    },
+  })
+  const moduleRecord = await db.module.create({
+    data: {
+      name: `${DEMO_PREFIX} module`,
+      slug: 'seed-demo-module',
+      technologyId: technology.id,
+    },
+  })
+  const externalWorkItem = await db.externalWorkItem.create({
+    data: {
+      workItemTypeId: workItemType.id,
+      externalId: 910003,
+      title: `${DEMO_PREFIX} tramite I_MODAPL`,
+    },
+  })
+  const incidence = await db.incidence.create({
+    data: {
+      externalWorkItemId: externalWorkItem.id,
+      description: `${DEMO_PREFIX} incidencia TODO`,
+      technologyId: technology.id,
+      assignments: {
+        create: {
+          userId: dev.id,
+          tasks: {
+            create: {
+              title: `${DEMO_PREFIX} tarea`,
+            },
+          },
+        },
+      },
+      pages: {
+        create: {
+          title: `${DEMO_PREFIX} pagina`,
+          authorId: dev.id,
+        },
+      },
+      scripts: {
+        create: {
+          type: 'SQL',
+          content: `-- ${DEMO_PREFIX} script`,
+          createdById: dev.id,
+        },
+      },
+    },
+  })
+  const tracklist = await db.tracklist.create({
+    data: {
+      title: `${DEMO_PREFIX} tracklist QA`,
+      createdById: qa.id,
+      externalWorkItems: {
+        connect: { id: externalWorkItem.id },
+      },
+    },
+  })
+  const ticket = await db.ticketQA.create({
+    data: {
+      tracklistId: tracklist.id,
+      ticketNumber: 1,
+      type: 'BUG',
+      moduleId: moduleRecord.id,
+      description: `${DEMO_PREFIX} ticket NEW`,
+      priority: 'MEDIUM',
+      externalWorkItemId: externalWorkItem.id,
+      reportedById: qa.id,
+      incidenceId: incidence.id,
+    },
+  })
+  const environment = await db.environment.create({
+    data: {
+      name: `${DEMO_PREFIX} ambiente`,
+    },
+  })
+  await db.environmentLogEntry.create({
+    data: {
+      environmentId: environment.id,
+      ticketId: ticket.id,
+      incidenceId: incidence.id,
+      createdById: qa.id,
+      subject: `${DEMO_PREFIX} log`,
+    },
+  })
+}
+
+describe('initial seed data', () => {
+  it('keeps only repeatable base users and work item types while removing legacy demo records', async () => {
+    await seedInitialData(db)
+    await createLegacyDemoRecords()
+    await seedInitialData(db)
+    await seedInitialData(db)
 
     const users = await db.user.findMany({
       where: { email: { in: ['admin@dailytasks.com', 'dev@dailytasks.com', 'qa@dailytasks.com'] } },
       orderBy: { username: 'asc' },
     })
-    expect(users.map((user) => user.username)).toEqual(['admin', 'dev', 'qa'])
-
-    const externalWorkItems = await db.externalWorkItem.findMany({
-      where: { title: { startsWith: 'Seed demo' } },
-      include: { workItemType: true },
-      orderBy: { externalId: 'asc' },
-    })
-    expect(externalWorkItems).toHaveLength(4)
-    expect(externalWorkItems.map((item) => item.workItemType.name)).toEqual([
-      'I_CASO',
-      'I_CONS',
-      'I_MODAPL',
-      'I_MODAPL',
+    expect(users.map((user) => ({ email: user.email, username: user.username, role: user.role }))).toEqual([
+      { email: 'admin@dailytasks.com', username: 'admin', role: 'ADMIN' },
+      { email: 'dev@dailytasks.com', username: 'dev', role: 'DEV' },
+      { email: 'qa@dailytasks.com', username: 'qa', role: 'QA' },
     ])
 
-    const incidences = await db.incidence.findMany({
-      where: { description: { startsWith: 'Seed demo' } },
-      include: {
-        assignments: {
-          include: { user: true, tasks: true },
-        },
-        scripts: true,
-      },
-      orderBy: { position: 'asc' },
+    const workItemTypes = await db.workItemType.findMany({
+      where: { name: { in: ['Bug', 'Feature', 'I_CASO', 'I_CONS', 'I_MODAPL'] } },
+      orderBy: { name: 'asc' },
     })
-    expect(incidences).toHaveLength(5)
-    expect(incidences.map((incidence) => incidence.status)).toEqual([
-      TaskStatus.BACKLOG,
-      TaskStatus.TODO,
-      TaskStatus.IN_PROGRESS,
-      TaskStatus.REVIEW,
-      TaskStatus.DISMISSED,
+    expect(workItemTypes.map((type) => ({ name: type.name, color: type.color }))).toEqual([
+      { name: 'Bug', color: 'red' },
+      { name: 'Feature', color: 'green' },
+      { name: 'I_CASO', color: 'orange' },
+      { name: 'I_CONS', color: 'purple' },
+      { name: 'I_MODAPL', color: 'blue' },
     ])
 
-    for (const incidence of incidences) {
-      expect(incidence.assignments).toHaveLength(1)
-      expect(incidence.assignments[0].user.username).toBe('dev')
-      expect(incidence.assignments[0].tasks).toHaveLength(2)
-      expect(incidence.scripts).toHaveLength(1)
-      expect(incidence.scripts[0].type).toBe('SQL')
-    }
-
-    const tracklists = await db.tracklist.findMany({
-      where: { title: { startsWith: 'Seed demo' } },
-      include: {
-        createdBy: true,
-        externalWorkItems: true,
-        tickets: {
-          orderBy: { ticketNumber: 'asc' },
-        },
-      },
-    })
-    expect(tracklists).toHaveLength(1)
-    expect(tracklists[0].createdBy.username).toBe('qa')
-    expect(tracklists[0].externalWorkItems).toHaveLength(4)
-    expect(tracklists[0].tickets).toHaveLength(5)
-    expect(tracklists[0].tickets.map((ticket) => ticket.status)).toEqual([
-      TicketQAStatus.NEW,
-      TicketQAStatus.ASSIGNED,
-      TicketQAStatus.IN_DEVELOPMENT,
-      TicketQAStatus.TEST,
-      TicketQAStatus.DISMISSED,
-    ])
-    expect(new Set(tracklists[0].tickets.map((ticket) => ticket.incidenceId))).toHaveProperty('size', 5)
+    await expect(db.externalWorkItem.count({ where: { title: { startsWith: DEMO_PREFIX } } })).resolves.toBe(0)
+    await expect(db.incidence.count({ where: { description: { startsWith: DEMO_PREFIX } } })).resolves.toBe(0)
+    await expect(db.tracklist.count({ where: { title: { startsWith: DEMO_PREFIX } } })).resolves.toBe(0)
+    await expect(db.ticketQA.count({ where: { description: { startsWith: DEMO_PREFIX } } })).resolves.toBe(0)
+    await expect(db.module.count({ where: { slug: 'seed-demo-module' } })).resolves.toBe(0)
+    await expect(db.technology.count({ where: { name: `${DEMO_PREFIX} technology` } })).resolves.toBe(0)
   })
 })
