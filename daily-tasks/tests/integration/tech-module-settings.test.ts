@@ -38,7 +38,7 @@ describe('tech/module settings automation', () => {
     expect(createdModule.data?.slug).toBe('portal-clientes')
     expect(revalidateTagMock).toHaveBeenCalledWith('tecnologias', 'default')
     expect(revalidateTagMock).toHaveBeenCalledWith('modulos', 'default')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/dashboard')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/incidences')
     expect(revalidatePathMock).toHaveBeenCalledWith('/tracklists')
 
     const qa = await createUser('QA')

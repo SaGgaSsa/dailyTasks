@@ -124,7 +124,7 @@ export function IncidenceActionsMenu({
 
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation()
-            router.push(`/dashboard/incidences/${task.id}`)
+            router.push(`/incidences/${task.id}`)
           }}>
             <Eye className="mr-2 h-4 w-4" />
             Ver Incidencia
@@ -132,7 +132,7 @@ export function IncidenceActionsMenu({
 
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation()
-            router.push(`/dashboard/incidences/${task.id}#pages`)
+            router.push(`/incidences/${task.id}#pages`)
           }}>
             <FileText className="mr-2 h-4 w-4" />
             Ver Páginas

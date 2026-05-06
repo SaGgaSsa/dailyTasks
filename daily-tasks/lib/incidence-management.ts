@@ -57,6 +57,12 @@ export function isDismissedIncidenceStatus(status: TaskStatus) {
   return status === TaskStatus.DISMISSED
 }
 
+export function getReadyForDeployAtPatch(previousStatus: TaskStatus, nextStatus: TaskStatus, occurredAt = new Date()) {
+  return nextStatus === TaskStatus.REVIEW && previousStatus !== TaskStatus.REVIEW
+    ? { readyForDeployAt: occurredAt }
+    : {}
+}
+
 export async function syncLinkedTickets(incidenceId: number, newStatus: TaskStatus) {
   const targetTicketStatus =
     newStatus === TaskStatus.REVIEW

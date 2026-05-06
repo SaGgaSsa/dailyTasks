@@ -31,11 +31,11 @@ function normalizePageTitle(title?: string) {
 }
 
 function revalidateIncidencePagePaths(incidenceId: number, pageId?: number) {
-    revalidatePath(`/dashboard/incidences/${incidenceId}`)
+    revalidatePath(`/incidences/${incidenceId}`)
 
     if (pageId) {
-        revalidatePath(`/dashboard/incidences/${incidenceId}/pages/${pageId}`)
-        revalidatePath(`/dashboard/shared-pages/${pageId}`)
+        revalidatePath(`/incidences/${incidenceId}/pages/${pageId}`)
+        revalidatePath(`/shared-pages/${pageId}`)
     }
 }
 

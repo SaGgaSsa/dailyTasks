@@ -1,8 +1,11 @@
 import { NextRequest } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ExternalWorkItemStatus, UserRole } from '@prisma/client'
 
 import { createExternalWorkItem, createTechnologyModule, createUser } from '@/tests/integration/helpers'
+import { db } from '@/lib/db'
+import { getTemporaryUserPassword } from '@/lib/passwords'
 
 describe('external api routes', () => {
   beforeEach(() => {
@@ -45,6 +48,37 @@ describe('external api routes', () => {
 
     const response = await POST(request)
     expect(response.status).toBe(401)
+  })
+
+  it('creates external users without requiring a password and marks them for change', async () => {
+    process.env.ENABLE_EXTERNAL_API = 'true'
+
+    const { POST } = await import('@/app/api/external/users/route')
+
+    const request = new NextRequest('http://localhost:3000/api/external/users', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-secret': 'test-secret',
+      },
+      body: JSON.stringify({
+        email: 'external.dev@example.com',
+        username: 'External Dev',
+        name: 'External Dev',
+      }),
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(body.success).toBe(true)
+
+    const storedUser = await db.user.findUniqueOrThrow({
+      where: { email: 'external.dev@example.com' },
+    })
+    await expect(bcrypt.compare(getTemporaryUserPassword(), storedUser.password)).resolves.toBe(true)
+    expect(storedUser.mustChangePassword).toBe(true)
   })
 
   it('rejects invalid attachment links when creating incidences from the external api', async () => {

@@ -29,6 +29,7 @@ POSTGRES_USER=
 POSTGRES_PASSWORD=
 POSTGRES_DB=
 DATABASE_URL=
+DATABASE_URL_TEST=
 INGEST_SECRET=
 EXTERNAL_API_SECRET=
 NEXTAUTH_SECRET=
@@ -46,6 +47,7 @@ Para Docker interno:
 
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@db:5432/daily_tasks
+DATABASE_URL_TEST=postgresql://postgres:postgres@localhost:5432/daily_tasks_test
 NEXTAUTH_URL=http://localhost:8850
 NEXT_PUBLIC_APP_URL=http://localhost:8850
 ```
@@ -70,9 +72,12 @@ http://localhost:3000
 
 ```bash
 npm run lint
+npm run test:integration
 npm run build
 npm run start
 ```
+
+Los tests de integración requieren `DATABASE_URL_TEST` y usan una base separada de la de desarrollo.
 
 ## Estructura de despliegue objetivo en Docker
 
@@ -110,6 +115,14 @@ docker compose logs -f db
 docker compose logs -f proxy
 ```
 
+## CI y gate de deploy
+
+- Los tests de integración deben correr antes del build/publicación de la imagen Docker
+- El `Dockerfile` no ejecuta `npm run test:integration`
+- El contenedor de app no corre tests al iniciar; solo aplica `prisma migrate deploy` y arranca la app
+- CI necesita una PostgreSQL efímera y `DATABASE_URL_TEST`
+- Si `npm run test:integration` falla, no debe construirse ni publicarse la imagen
+
 ## Backup y restore
 
 Backup:
@@ -128,6 +141,6 @@ Restore:
 
 - Los uploads actuales se escriben en `public/uploads`
 - La base usa `DATABASE_URL`; en Docker debe apuntar a `db`
-- No hay migraciones Prisma versionadas todavía en `prisma/migrations`
-- El contenedor aplica `prisma db push` al iniciar
+- Los tests de integración usan `DATABASE_URL_TEST` y hacen `prisma db push` sobre esa base
+- El contenedor aplica `prisma migrate deploy` al iniciar
 - Si se resetea la base y se vuelve a seedear, hay que reingresar sesión

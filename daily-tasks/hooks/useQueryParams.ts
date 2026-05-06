@@ -50,7 +50,7 @@ export function useQueryParams(initialValues: Partial<QueryParams> = {}) {
     })
     
     const queryString = urlParams.toString()
-    const newUrl = queryString ? `/dashboard?${queryString}` : '/dashboard'
+    const newUrl = queryString ? `/incidences?${queryString}` : '/incidences'
     router.replace(newUrl, { scroll: false })
   }, [params, router, searchParams])
 
@@ -92,7 +92,7 @@ export function useQueryParams(initialValues: Partial<QueryParams> = {}) {
     urlParams.delete('assignee')
     
     const queryString = urlParams.toString()
-    const newUrl = queryString ? `/dashboard?${queryString}` : '/dashboard'
+    const newUrl = queryString ? `/incidences?${queryString}` : '/incidences'
     router.replace(newUrl, { scroll: false })
   }, [router, searchTimeout, searchParams])
 

@@ -14,9 +14,10 @@ interface UserWithTechs extends AdminUserSummary {
 
 interface UsersClientProps {
     initialUsers: AdminUserSummary[]
+    techOptions: { value: string; label: string }[]
 }
 
-export function UsersClient({ initialUsers }: UsersClientProps) {
+export function UsersClient({ initialUsers, techOptions }: UsersClientProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(null)
     const [selectedTechNames, setSelectedTechNames] = useState<string[]>([])
@@ -62,6 +63,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                 onOpenChange={setIsOpen}
                 initialData={selectedUser}
                 initialTechNames={selectedTechNames}
+                techOptions={techOptions}
             />
 
             <UserDetailSheet

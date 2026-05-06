@@ -69,7 +69,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
                 (task.comment && task.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 `${task.externalWorkItem?.type ?? ''} ${task.externalWorkItem?.externalId ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
 
-            const matchesTech = techFilter.length === 0 || techFilter.includes(task.technology?.name)
+            const matchesTech = techFilter.length === 0 || techFilter.includes(String(task.technology?.id))
 
             const matchesUserFilter = userFilter.length === 0 || task.assignments.some(a => a.userId === Number(userId) || userFilter.includes(String(a.userId)))
 
@@ -212,7 +212,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
         if (onCardClick) {
             onCardClick(task)
         } else {
-            router.push(`/dashboard/incidences/${task.id}`)
+            router.push(`/incidences/${task.id}`)
         }
     }
 

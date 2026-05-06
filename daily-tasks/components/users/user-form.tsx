@@ -14,6 +14,7 @@ interface UserFormProps {
     onOpenChange: (open: boolean) => void
     initialData: AdminUserSummary | null
     initialTechNames?: string[]
+    techOptions: { value: string; label: string }[]
 }
 
 const roleOptions = [
@@ -22,15 +23,7 @@ const roleOptions = [
     { value: 'QA', label: 'QA' },
 ]
 
-const TECH_OPTIONS = [
-    { value: 'SISA', label: 'SISA' },
-    { value: 'WEB', label: 'WEB' },
-    { value: 'ANDROID', label: 'ANDROID' },
-    { value: 'ANGULAR', label: 'ANGULAR' },
-    { value: 'SPRING', label: 'SPRING' },
-]
-
-export function UserForm({ open, onOpenChange, initialData, initialTechNames = [] }: UserFormProps) {
+export function UserForm({ open, onOpenChange, initialData, initialTechNames = [], techOptions }: UserFormProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -39,7 +32,6 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
         name: '',
         email: '',
         username: '',
-        password: '',
         role: 'DEV',
         technologies: [] as string[],
     })
@@ -53,7 +45,6 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                 name: '',
                 email: '',
                 username: '',
-                password: '',
                 role: 'DEV',
                 technologies: [],
             })
@@ -62,7 +53,6 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                     name: initialData.name || '',
                     email: initialData.email || '',
                     username: initialData.username || '',
-                    password: '',
                     role: initialData.role || 'DEV',
                     technologies: initialTechNames,
                 })
@@ -74,7 +64,6 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                 name: '',
                 email: '',
                 username: '',
-                password: '',
                 role: 'DEV',
                 technologies: [],
             })
@@ -88,23 +77,16 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
             return false
         }
 
-        if (!isEditMode && !formData.password) {
-            toast.error('La contraseña es requerida para nuevos usuarios')
-            return false
-        }
-
         setIsSaving(true)
         try {
             const techNames = formData.technologies as string[]
             const technologies = techNames.map(name => ({ connect: { name } }))
-            console.log('technologies to save:', technologies)
             
             const res = await upsertUser({
                 id: initialData?.id,
                 name: formData.name,
                 email: formData.email,
                 username: formData.username,
-                password: formData.password,
                 role: formData.role as UserRole,
                 technologies,
             })
@@ -187,21 +169,12 @@ export function UserForm({ open, onOpenChange, initialData, initialTechNames = [
                 />
             </FormRow>
 
-            <FormInput
-                id="password"
-                label={isEditMode ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña'}
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required={!isEditMode}
-            />
-
             <FormSelect
                 id="technologies"
                 label="Tecnologías"
                 value={formData.technologies[0] || ''}
                 onValueChange={(val) => setFormData({ ...formData, technologies: val ? [val] : [] })}
-                options={TECH_OPTIONS}
+                options={techOptions}
                 placeholder="Seleccionar tecnología"
             />
             </>)

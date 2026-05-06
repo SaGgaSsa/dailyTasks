@@ -7,7 +7,7 @@
     "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:integration": "node scripts/run-integration-tests.mjs",
+    "test:integration": "node --env-file=.env scripts/run-integration-tests.mjs",
     "db:deploy": "npx prisma generate && npx prisma db push && npx prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed-test": "tsx prisma/test/seed-test.ts"

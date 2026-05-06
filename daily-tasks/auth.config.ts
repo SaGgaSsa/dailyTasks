@@ -12,6 +12,7 @@ interface AuthUser {
   name: string
   username: string
   role: UserRole
+  mustChangePassword: boolean
 }
 
 export const authConfig: NextAuthConfig = {
@@ -49,6 +50,7 @@ export const authConfig: NextAuthConfig = {
           name: user.name || '',
           username: user.username,
           role: user.role,
+          mustChangePassword: user.mustChangePassword,
         } as AuthUser
       }
     }),
@@ -61,13 +63,21 @@ export const authConfig: NextAuthConfig = {
     error: '/auth/login'
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.username = user.username
         token.role = user.role
+        token.mustChangePassword = user.mustChangePassword
+      }
+
+      if (trigger === 'update') {
+        const updatedSession = session as { mustChangePassword?: unknown } | undefined
+        if (typeof updatedSession?.mustChangePassword === 'boolean') {
+          token.mustChangePassword = updatedSession.mustChangePassword
+        }
       }
       return token
     },
@@ -80,6 +90,9 @@ export const authConfig: NextAuthConfig = {
         session.user.role = token.role === UserRole.ADMIN || token.role === UserRole.DEV || token.role === UserRole.QA
           ? token.role
           : UserRole.DEV
+        session.user.mustChangePassword = typeof token.mustChangePassword === 'boolean'
+          ? token.mustChangePassword
+          : false
       }
 
       return session

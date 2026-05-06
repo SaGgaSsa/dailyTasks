@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { UserRole } from '@/types/enums'
 import bcrypt from 'bcryptjs'
 import { isValidUsername, normalizeUsername } from '@/lib/usernames'
+import { getTemporaryUserPassword } from '@/lib/passwords'
 import {
   externalApiDisabledResponse,
   externalApiUnauthorizedResponse,
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const body: CreateUserRequest = await request.json()
 
-    const { email, username, name, password } = body
+    const { email, username, name } = body
     const normalizedUsername = normalizeUsername(username)
 
     if (!email || !username || !name) {
@@ -77,14 +78,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!password) {
-      return NextResponse.json(
-        { error: 'El campo password es requerido' },
-        { status: 400 }
-      )
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(getTemporaryUserPassword(), 10)
 
     const allTechs = await db.technology.findMany()
     const technologies = allTechs.map(t => ({ connect: { id: t.id } }))
@@ -95,6 +89,7 @@ export async function POST(request: NextRequest) {
         username: normalizedUsername,
         name,
         password: hashedPassword,
+        mustChangePassword: true,
         role: UserRole.DEV,
         technologies: technologies as never,
       },

@@ -48,7 +48,7 @@ export async function createUser(role: UserRole, overrides?: Partial<{ name: str
   })
 }
 
-export function actAs(user: { id: number; email: string; username: string; role: UserRole; name: string | null }) {
+export function actAs(user: { id: number; email: string; username: string; role: UserRole; name: string | null; mustChangePassword?: boolean }) {
   setMockSession({
     user: {
       id: String(user.id),
@@ -56,6 +56,7 @@ export function actAs(user: { id: number; email: string; username: string; role:
       name: user.name ?? user.username,
       username: user.username,
       role: user.role,
+      mustChangePassword: user.mustChangePassword ?? false,
     },
   })
 }

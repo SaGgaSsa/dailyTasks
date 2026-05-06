@@ -1,4 +1,4 @@
-import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, ExternalWorkItemStatus, ScriptType } from '.prisma/client'
+import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, ExternalWorkItemStatus, ScriptType, InboxMessage as PrismaInboxMessage } from '.prisma/client'
 import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 import { normalizeUsername } from '@/lib/usernames'
@@ -150,6 +150,32 @@ export type TicketQAWithDetails = TicketQA & {
   hasUnreadUpdates: boolean
   hasScripts: boolean
   incidenceGantt: IncidenceGanttData | null
+  latestQaTask?: {
+    title: string
+    description: string | null
+  } | null
+}
+
+export interface InboxMessageTicketContext {
+  ticketId: number
+  ticketNumber: number
+  description: string
+  observations: string | null
+  tracklistId: number
+  assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
+  externalWorkItem: Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'color'> | null
+  rejectionTask: {
+    title: string
+    description: string | null
+  } | null
+}
+
+export type InboxMessageWithContext = PrismaInboxMessage & {
+  user?: {
+    id: number
+    name: string | null
+  }
+  ticketContext?: InboxMessageTicketContext | null
 }
 
 export const createUserSchema = z.object({
@@ -166,13 +192,11 @@ export const createUserSchema = z.object({
     .optional(),
   email: z.string()
     .email('Email inválido'),
-  password: z.string()
-    .min(8, 'Mínimo 8 caracteres'),
   role: z.enum(['ADMIN', 'DEV', 'QA']),
   technologies: z.array(z.string()).optional(),
 })
 
-export const updateUserSchema = createUserSchema.omit({ password: true })
+export const updateUserSchema = createUserSchema
 
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>

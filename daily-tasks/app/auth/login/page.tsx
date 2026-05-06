@@ -32,7 +32,7 @@ export default function LoginPage() {
         setError('Email o contraseña incorrectos')
       } else {
         router.refresh()
-        router.push('/dashboard')
+        router.push('/incidences')
       }
     } catch {
       setError('Ocurrió un error al iniciar sesión')

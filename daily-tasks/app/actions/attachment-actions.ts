@@ -110,7 +110,7 @@ export async function uploadAttachment(formData: FormData) {
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, data: attachment }
     } catch (error) {
         console.error('Error uploading attachment:', error)
@@ -170,7 +170,7 @@ export async function updateAttachment(
             data: updateData
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error updating attachment:', error)
@@ -216,7 +216,7 @@ export async function deleteAttachment(
             where: { id: attachmentId }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true }
     } catch (error) {
         console.error('Error deleting attachment:', error)
@@ -276,7 +276,7 @@ export async function addLinkAttachment(data: AddLinkData) {
             }
         })
 
-        revalidatePath('/dashboard')
+        revalidatePath('/incidences')
         return { success: true, data: attachment }
     } catch (error) {
         console.error('Error adding link attachment:', error)

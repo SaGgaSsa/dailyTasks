@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { getSidebarData } from '@/lib/queries/sidebar'
 import { Navbar } from '@/components/navbar'
 import { Sidebar } from '@/components/sidebar'
+import { PasswordChangeNotice } from '@/components/password-change-notice'
 
 interface AppShellProps {
   children: ReactNode
@@ -12,14 +13,23 @@ interface AppShellProps {
 export async function AppShell({ children }: AppShellProps) {
   const session = await auth()
   const userId = session?.user?.id
-  const { tracklists: initialTracklists, blockerIncidences: initialIncidences } = await getSidebarData(userId)
+  const {
+    tracklists: initialTracklists,
+    blockerIncidences: initialIncidences,
+    favoriteEnvironments: initialFavoriteEnvironments,
+  } = await getSidebarData(userId)
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Sidebar userId={userId} initialTracklists={initialTracklists} initialIncidences={initialIncidences} />
+      <Sidebar
+        initialTracklists={initialTracklists}
+        initialIncidences={initialIncidences}
+        initialFavoriteEnvironments={initialFavoriteEnvironments}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
         <main className="relative flex-1 overflow-y-auto p-4">
+          <PasswordChangeNotice />
           {children}
         </main>
       </div>

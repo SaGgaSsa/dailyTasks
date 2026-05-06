@@ -1,4 +1,5 @@
 import { Priority, TaskStatus } from '@prisma/client'
+import { getSidebarFavoriteEnvironments } from '@/app/actions/environment-log'
 import { getTracklists } from '@/app/actions/tracklists'
 import { db } from '@/lib/db'
 
@@ -12,9 +13,15 @@ export interface SidebarIncidenceSummary {
   label: string
 }
 
+export interface SidebarEnvironmentSummary {
+  id: number
+  name: string
+}
+
 interface SidebarData {
   tracklists: SidebarTracklistSummary[]
   blockerIncidences: SidebarIncidenceSummary[]
+  favoriteEnvironments: SidebarEnvironmentSummary[]
 }
 
 function buildIncidenceLabel(incidence: {
@@ -28,8 +35,9 @@ function buildIncidenceLabel(incidence: {
 export async function getSidebarData(userId?: string): Promise<SidebarData> {
   const numericUserId = Number(userId)
 
-  const [tracklistsResult, blockerIncidences] = await Promise.all([
+  const [tracklistsResult, favoriteEnvironmentsResult, blockerIncidences] = await Promise.all([
     getTracklists(),
+    getSidebarFavoriteEnvironments(),
     Number.isNaN(numericUserId)
       ? Promise.resolve([])
       : db.incidence.findMany({
@@ -68,6 +76,10 @@ export async function getSidebarData(userId?: string): Promise<SidebarData> {
     tracklists:
       tracklistsResult.success && tracklistsResult.data
         ? tracklistsResult.data.map((tl) => ({ id: tl.id, title: tl.title }))
+        : [],
+    favoriteEnvironments:
+      favoriteEnvironmentsResult.success && favoriteEnvironmentsResult.data
+        ? favoriteEnvironmentsResult.data
         : [],
     blockerIncidences: blockerIncidences.map((incidence) => ({
       id: incidence.id,

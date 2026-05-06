@@ -159,7 +159,7 @@ export async function assignTicketToNewIncidence(
     })
 
     revalidatePath(`/tracklists/${tracklistId}`)
-    revalidatePath('/dashboard')
+    revalidatePath('/incidences')
     return { success: true, ...(result ?? {}) }
   } catch (error) {
     console.error('Error in assignment transaction:', error)

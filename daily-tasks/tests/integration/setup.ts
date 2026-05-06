@@ -19,6 +19,7 @@ export type MockSession = {
     name: string
     username: string
     role: UserRole
+    mustChangePassword?: boolean
   }
 } | null
 
@@ -58,6 +59,8 @@ beforeEach(async () => {
   const { db } = await import('@/lib/db')
   await db.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "user_environment_favorites",
+      "environment_log_entries",
       "tickets_qa",
       "tasks",
       "assignments",
@@ -66,6 +69,7 @@ beforeEach(async () => {
       "tracklists",
       "attachments",
       "external_work_items",
+      "environments",
       "modules",
       "technologies",
       "users",

@@ -10,6 +10,7 @@ model User {
   id            Int           @id @default(autoincrement())
   email         String        @unique
   password      String
+  mustChangePassword Boolean       @default(false)
   name          String?
   username      String        @unique
   role          UserRole      @default(DEV)
@@ -27,6 +28,10 @@ model User {
   attachments        Attachment[]
   pages              IncidencePage[]
   scripts            Script[]
+  inboxMessages      InboxMessage[]
+  createdEnvironmentLogEntries EnvironmentLogEntry[] @relation("CreatedEnvironmentLogEntries")
+  validatedEnvironmentLogEntries EnvironmentLogEntry[] @relation("ValidatedEnvironmentLogEntries")
+  environmentFavorites  UserEnvironmentFavorite[]
 
   @@map("users")
 }
@@ -75,6 +80,22 @@ model Module {
   ticketsQA     TicketQA[]
 
   @@map("modules")
+}
+
+model Environment {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  isEnabled     Boolean       @default(true)
+  logEntries    EnvironmentLogEntry[]
+  favorites     UserEnvironmentFavorite[]
+
+  @@map("environments")
+}
+
+enum EnvironmentLogEntryType {
+  DEPLOY
+  CONFIGURATION
+  SCRIPT
 }
 
 model WorkItemType {
@@ -148,6 +169,7 @@ model Incidence {
   estimatedTime       Int?
   completedAt         DateTime?
   startedAt           DateTime?
+  readyForDeployAt    DateTime?
 
   position      Float     @default(0)
   createdAt     DateTime  @default(now())
@@ -157,6 +179,7 @@ model Incidence {
   pages         IncidencePage[]
   qaTickets     TicketQA[]
   scripts       Script[]
+  environmentLogEntries EnvironmentLogEntry[]
 
   @@map("incidences")
 }
@@ -307,11 +330,54 @@ model TicketQA {
   logs                String?   @db.Text
   observations        String?   @db.Text
   hasUnreadUpdates    Boolean   @default(false)
+  environmentLogEntries EnvironmentLogEntry[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   @@unique([tracklistId, ticketNumber])
   @@map("tickets_qa")
+}
+
+model EnvironmentLogEntry {
+  id            Int                     @id @default(autoincrement())
+  type          EnvironmentLogEntryType @default(DEPLOY)
+  environmentId Int
+  environment   Environment             @relation(fields: [environmentId], references: [id])
+  ticketId      Int?
+  ticket        TicketQA?               @relation(fields: [ticketId], references: [id])
+  incidenceId   Int?
+  incidence     Incidence?              @relation(fields: [incidenceId], references: [id])
+  createdById   Int
+  createdBy     User                    @relation("CreatedEnvironmentLogEntries", fields: [createdById], references: [id])
+  batchId       String?                 @db.Uuid
+  subject       String?
+  body          String?                 @db.Text
+  scriptType    ScriptType?
+  validatedAt   DateTime?
+  validatedById Int?
+  validatedBy   User?                   @relation("ValidatedEnvironmentLogEntries", fields: [validatedById], references: [id])
+  validationNote String?                @db.Text
+  occurredAt    DateTime                @default(now())
+  createdAt     DateTime                @default(now())
+
+  @@index([environmentId, occurredAt])
+  @@index([batchId])
+  @@index([validatedById])
+  @@index([ticketId, environmentId, occurredAt])
+  @@index([incidenceId, environmentId, occurredAt])
+  @@map("environment_log_entries")
+}
+
+model UserEnvironmentFavorite {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  environmentId Int
+  environment   Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, environmentId])
+  @@map("user_environment_favorites")
 }
 
 model NonWorkingDay {
@@ -321,4 +387,25 @@ model NonWorkingDay {
   createdAt   DateTime  @default(now())
 
   @@map("non_working_days")
+}
+
+enum InboxMessageType {
+  TICKET_BLOCKER_CREATED
+  TICKET_REJECTED
+}
+
+model InboxMessage {
+  id            Int              @id @default(autoincrement())
+  type          InboxMessageType
+  referenceId   Int
+  referenceType String
+  message       String
+  isRead        Boolean          @default(false)
+
+  userId        Int
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime         @default(now())
+
+  @@map("inbox_messages")
 }

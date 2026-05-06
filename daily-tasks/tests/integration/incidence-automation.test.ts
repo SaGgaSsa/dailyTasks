@@ -411,89 +411,50 @@ describe('incidence automation integration', () => {
     expect(updatedTicket.status).toBe(TicketQAStatus.TEST)
   })
 
-  it('does not change a completed ticket during incidence sync', async () => {
-    const admin = await createUser('ADMIN')
-    const dev = await createUser('DEV')
-    const qa = await createUser('QA')
-    const { technology, module: moduleRecord } = await createTechnologyModule()
-    const workItem = await createExternalWorkItem()
-    const tracklist = await createTracklist(qa.id)
-    const { incidence, tasks } = await createIncidenceFixture({
-      technologyId: technology.id,
-      externalWorkItemId: workItem.id,
-      status: TaskStatus.IN_PROGRESS,
-      estimatedTime: 4,
-      assignees: [{ userId: dev.id, assignedHours: 4 }],
-      tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
-    })
-    const completedTicket = await createTicketFixture({
-      tracklistId: tracklist.id,
-      moduleId: moduleRecord.id,
-      reportedById: qa.id,
-      assignedToId: dev.id,
-      incidenceId: incidence.id,
-      externalWorkItemId: workItem.id,
-      status: TicketQAStatus.COMPLETED,
-    })
+  it.each([TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED])(
+    'does not change %s tickets during incidence sync',
+    async (terminalStatus) => {
+      const admin = await createUser('ADMIN')
+      const dev = await createUser('DEV')
+      const qa = await createUser('QA')
+      const { technology, module: moduleRecord } = await createTechnologyModule()
+      const workItem = await createExternalWorkItem()
+      const tracklist = await createTracklist(qa.id)
+      const { incidence, tasks } = await createIncidenceFixture({
+        technologyId: technology.id,
+        externalWorkItemId: workItem.id,
+        status: TaskStatus.IN_PROGRESS,
+        estimatedTime: 4,
+        assignees: [{ userId: dev.id, assignedHours: 4 }],
+        tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
+      })
+      const ticket = await createTicketFixture({
+        tracklistId: tracklist.id,
+        moduleId: moduleRecord.id,
+        reportedById: qa.id,
+        assignedToId: dev.id,
+        incidenceId: incidence.id,
+        externalWorkItemId: workItem.id,
+        status: terminalStatus,
+      })
 
-    actAs(admin)
-    const result = await saveIncidenceTaskChanges({
-      incidenceId: incidence.id,
-      updatedTasks: [
-        {
-          taskId: tasks[0].id,
-          title: tasks[0].title,
-          isCompleted: true,
-        },
-      ],
-    })
+      actAs(admin)
+      const result = await saveIncidenceTaskChanges({
+        incidenceId: incidence.id,
+        updatedTasks: [
+          {
+            taskId: tasks[0].id,
+            title: tasks[0].title,
+            isCompleted: true,
+          },
+        ],
+      })
 
-    expect(result.success).toBe(true)
+      expect(result.success).toBe(true)
 
-    expect((await getTicketState(completedTicket.id)).status).toBe(TicketQAStatus.COMPLETED)
-  })
-
-  it('does not change a dismissed ticket during incidence sync', async () => {
-    const admin = await createUser('ADMIN')
-    const dev = await createUser('DEV')
-    const qa = await createUser('QA')
-    const { technology, module: moduleRecord } = await createTechnologyModule()
-    const workItem = await createExternalWorkItem()
-    const tracklist = await createTracklist(qa.id)
-    const { incidence, tasks } = await createIncidenceFixture({
-      technologyId: technology.id,
-      externalWorkItemId: workItem.id,
-      status: TaskStatus.IN_PROGRESS,
-      estimatedTime: 4,
-      assignees: [{ userId: dev.id, assignedHours: 4 }],
-      tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
-    })
-    const dismissedTicket = await createTicketFixture({
-      tracklistId: tracklist.id,
-      moduleId: moduleRecord.id,
-      reportedById: qa.id,
-      assignedToId: dev.id,
-      incidenceId: incidence.id,
-      externalWorkItemId: workItem.id,
-      status: TicketQAStatus.DISMISSED,
-    })
-
-    actAs(admin)
-    const result = await saveIncidenceTaskChanges({
-      incidenceId: incidence.id,
-      updatedTasks: [
-        {
-          taskId: tasks[0].id,
-          title: tasks[0].title,
-          isCompleted: true,
-        },
-      ],
-    })
-
-    expect(result.success).toBe(true)
-
-    expect((await getTicketState(dismissedTicket.id)).status).toBe(TicketQAStatus.DISMISSED)
-  })
+      expect((await getTicketState(ticket.id)).status).toBe(terminalStatus)
+    }
+  )
 
   it('creates REVIEW directly from TODO when toggling the only pending task', async () => {
     const admin = await createUser('ADMIN')

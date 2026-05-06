@@ -24,7 +24,7 @@ export function OpenScriptsButton({
   const handleOpen = () => {
     if (!incidenceId) return
 
-    const targetUrl = `/dashboard/incidences/${incidenceId}#scripts`
+    const targetUrl = `/incidences/${incidenceId}#scripts`
     if (onNavigate) {
       onNavigate(targetUrl)
       return
