@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Filter } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -100,13 +99,7 @@ export function EnvironmentActivityLog({
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Button asChild variant="link" className="h-auto px-0 text-muted-foreground">
-              <Link href="/bitacora">Bitácora</Link>
-            </Button>
             <h1 className="text-2xl font-semibold tracking-tight">{environmentName}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Activity log del ambiente.
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -126,6 +119,7 @@ export function EnvironmentActivityLog({
               initialPendingItems={pendingItems}
               canRegisterDeploy={canRegisterDeploy}
             />
+            <div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

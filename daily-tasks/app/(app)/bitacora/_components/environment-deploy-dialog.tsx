@@ -113,6 +113,7 @@ export function EnvironmentDeployDialog({
         <TooltipTrigger asChild>
           <Button
             type="button"
+            variant="outline"
             size="icon"
             className="h-9 w-9"
             onClick={() => handleOpenChange(true)}
