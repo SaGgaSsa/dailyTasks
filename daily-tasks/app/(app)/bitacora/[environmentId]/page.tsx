@@ -23,6 +23,7 @@ export default async function EnvironmentLogDetailPage({ params }: EnvironmentLo
   const session = await auth()
   const canRegisterDeploy = session?.user?.role === 'ADMIN' || session?.user?.role === 'DEV'
   const canManageConfiguration = session?.user?.role === 'ADMIN' || session?.user?.role === 'QA'
+  const canCreateScript = session?.user?.role === 'ADMIN' || session?.user?.role === 'QA' || session?.user?.role === 'DEV'
 
   const [environmentsResult, entriesResult, pendingResult] = await Promise.all([
     getEnvironmentLogEnvironments(),
@@ -46,6 +47,7 @@ export default async function EnvironmentLogDetailPage({ params }: EnvironmentLo
       pendingItems={pendingItems}
       canRegisterDeploy={canRegisterDeploy}
       canCreateConfiguration={canManageConfiguration}
+      canCreateScript={canCreateScript}
       canValidateConfiguration={canManageConfiguration}
     />
   )

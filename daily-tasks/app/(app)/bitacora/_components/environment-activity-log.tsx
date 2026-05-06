@@ -21,6 +21,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { EnvironmentConfigurationDialog } from './environment-configuration-dialog'
 import { EnvironmentDeployDialog } from './environment-deploy-dialog'
+import { EnvironmentScriptDialog } from './environment-script-dialog'
 import { DeployLogActions } from './environment-log-actions'
 import { EnvironmentLogTypeContent } from './environment-log-type-content'
 
@@ -31,12 +32,14 @@ interface EnvironmentActivityLogProps {
   pendingItems: PendingEnvironmentDeployItem[]
   canRegisterDeploy: boolean
   canCreateConfiguration: boolean
+  canCreateScript: boolean
   canValidateConfiguration: boolean
 }
 
 const LOG_TYPE_LABELS = {
   DEPLOY: 'Deploy',
   CONFIGURATION: 'Configuración',
+  SCRIPT: 'Script',
 } as const
 
 type LogType = EnvironmentLogBatchView['type']
@@ -65,6 +68,7 @@ export function EnvironmentActivityLog({
   pendingItems,
   canRegisterDeploy,
   canCreateConfiguration,
+  canCreateScript,
   canValidateConfiguration,
 }: EnvironmentActivityLogProps) {
   const [selectedTypes, setSelectedTypes] = useState<LogType[]>(DEFAULT_LOG_TYPES)
@@ -110,6 +114,11 @@ export function EnvironmentActivityLog({
               environmentId={environmentId}
               environmentName={environmentName}
               canCreateConfiguration={canCreateConfiguration}
+            />
+            <EnvironmentScriptDialog
+              environmentId={environmentId}
+              environmentName={environmentName}
+              canCreateScript={canCreateScript}
             />
             <EnvironmentDeployDialog
               environmentId={environmentId}

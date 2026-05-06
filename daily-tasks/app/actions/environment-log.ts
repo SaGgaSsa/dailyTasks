@@ -1,6 +1,6 @@
 'use server'
 
-import { EnvironmentLogEntryType, TaskStatus, UserRole } from '@prisma/client'
+import { EnvironmentLogEntryType, ScriptType, TaskStatus, UserRole } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'node:crypto'
 
@@ -78,7 +78,20 @@ export interface EnvironmentLogConfigurationView extends EnvironmentLogEventBase
   validationNote: string | null
 }
 
-export type EnvironmentLogBatchView = EnvironmentLogDeployBatchView | EnvironmentLogConfigurationView
+export interface EnvironmentLogScriptView extends EnvironmentLogEventBase {
+  type: 'SCRIPT'
+  batchId: null
+  legacyEntryId: number
+  items: []
+  subject: string
+  body: string
+  scriptType: ScriptType
+}
+
+export type EnvironmentLogBatchView =
+  | EnvironmentLogDeployBatchView
+  | EnvironmentLogConfigurationView
+  | EnvironmentLogScriptView
 
 export interface EnvironmentAvailabilityItem {
   environmentId: number
@@ -101,6 +114,13 @@ interface CreateEnvironmentConfigurationInput {
   environmentId: number
   subject: string
   body: string
+}
+
+interface CreateEnvironmentScriptInput {
+  environmentId: number
+  subject: string
+  body: string
+  scriptType: ScriptType
 }
 
 interface ValidateEnvironmentConfigurationInput {
@@ -217,6 +237,21 @@ async function requireConfigurationPermission() {
   return access
 }
 
+async function requireScriptPermission() {
+  const access = await requireAuthenticatedUser()
+  if (!access.success) return access
+
+  if (
+    access.user.role !== UserRole.ADMIN &&
+    access.user.role !== UserRole.QA &&
+    access.user.role !== UserRole.DEV
+  ) {
+    return { success: false, error: 'No autorizado para registrar scripts' } as const
+  }
+
+  return access
+}
+
 function withoutData<T>(result: ActionResult): ActionResult<T> {
   return {
     success: result.success,
@@ -233,6 +268,10 @@ async function getEnabledEnvironment(environmentId: number) {
     where: { id: environmentId, isEnabled: true },
     select: { id: true, name: true },
   })
+}
+
+function isValidScriptType(scriptType: unknown): scriptType is ScriptType {
+  return scriptType === ScriptType.SQL || scriptType === ScriptType.CODE
 }
 
 function revalidateEnvironmentLogPaths(environmentId?: number, incidenceIds: number[] = [], tracklistIds: number[] = []) {
@@ -388,6 +427,7 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
 
     const deployBatches = new Map<string, EnvironmentLogDeployBatchView>()
     const configurationEvents: EnvironmentLogConfigurationView[] = []
+    const scriptEvents: EnvironmentLogScriptView[] = []
 
     for (const entry of entries) {
       if (entry.type === EnvironmentLogEntryType.CONFIGURATION) {
@@ -404,6 +444,22 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
           validatedAt: entry.validatedAt,
           validatedBy: entry.validatedBy,
           validationNote: entry.validationNote,
+        })
+        continue
+      }
+
+      if (entry.type === EnvironmentLogEntryType.SCRIPT) {
+        scriptEvents.push({
+          id: `script-${entry.id}`,
+          type: EnvironmentLogEntryType.SCRIPT,
+          batchId: null,
+          legacyEntryId: entry.id,
+          occurredAt: entry.occurredAt,
+          createdBy: entry.createdBy,
+          items: [],
+          subject: entry.subject ?? '',
+          body: entry.body ?? '',
+          scriptType: isValidScriptType(entry.scriptType) ? entry.scriptType : ScriptType.CODE,
         })
         continue
       }
@@ -439,7 +495,7 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
 
     return {
       success: true,
-      data: [...deployEvents, ...configurationEvents].sort((a, b) => {
+      data: [...deployEvents, ...configurationEvents, ...scriptEvents].sort((a, b) => {
         const occurredComparison = a.occurredAt.getTime() - b.occurredAt.getTime()
         if (occurredComparison !== 0) return occurredComparison
         return (a.legacyEntryId ?? 0) - (b.legacyEntryId ?? 0)
@@ -448,6 +504,56 @@ export async function getEnvironmentLogEntries(environmentId: number): Promise<A
   } catch (error) {
     console.error('Error fetching environment log entries:', error)
     return { success: false, error: 'Error al obtener historial' }
+  }
+}
+
+export async function createEnvironmentScriptLog(
+  input: CreateEnvironmentScriptInput
+): Promise<ActionResult<{ id: number }>> {
+  const access = await requireScriptPermission()
+  if (!access.success) return withoutData(access)
+
+  const environment = await getEnabledEnvironment(input.environmentId)
+  if (!environment) {
+    return { success: false, error: 'Ambiente no encontrado' }
+  }
+
+  const subject = input.subject.trim()
+
+  if (!subject) {
+    return { success: false, error: 'Título requerido' }
+  }
+
+  if (subject.length > 500) {
+    return { success: false, error: 'Título no puede superar 500 caracteres' }
+  }
+
+  if (!input.body.trim()) {
+    return { success: false, error: 'Script requerido' }
+  }
+
+  if (!isValidScriptType(input.scriptType)) {
+    return { success: false, error: 'Tipo de script inválido' }
+  }
+
+  try {
+    const entry = await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.SCRIPT,
+        environmentId: input.environmentId,
+        subject,
+        body: input.body,
+        scriptType: input.scriptType,
+        createdById: access.user.id,
+      },
+      select: { id: true },
+    })
+
+    revalidateEnvironmentLogPaths(input.environmentId)
+    return { success: true, data: entry }
+  } catch (error) {
+    console.error('Error creating environment script log:', error)
+    return { success: false, error: 'Error al registrar script' }
   }
 }
 

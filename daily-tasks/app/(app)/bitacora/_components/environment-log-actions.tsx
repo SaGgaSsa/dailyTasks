@@ -56,6 +56,17 @@ export function DeployLogActions({ environmentId, batch, canValidateConfiguratio
     })
   }
 
+  async function handleCopyScript() {
+    if (batch.type !== 'SCRIPT') return
+
+    try {
+      await navigator.clipboard.writeText(batch.body)
+      toast.success('Script copiado')
+    } catch {
+      toast.error('No se pudo copiar el script')
+    }
+  }
+
   function handleValidateConfiguration() {
     if (batch.type !== 'CONFIGURATION') return
 
@@ -95,6 +106,28 @@ export function DeployLogActions({ environmentId, batch, canValidateConfiguratio
             </Button>
           </TooltipTrigger>
           <TooltipContent>Validar configuración</TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
+
+  if (batch.type === 'SCRIPT') {
+    return (
+      <div className="flex items-start justify-end pt-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleCopyScript}
+              aria-label="Copiar script"
+            >
+              <ClipboardCopy className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Copiar script</TooltipContent>
         </Tooltip>
       </div>
     )

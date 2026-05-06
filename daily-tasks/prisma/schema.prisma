@@ -95,6 +95,7 @@ model Environment {
 enum EnvironmentLogEntryType {
   DEPLOY
   CONFIGURATION
+  SCRIPT
 }
 
 model WorkItemType {
@@ -351,6 +352,7 @@ model EnvironmentLogEntry {
   batchId       String?                 @db.Uuid
   subject       String?
   body          String?                 @db.Text
+  scriptType    ScriptType?
   validatedAt   DateTime?
   validatedById Int?
   validatedBy   User?                   @relation("ValidatedEnvironmentLogEntries", fields: [validatedById], references: [id])

@@ -1,8 +1,9 @@
-import { EnvironmentLogEntryType, TaskStatus, TicketQAStatus, UserRole } from '@prisma/client'
+import { EnvironmentLogEntryType, ScriptType, TaskStatus, TicketQAStatus, UserRole } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 
 import {
   createEnvironmentConfigurationLog,
+  createEnvironmentScriptLog,
   getEnvironmentAvailability,
   getEnvironmentLogEntries,
   getPendingEnvironmentDeployItems,
@@ -267,6 +268,116 @@ describe('environment log', () => {
 
     expect(result.success).toBe(false)
     expect(await db.environmentLogEntry.count()).toBe(0)
+  })
+
+  it.each([UserRole.ADMIN, UserRole.QA, UserRole.DEV])('%s can create script log entries', async (role) => {
+    const user = await createUser(role)
+    actAs(user)
+    const environment = await createEnabledEnvironment()
+    const scriptBody = '  select 1;\n\n  '
+
+    const result = await createEnvironmentScriptLog({
+      environmentId: environment.id,
+      subject: ' Base de Datos ',
+      body: scriptBody,
+      scriptType: ScriptType.SQL,
+    })
+
+    expect(result.success).toBe(true)
+    const entry = await db.environmentLogEntry.findFirstOrThrow()
+    expect(entry).toMatchObject({
+      type: EnvironmentLogEntryType.SCRIPT,
+      environmentId: environment.id,
+      subject: 'Base de Datos',
+      body: scriptBody,
+      scriptType: ScriptType.SQL,
+      createdById: user.id,
+      ticketId: null,
+      incidenceId: null,
+      batchId: null,
+      validatedAt: null,
+      validatedById: null,
+      validationNote: null,
+    })
+  })
+
+  it('does not create script log entries without authentication', async () => {
+    const environment = await createEnabledEnvironment()
+
+    const result = await createEnvironmentScriptLog({
+      environmentId: environment.id,
+      subject: 'Base de Datos',
+      body: 'select 1;',
+      scriptType: ScriptType.SQL,
+    })
+
+    expect(result.success).toBe(false)
+    expect(await db.environmentLogEntry.count()).toBe(0)
+  })
+
+  it.each([
+    { subject: '', body: 'select 1;', scriptType: ScriptType.SQL, expectedError: 'Título requerido' },
+    { subject: 'Base de Datos', body: '', scriptType: ScriptType.SQL, expectedError: 'Script requerido' },
+    { subject: 'Base de Datos', body: 'select 1;', scriptType: 'INVALID' as ScriptType, expectedError: 'Tipo de script inválido' },
+  ])('validates script log input: $expectedError', async ({ subject, body, scriptType, expectedError }) => {
+    const user = await createUser(UserRole.DEV)
+    actAs(user)
+    const environment = await createEnabledEnvironment()
+
+    const result = await createEnvironmentScriptLog({
+      environmentId: environment.id,
+      subject,
+      body,
+      scriptType,
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe(expectedError)
+    expect(await db.environmentLogEntry.count()).toBe(0)
+  })
+
+  it('returns script log entries with subject, body, type, user, and chronological order', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const dev = await createUser(UserRole.DEV)
+    actAs(admin)
+    const environment = await createEnabledEnvironment()
+
+    const oldest = await createEnvironmentScriptLog({
+      environmentId: environment.id,
+      subject: 'Base de Datos',
+      body: 'select 1;',
+      scriptType: ScriptType.SQL,
+    })
+
+    actAs(dev)
+    const newest = await createEnvironmentScriptLog({
+      environmentId: environment.id,
+      subject: 'Script',
+      body: 'console.log("deploy")',
+      scriptType: ScriptType.CODE,
+    })
+
+    const result = await getEnvironmentLogEntries(environment.id)
+
+    expect(result.success).toBe(true)
+    expect(result.data).toHaveLength(2)
+    expect(result.data?.map((event) => event.legacyEntryId)).toEqual([oldest.data?.id, newest.data?.id])
+    expect(result.data?.[0]).toMatchObject({
+      type: EnvironmentLogEntryType.SCRIPT,
+      subject: 'Base de Datos',
+      body: 'select 1;',
+      scriptType: ScriptType.SQL,
+      createdBy: { id: admin.id, username: admin.username, name: admin.name },
+      items: [],
+    })
+    expect(result.data?.[1]).toMatchObject({
+      type: EnvironmentLogEntryType.SCRIPT,
+      subject: 'Script',
+      body: 'console.log("deploy")',
+      scriptType: ScriptType.CODE,
+      createdBy: { id: dev.id, username: dev.username, name: dev.name },
+      items: [],
+    })
   })
 
   it('returns deploy batches and configuration entries without mixing them', async () => {
