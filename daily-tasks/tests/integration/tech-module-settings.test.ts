@@ -6,6 +6,7 @@ import {
   deleteModule,
   deleteTechnology,
   getCachedTechsWithModules,
+  getTechsAndModulesForSettings,
   updateModule,
   updateTechnology,
 } from '@/app/actions/tech'
@@ -120,6 +121,41 @@ describe('tech/module settings automation', () => {
     expect(firstModule.data?.slug).toBe('modulo-unico')
     expect(secondModule.success).toBe(true)
     expect(secondModule.data?.slug).toBe('modulo-unico-2')
+  })
+
+  it('loads fresh technology and module data for settings even when the shared cache is stale', async () => {
+    const technology = await db.technology.create({
+      data: { name: 'Cacheado' },
+    })
+    await db.module.create({
+      data: {
+        name: 'Modulo cacheado',
+        slug: 'modulo-cacheado',
+        technologyId: technology.id,
+      },
+    })
+
+    const cachedBeforeUpdate = await getCachedTechsWithModules()
+    expect(cachedBeforeUpdate.techs[0].name).toBe('Cacheado')
+    expect(cachedBeforeUpdate.techs[0].modules[0].name).toBe('Modulo cacheado')
+
+    await db.technology.update({
+      where: { id: technology.id },
+      data: { name: 'Actualizado en DB' },
+    })
+    await db.module.update({
+      where: { slug: 'modulo-cacheado' },
+      data: { name: 'Modulo actualizado en DB' },
+    })
+
+    const cachedAfterUpdate = await getCachedTechsWithModules()
+    expect(cachedAfterUpdate.techs[0].name).toBe('Cacheado')
+    expect(cachedAfterUpdate.techs[0].modules[0].name).toBe('Modulo cacheado')
+
+    const settingsResult = await getTechsAndModulesForSettings()
+    expect(settingsResult.success).toBe(true)
+    expect(settingsResult.data?.techs[0].name).toBe('Actualizado en DB')
+    expect(settingsResult.data?.techs[0].modules[0].name).toBe('Modulo actualizado en DB')
   })
 
   it('blocks deleting a module used by a ticket', async () => {

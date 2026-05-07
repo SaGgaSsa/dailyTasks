@@ -148,6 +148,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [activeSection, loadEnvironments, open])
 
+  useEffect(() => {
+    if (open && (activeSection === 'technologies' || activeSection === 'modules')) {
+      void loadTechsAndModules()
+    }
+  }, [activeSection, loadTechsAndModules, open])
+
   const handleSectionSelect = useCallback(async (id: string) => {
     if (id === activeSection) {
       return

@@ -48,39 +48,41 @@ type ActionResult<T = undefined> = {
 const TECH_TAG = 'tecnologias'
 const MODULE_TAG = 'modulos'
 
-export const getCachedTechsWithModules = unstable_cache(
-  async (): Promise<CachedTechsResult> => {
-    const techs = await db.technology.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        modules: {
-          orderBy: { name: 'asc' },
-        },
+async function getTechsWithModulesFromDb(): Promise<CachedTechsResult> {
+  const techs = await db.technology.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      modules: {
+        orderBy: { name: 'asc' },
       },
-    })
+    },
+  })
 
-    const allModules = techs.flatMap((technology) => technology.modules)
-    const defaultTech = techs.find((technology) => technology.isDefault) || techs[0] || null
+  const allModules = techs.flatMap((technology) => technology.modules)
+  const defaultTech = techs.find((technology) => technology.isDefault) || techs[0] || null
 
-    const defaultModules: DefaultModule[] = []
-    techs.forEach((technology) => {
-      const defaultModule = technology.modules.find((moduleRecord) => moduleRecord.isDefault)
-      if (defaultModule) {
-        defaultModules.push({ techId: technology.id, module: defaultModule })
-      } else if (technology.modules.length > 0) {
-        defaultModules.push({ techId: technology.id, module: technology.modules[0] })
-      }
-    })
+  const defaultModules: DefaultModule[] = []
+  techs.forEach((technology) => {
+    const defaultModule = technology.modules.find((moduleRecord) => moduleRecord.isDefault)
+    if (defaultModule) {
+      defaultModules.push({ techId: technology.id, module: defaultModule })
+    } else if (technology.modules.length > 0) {
+      defaultModules.push({ techId: technology.id, module: technology.modules[0] })
+    }
+  })
 
-    return { techs, allModules, defaultTech, defaultModules }
-  },
+  return { techs, allModules, defaultTech, defaultModules }
+}
+
+export const getCachedTechsWithModules = unstable_cache(
+  getTechsWithModulesFromDb,
   ['techs-modules-cache-key'],
   { tags: [TECH_TAG, MODULE_TAG] }
 )
 
 export async function getTechsAndModulesForSettings(): Promise<ActionResult<CachedTechsResult>> {
   try {
-    const data = await getCachedTechsWithModules()
+    const data = await getTechsWithModulesFromDb()
     return { success: true, data }
   } catch {
     return { success: false, error: 'Error al obtener tecnologías y módulos' }
