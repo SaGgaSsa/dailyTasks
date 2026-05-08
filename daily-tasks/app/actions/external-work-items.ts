@@ -1,8 +1,9 @@
 'use server'
 
-import { unstable_cache, revalidateTag } from 'next/cache'
-import { ExternalWorkItemStatus } from '.prisma/client'
+import { revalidatePath, unstable_cache, revalidateTag } from 'next/cache'
+import { ExternalWorkItemStatus, Prisma } from '.prisma/client'
 import { db } from '@/lib/db'
+import { canManageExternalWorkItems, getAuthenticatedUser } from '@/lib/authorization'
 import { WORK_ITEM_TYPE_COLOR_LIMIT, WORK_ITEM_TYPE_COLOR_OPTIONS, type WorkItemTypeColor } from '@/lib/work-item-color-options'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem, serializeWorkItemType } from '@/lib/work-item-types'
 import { ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
@@ -15,6 +16,50 @@ const workItemTypeSelect = {
 
 const allowedColors = new Set<string>(WORK_ITEM_TYPE_COLOR_OPTIONS.map((option) => option.value))
 const activeWorkItemWhere = { status: ExternalWorkItemStatus.ACTIVE } as const
+const EXTERNAL_WORK_ITEMS_PAGE_SIZE = 20
+
+type ActionResult<T = undefined> =
+  | (T extends undefined ? { success: true; data?: undefined } : { success: true; data: T })
+  | { success: false; error: string; data?: undefined }
+
+export interface ExternalWorkItemsManagementInput {
+  page?: number
+  workItemTypeId?: number | null
+  query?: string
+  includeInactive?: boolean
+}
+
+export interface ExternalWorkItemsManagementData {
+  items: ExternalWorkItemSummary[]
+  workItemTypes: WorkItemTypeOption[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+async function requireExternalWorkItemManager(): Promise<ActionResult> {
+  const user = await getAuthenticatedUser()
+
+  if (!user) {
+    return { success: false, error: 'No autorizado' }
+  }
+
+  if (!canManageExternalWorkItems(user.role)) {
+    return { success: false, error: 'Solo administradores y QA pueden modificar trámites' }
+  }
+
+  return { success: true }
+}
+
+function revalidateExternalWorkItems() {
+  revalidateTag('external-work-items', 'default')
+  revalidatePath('/tramites')
+}
+
+function isPositiveInteger(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0
+}
 
 export const getCachedExternalWorkItems = unstable_cache(
   async (): Promise<ExternalWorkItemSummary[]> => {
@@ -62,25 +107,56 @@ export async function getWorkItemTypes(): Promise<WorkItemTypeOption[]> {
   return workItemTypes.map(serializeWorkItemType)
 }
 
-export async function getExternalWorkItemsSettingsData(): Promise<{
-  workItems: ExternalWorkItemSummary[]
-  workItemTypes: WorkItemTypeOption[]
-}> {
-  const [items, workItemTypes] = await Promise.all([
-    db.externalWorkItem.findMany({
-      where: activeWorkItemWhere,
+export async function getExternalWorkItemsManagementData(
+  input: ExternalWorkItemsManagementInput
+): Promise<ActionResult<ExternalWorkItemsManagementData>> {
+  try {
+    const trimmedQuery = input.query?.trim() ?? ''
+    const queryNumber = /^\d+$/.test(trimmedQuery) ? Number(trimmedQuery) : null
+    const requestedPage = isPositiveInteger(input.page) ? input.page! : 1
+    const where: Prisma.ExternalWorkItemWhereInput = {
+      ...(input.includeInactive ? {} : activeWorkItemWhere),
+      ...(isPositiveInteger(input.workItemTypeId) ? { workItemTypeId: input.workItemTypeId! } : {}),
+      ...(trimmedQuery
+        ? {
+            OR: [
+              { title: { contains: trimmedQuery, mode: 'insensitive' } },
+              ...(queryNumber !== null ? [{ externalId: queryNumber }] : []),
+            ],
+          }
+        : {}),
+    }
+
+    const [total, workItemTypes] = await Promise.all([
+      db.externalWorkItem.count({ where }),
+      db.workItemType.findMany({
+        select: workItemTypeSelect,
+        orderBy: { name: 'asc' },
+      }),
+    ])
+    const totalPages = Math.max(1, Math.ceil(total / EXTERNAL_WORK_ITEMS_PAGE_SIZE))
+    const page = Math.min(requestedPage, totalPages)
+    const items = await db.externalWorkItem.findMany({
+      where,
       select: externalWorkItemBaseSelect,
       orderBy: [{ workItemType: { name: 'asc' } }, { externalId: 'asc' }],
-    }),
-    db.workItemType.findMany({
-      select: workItemTypeSelect,
-      orderBy: { name: 'asc' },
-    }),
-  ])
+      skip: (page - 1) * EXTERNAL_WORK_ITEMS_PAGE_SIZE,
+      take: EXTERNAL_WORK_ITEMS_PAGE_SIZE,
+    })
 
-  return {
-    workItems: items.map(serializeExternalWorkItem),
-    workItemTypes: workItemTypes.map(serializeWorkItemType),
+    return {
+      success: true,
+      data: {
+        items: items.map(serializeExternalWorkItem),
+        workItemTypes: workItemTypes.map(serializeWorkItemType),
+        total,
+        page,
+        pageSize: EXTERNAL_WORK_ITEMS_PAGE_SIZE,
+        totalPages,
+      },
+    }
+  } catch {
+    return { success: false, error: 'Error al obtener trámites' }
   }
 }
 
@@ -103,8 +179,11 @@ interface CreateExternalWorkItemResult {
 }
 
 export async function createExternalWorkItem(data: CreateExternalWorkItemData): Promise<CreateExternalWorkItemResult> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
   try {
-    if (!data.workItemTypeId || !data.externalId || !data.title?.trim()) {
+    if (!isPositiveInteger(data.workItemTypeId) || !isPositiveInteger(data.externalId) || !data.title?.trim()) {
       return { success: false, error: 'Todos los campos son requeridos' }
     }
 
@@ -129,14 +208,17 @@ export async function createExternalWorkItem(data: CreateExternalWorkItemData): 
 
     if (existingItem) {
       if (existingItem.status === ExternalWorkItemStatus.INACTIVE) {
-        return {
-          success: false,
-          error: 'El trámite ya existe y está inactivo',
+        const reactivated = await db.externalWorkItem.update({
+          where: { id: existingItem.id },
           data: {
-            duplicateInactive: true,
-            item: serializeExternalWorkItem(existingItem),
+            status: ExternalWorkItemStatus.ACTIVE,
+            title: data.title.trim(),
           },
-        }
+          select: externalWorkItemBaseSelect,
+        })
+
+        revalidateExternalWorkItems()
+        return { success: true, data: serializeExternalWorkItem(reactivated) }
       }
 
       return { success: false, error: 'El trámite ya existe' }
@@ -152,9 +234,9 @@ export async function createExternalWorkItem(data: CreateExternalWorkItemData): 
       select: externalWorkItemBaseSelect,
     })
 
-    revalidateTag('external-work-items', 'default')
+    revalidateExternalWorkItems()
     return { success: true, data: serializeExternalWorkItem(item) }
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error al crear el trámite' }
   }
 }
@@ -172,6 +254,9 @@ interface UpdateExternalWorkItemStatusResult {
 }
 
 export async function updateExternalWorkItemStatus(data: UpdateExternalWorkItemStatusData): Promise<UpdateExternalWorkItemStatusResult> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
   try {
     const existing = await db.externalWorkItem.findUnique({
       where: { id: data.id },
@@ -191,10 +276,27 @@ export async function updateExternalWorkItemStatus(data: UpdateExternalWorkItemS
       select: externalWorkItemBaseSelect,
     })
 
-    revalidateTag('external-work-items', 'default')
+    revalidateExternalWorkItems()
     return { success: true, data: serializeExternalWorkItem(updated) }
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error al guardar el trámite' }
+  }
+}
+
+export async function deleteExternalWorkItem(id: number): Promise<ActionResult> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
+  try {
+    await db.externalWorkItem.delete({ where: { id } })
+
+    revalidateExternalWorkItems()
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2003') {
+      return { success: false, error: 'No se puede eliminar: el trámite tiene incidencias relacionadas' }
+    }
+    return { success: false, error: 'Error al eliminar el trámite' }
   }
 }
 
@@ -203,7 +305,10 @@ interface CreateWorkItemTypeData {
   color?: WorkItemTypeColor | null
 }
 
-export async function createWorkItemType(data: CreateWorkItemTypeData) {
+export async function createWorkItemType(data: CreateWorkItemTypeData): Promise<ActionResult<WorkItemTypeOption>> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
   try {
     const normalizedName = data.name.trim()
     if (!normalizedName) {
@@ -227,7 +332,7 @@ export async function createWorkItemType(data: CreateWorkItemTypeData) {
     })
 
     revalidateTag('work-item-types', 'default')
-    revalidateTag('external-work-items', 'default')
+    revalidateExternalWorkItems()
     return { success: true, data: serializeWorkItemType(workItemType) }
   } catch (error) {
     if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2002') {
@@ -237,7 +342,10 @@ export async function createWorkItemType(data: CreateWorkItemTypeData) {
   }
 }
 
-export async function deleteWorkItemType(id: number) {
+export async function deleteWorkItemType(id: number): Promise<ActionResult> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
   try {
     const existing = await db.workItemType.findUnique({ where: { id } })
     if (!existing) {
@@ -247,7 +355,7 @@ export async function deleteWorkItemType(id: number) {
     await db.workItemType.delete({ where: { id } })
 
     revalidateTag('work-item-types', 'default')
-    revalidateTag('external-work-items', 'default')
+    revalidateExternalWorkItems()
     return { success: true }
   } catch (error) {
     if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2003') {

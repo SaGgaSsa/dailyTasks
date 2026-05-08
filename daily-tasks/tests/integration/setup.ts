@@ -94,6 +94,7 @@ beforeEach(async () => {
       "tracklists",
       "attachments",
       "external_work_items",
+      "work_item_types",
       "environments",
       "modules",
       "technologies",

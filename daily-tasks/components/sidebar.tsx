@@ -12,6 +12,7 @@ import {
   BarChart3,
   Inbox,
   History,
+  FileText,
 } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { TracklistSidebarSection } from '@/components/sidebar-tracklist-section'
@@ -37,6 +38,7 @@ export function Sidebar({
   const { t } = useI18n()
 
   const isAdmin = session?.user?.role === 'ADMIN'
+  const canSeeAdministration = session?.user?.role === 'ADMIN' || session?.user?.role === 'QA'
 
   return (
     <div className={`bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col h-screen ${isOpen ? 'w-64' : 'w-16'}`}>
@@ -121,7 +123,7 @@ export function Sidebar({
       </nav>
 
       {/* Admin Section */}
-      {isAdmin && (
+      {canSeeAdministration && (
         <div className="py-4 border-t border-sidebar-border px-2 flex-shrink-0">
           <div className="space-y-1">
             {isOpen && (
@@ -129,13 +131,25 @@ export function Sidebar({
                 Administration
               </div>
             )}
-            <Link href="/users">
+            {isAdmin && (
+              <Link href="/users">
+                <Button
+                  variant="ghost"
+                  className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/users' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+                >
+                  <Users className="h-4 w-4" />
+                  {isOpen && <span>{t.users.title}</span>}
+                </Button>
+              </Link>
+            )}
+
+            <Link href="/tramites">
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/users' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
+                className={`w-full justify-start gap-3 transition-colors ${!isOpen ? 'justify-center px-0' : ''} ${pathname === '/tramites' ? 'bg-sidebar-accent text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'}`}
               >
-                <Users className="h-4 w-4" />
-                {isOpen && <span>{t.users.title}</span>}
+                <FileText className="h-4 w-4" />
+                {isOpen && <span>Trámites</span>}
               </Button>
             </Link>
 

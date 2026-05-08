@@ -49,6 +49,10 @@ export function canManageTracklists(role: UserRole): boolean {
   return role === UserRole.ADMIN || role === UserRole.QA
 }
 
+export function canManageExternalWorkItems(role: UserRole): boolean {
+  return role === UserRole.ADMIN || role === UserRole.QA
+}
+
 export function canManageNonWorkingDays(role: UserRole): boolean {
   return role === UserRole.ADMIN || role === UserRole.QA
 }
