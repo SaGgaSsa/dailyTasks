@@ -215,11 +215,3 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
 
   return initialStatus
 }
-
-export function shouldMoveActiveIncidenceToBacklog(hasAssignees: boolean) {
-  return !hasAssignees
-}
-
-export function canActivateBacklogIncidence(hasEstimatedTime: boolean, hasAssignees: boolean) {
-  return hasEstimatedTime && hasAssignees
-}

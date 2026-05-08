@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ExternalWorkItemStatus, Prisma, UserRole } from '@prisma/client'
 
 import { addLinkAttachment, deleteAttachment, updateAttachment, uploadAttachment } from '@/app/actions/attachment-actions'
-import { deleteIncidence, updateIncidence } from '@/app/actions/incidence-actions'
+import { deleteIncidence, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { syncNonWorkingDays } from '@/app/actions/non-working-days'
 import { createPage, updatePageContent } from '@/app/actions/pages'
 import { createScript, updateScript } from '@/app/actions/script-actions'
@@ -284,22 +284,25 @@ describe('access control integration', () => {
     })
 
     actAs(otherDev)
-    const updateResult = await updateIncidence(incidence.id, {
-      comment: 'Intento ajeno',
+    const updateResult = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      incidencePatch: { comment: 'Intento ajeno' },
     })
     expect(updateResult.success).toBe(false)
-    expect(updateResult.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
+    expect(updateResult.error).toBe('Solo los desarrolladores asignados pueden mover esta tarea')
 
     actAs(qa)
-    const qaUpdateResult = await updateIncidence(incidence.id, {
-      comment: 'Intento QA',
+    const qaUpdateResult = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      incidencePatch: { comment: 'Intento QA' },
     })
     expect(qaUpdateResult.success).toBe(false)
-    expect(qaUpdateResult.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
+    expect(qaUpdateResult.error).toBe('Solo los desarrolladores asignados pueden mover esta tarea')
 
     actAs(admin)
-    const adminUpdateResult = await updateIncidence(incidence.id, {
-      comment: 'Actualización admin',
+    const adminUpdateResult = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      incidencePatch: { comment: 'Actualización admin' },
     })
     expect(adminUpdateResult.success).toBe(true)
   })
@@ -315,12 +318,13 @@ describe('access control integration', () => {
     })
 
     actAs(dev)
-    const result = await updateIncidence(incidence.id, {
-      comment: 'Intento con asignación desactivada',
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      incidencePatch: { comment: 'Intento con asignación desactivada' },
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toBe('Solo los administradores y desarrolladores asignados pueden editar incidencias')
+    expect(result.error).toBe('Solo los desarrolladores asignados pueden mover esta tarea')
   })
 
   it('limits clearing unread ticket updates to authorized users', async () => {
