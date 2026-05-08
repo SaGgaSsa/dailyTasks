@@ -11,6 +11,7 @@ export interface GanttBarDates {
 interface ComputeGanttDatesParams {
   startedAt: Date | null
   completedAt: Date | null
+  deferredAt?: Date | null
   estimatedTime: number | null
   ticketCreatedAt: Date
   nonWorkingDays?: Date[]
@@ -69,11 +70,16 @@ export function addBusinessDays(start: Date, days: number, nonWorkingDays: Date[
 export function computeGanttDates({
   startedAt,
   completedAt,
+  deferredAt,
   estimatedTime,
   ticketCreatedAt,
   nonWorkingDays = [],
 }: ComputeGanttDatesParams): GanttBarDates {
   const startDate = startedAt ?? ticketCreatedAt
+
+  if (deferredAt) {
+    return { startDate, endDate: deferredAt, isEstimated: false }
+  }
 
   if (completedAt) {
     return { startDate, endDate: completedAt, isEstimated: false }
@@ -270,6 +276,7 @@ export function getGanttDateBounds(tracklists: GanttTracklist[], nonWorkingDays:
       const { endDate } = computeGanttDates({
         startedAt: inc.startedAt,
         completedAt: inc.completedAt,
+        deferredAt: inc.deferredAt,
         estimatedTime: inc.estimatedTime,
         ticketCreatedAt: inc.ticket?.createdAt ?? inc.createdAt,
         nonWorkingDays,

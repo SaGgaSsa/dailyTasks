@@ -29,6 +29,7 @@ model User {
   pages              IncidencePage[]
   scripts            Script[]
   inboxMessages      InboxMessage[]
+  deferredIncidences Incidence[] @relation("DeferredIncidences")
   createdEnvironmentLogEntries EnvironmentLogEntry[] @relation("CreatedEnvironmentLogEntries")
   validatedEnvironmentLogEntries EnvironmentLogEntry[] @relation("ValidatedEnvironmentLogEntries")
   environmentFavorites  UserEnvironmentFavorite[]
@@ -49,6 +50,7 @@ enum TaskStatus {
   REVIEW
   DONE
   DISMISSED
+  DEFERRED
 }
 
 enum TaskType {
@@ -126,6 +128,7 @@ enum TicketQAStatus {
   TEST
   COMPLETED
   DISMISSED
+  DEFERRED
 }
 
 enum TicketType {
@@ -170,6 +173,10 @@ model Incidence {
   completedAt         DateTime?
   startedAt           DateTime?
   readyForDeployAt    DateTime?
+  deferredAt          DateTime?
+  deferredReason      String?   @db.Text
+  deferredById        Int?
+  deferredBy          User?     @relation("DeferredIncidences", fields: [deferredById], references: [id])
 
   position      Float     @default(0)
   createdAt     DateTime  @default(now())

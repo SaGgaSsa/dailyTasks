@@ -55,6 +55,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
         { value: TaskStatus.IN_PROGRESS, label: 'En Progreso' },
         { value: TaskStatus.REVIEW, label: 'Revision' },
         { value: TaskStatus.DONE, label: 'Finalizado' },
+        { value: TaskStatus.DEFERRED, label: 'Diferida' },
     ]
 
     const userOptions = useMemo(() => {

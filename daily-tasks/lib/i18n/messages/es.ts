@@ -84,6 +84,7 @@ export default {
     IN_PROGRESS: 'En Progreso',
     REVIEW: 'Revisión',
     DONE: 'Finalizado',
+    DEFERRED: 'Diferida',
   },
   priorities: {
     LOW: 'Baja',

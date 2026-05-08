@@ -24,7 +24,7 @@ import { TracklistToolbar, TICKET_STATUS_OPTIONS, type ViewOption } from './trac
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketQAWithDetails, GanttTracklist } from '@/types'
 import { getTracklistForEdit, completeTracklist, archiveTracklist } from '@/app/actions/tracklists'
-import { TracklistStatus, TRACKLIST_STATUS_LABELS } from '@/types/enums'
+import { TicketQAStatus, TracklistStatus, TRACKLIST_STATUS_LABELS } from '@/types/enums'
 import { toast } from 'sonner'
 import { getGanttDateBounds, getWeekRange } from '@/lib/gantt-utils'
 
@@ -247,6 +247,7 @@ export function AllTracklistsView({ tracklists, ganttData, assignableUsers, nonW
             <AllTracklistsTicketsTable
               tickets={tl.tickets.filter(t => {
                 if (search && !t.description.toLowerCase().includes(search.toLowerCase())) return false
+                if (selectedStatus.length === 0 && t.status === TicketQAStatus.DEFERRED) return false
                 if (selectedStatus.length > 0 && !selectedStatus.includes(t.status)) return false
                 if (selectedUser.length > 0 && !selectedUser.includes(String(t.assignedToId ?? ''))) return false
                 if (selectedTech.length > 0 && !selectedTech.includes(t.module.technology.name)) return false

@@ -37,6 +37,7 @@ export default async function TracklistDetailPage({ params, searchParams }: Prop
             status: true,
             startedAt: true,
             completedAt: true,
+            deferredAt: true,
             estimatedTime: true,
             assignments: {
               where: { isAssigned: true },
@@ -60,6 +61,7 @@ export default async function TracklistDetailPage({ params, searchParams }: Prop
           status: inc.status as import('@/types/enums').TaskStatus,
           startedAt: inc.startedAt,
           completedAt: inc.completedAt,
+          deferredAt: inc.deferredAt,
           estimatedTime: inc.estimatedTime,
           totalAssignedHours: inc.assignments.reduce((sum: number, a: { assignedHours: number | null }) => sum + (a.assignedHours ?? 0), 0),
         } : null,

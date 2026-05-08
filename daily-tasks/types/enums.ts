@@ -5,6 +5,7 @@ export enum TaskStatus {
     REVIEW = "REVIEW",
     DONE = "DONE",
     DISMISSED = "DISMISSED",
+    DEFERRED = "DEFERRED",
 }
 
 export enum TaskType {
@@ -39,6 +40,7 @@ export enum TicketQAStatus {
     TEST = "TEST",
     COMPLETED = "COMPLETED",
     DISMISSED = "DISMISSED",
+    DEFERRED = "DEFERRED",
 }
 
 export const TICKET_QA_STATUS_LABELS: Record<TicketQAStatus, string> = {
@@ -48,6 +50,7 @@ export const TICKET_QA_STATUS_LABELS: Record<TicketQAStatus, string> = {
     [TicketQAStatus.TEST]: 'Test',
     [TicketQAStatus.COMPLETED]: 'Completado',
     [TicketQAStatus.DISMISSED]: 'Desestimado',
+    [TicketQAStatus.DEFERRED]: 'Diferido',
 }
 
 export enum UserRole {

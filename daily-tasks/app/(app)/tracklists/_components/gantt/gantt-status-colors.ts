@@ -27,6 +27,11 @@ export const STATUS_STYLES: Record<string, StatusColorClasses> = {
     badge: 'border-l-4 border-l-green-500 bg-green-50 dark:bg-green-950',
     label: 'Completado',
   },
+  [TaskStatus.DEFERRED]: {
+    bar: 'border-l-4 border-l-zinc-500 bg-zinc-50 dark:bg-zinc-900 opacity-75',
+    badge: 'border-l-4 border-l-zinc-500 bg-zinc-50 dark:bg-zinc-900',
+    label: 'Diferida',
+  },
 }
 
 const FALLBACK_STYLE = STATUS_STYLES[TaskStatus.TODO]

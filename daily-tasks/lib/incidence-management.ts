@@ -57,6 +57,10 @@ export function isDismissedIncidenceStatus(status: TaskStatus) {
   return status === TaskStatus.DISMISSED
 }
 
+export function isDeferredIncidenceStatus(status: TaskStatus) {
+  return status === TaskStatus.DEFERRED
+}
+
 export function getReadyForDeployAtPatch(previousStatus: TaskStatus, nextStatus: TaskStatus, occurredAt = new Date()) {
   return nextStatus === TaskStatus.REVIEW && previousStatus !== TaskStatus.REVIEW
     ? { readyForDeployAt: occurredAt }
@@ -69,7 +73,9 @@ export async function syncLinkedTickets(incidenceId: number, newStatus: TaskStat
       ? TicketQAStatus.TEST
       : newStatus === TaskStatus.TODO || newStatus === TaskStatus.IN_PROGRESS
         ? TicketQAStatus.IN_DEVELOPMENT
-        : null
+        : newStatus === TaskStatus.DEFERRED
+          ? TicketQAStatus.DEFERRED
+          : null
 
   if (!targetTicketStatus) {
     return
@@ -82,6 +88,13 @@ export async function syncLinkedTickets(incidenceId: number, newStatus: TaskStat
     },
     data: { status: targetTicketStatus },
   })
+}
+
+export function getResumedTicketStatus(status: TaskStatus) {
+  if (status === TaskStatus.BACKLOG) return TicketQAStatus.ASSIGNED
+  if (status === TaskStatus.TODO || status === TaskStatus.IN_PROGRESS) return TicketQAStatus.IN_DEVELOPMENT
+  if (status === TaskStatus.REVIEW) return TicketQAStatus.TEST
+  return null
 }
 
 export const incidenceBaseInclude = {
@@ -160,6 +173,24 @@ interface ComputeNextIncidenceStatusParams {
   deletedTasksCount: number
 }
 
+interface ComputeCurrentIncidenceStatusParams {
+  hasEstimatedTime: boolean
+  hasAssignees: boolean
+  totalTasks: number
+  allTasksCompleted: boolean
+}
+
+export function computeCurrentIncidenceStatus({
+  hasEstimatedTime,
+  hasAssignees,
+  totalTasks,
+  allTasksCompleted,
+}: ComputeCurrentIncidenceStatusParams) {
+  if (!hasEstimatedTime || !hasAssignees) return TaskStatus.BACKLOG
+  if (totalTasks === 0) return TaskStatus.TODO
+  return allTasksCompleted ? TaskStatus.REVIEW : TaskStatus.IN_PROGRESS
+}
+
 export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusParams) {
   const {
     initialStatus,
@@ -175,6 +206,10 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
   const allConditionsMet = hasEstimatedTime && hasAssignees
   const hasTaskStructureChanges = createdTasksCount > 0 || deletedTasksCount > 0
   const hasTaskStatusChanges = completionChanged || hasTaskStructureChanges
+
+  if (initialStatus === TaskStatus.DEFERRED) {
+    return TaskStatus.DEFERRED
+  }
 
   if (!hasAssignees && ([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW] as TaskStatus[]).includes(initialStatus)) {
     return TaskStatus.BACKLOG

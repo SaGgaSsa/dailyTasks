@@ -13,10 +13,13 @@ import { getExternalWorkItemByComposite, isExternalWorkItemActive } from '@/lib/
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
     DISMISSED_INCIDENCE_ERROR,
+    computeCurrentIncidenceStatus,
     computeNextIncidenceStatus,
+    getResumedTicketStatus,
     getReadyForDeployAtPatch,
     incidenceDetailsInclude,
     type IncidenceDetailsPayload,
+    isDeferredIncidenceStatus,
     isDismissedIncidenceStatus,
     serializeIncidence,
     syncAssignments,
@@ -368,8 +371,8 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
             return { success: false, error: DISMISSED_INCIDENCE_ERROR }
         }
 
-        if (newStatus === TaskStatus.DISMISSED) {
-            return { success: false, error: 'Las incidencias desestimadas solo pueden establecerse desde un ticket' }
+        if (newStatus === TaskStatus.DISMISSED || newStatus === TaskStatus.DEFERRED) {
+            return { success: false, error: 'Este estado solo puede establecerse desde su acción específica' }
         }
 
         const isBacklogToTodo = incidence.status === TaskStatus.BACKLOG && newStatus === TaskStatus.TODO
@@ -429,6 +432,140 @@ export async function updateIncidenceStatus(incidenceId: number, newStatus: Task
         return { success: true }
     } catch (error) {
         console.error('Error updating status:', error)
+        return { success: false, error: t(locale, 'errors.updateError') }
+    }
+}
+
+export async function deferIncidence(incidenceId: number, reason: string, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+    if (session.user.role !== 'ADMIN') {
+        return { success: false, error: t(locale, 'business.adminOnly') }
+    }
+
+    const deferredReason = reason.trim()
+    if (!deferredReason) {
+        return { success: false, error: 'El motivo del diferimiento es obligatorio' }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId },
+            select: { id: true, status: true },
+        })
+
+        if (!incidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (!([TaskStatus.TODO, TaskStatus.IN_PROGRESS] as TaskStatus[]).includes(incidence.status)) {
+            return { success: false, error: 'Solo se pueden diferir incidencias en Por Hacer o En Progreso' }
+        }
+
+        const now = new Date()
+
+        await db.$transaction(async (tx) => {
+            await tx.incidence.update({
+                where: { id: incidenceId },
+                data: {
+                    status: TaskStatus.DEFERRED,
+                    deferredAt: now,
+                    deferredReason,
+                    deferredById: Number(session.user.id),
+                },
+            })
+
+            await tx.ticketQA.updateMany({
+                where: {
+                    incidenceId,
+                    status: { notIn: [TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED] },
+                },
+                data: {
+                    status: TicketQAStatus.DEFERRED,
+                    hasUnreadUpdates: true,
+                },
+            })
+        })
+
+        revalidatePath('/incidences')
+        revalidatePath(`/incidences/${incidenceId}`)
+        revalidatePath('/tracklists')
+        return { success: true }
+    } catch (error) {
+        console.error('Error deferring incidence:', error)
+        return { success: false, error: t(locale, 'errors.updateError') }
+    }
+}
+
+export async function resumeDeferredIncidence(incidenceId: number, locale: Locale = 'es') {
+    const session = await auth()
+    if (!session?.user) return { success: false, error: t(locale, 'errors.unauthorized') }
+    if (session.user.role !== 'ADMIN') {
+        return { success: false, error: t(locale, 'business.adminOnly') }
+    }
+
+    try {
+        const incidence = await db.incidence.findUnique({
+            where: { id: incidenceId },
+            include: {
+                assignments: {
+                    where: { isAssigned: true },
+                    include: { tasks: true },
+                },
+            },
+        })
+
+        if (!incidence) {
+            return { success: false, error: t(locale, 'errors.notFound') }
+        }
+
+        if (!isDeferredIncidenceStatus(incidence.status)) {
+            return { success: false, error: 'Solo se pueden reanudar incidencias diferidas' }
+        }
+
+        const tasks = incidence.assignments.flatMap((assignment) => assignment.tasks)
+        const totalTasks = tasks.length
+        const nextStatus = computeCurrentIncidenceStatus({
+            hasEstimatedTime: Boolean(incidence.estimatedTime && incidence.estimatedTime > 0),
+            hasAssignees: incidence.assignments.length > 0,
+            totalTasks,
+            allTasksCompleted: totalTasks > 0 && tasks.every((task) => task.isCompleted),
+        })
+        const targetTicketStatus = getResumedTicketStatus(nextStatus)
+
+        await db.$transaction(async (tx) => {
+            await tx.incidence.update({
+                where: { id: incidenceId },
+                data: {
+                    status: nextStatus,
+                    deferredAt: null,
+                    deferredReason: null,
+                    deferredById: null,
+                    completedAt: null,
+                    ...getReadyForDeployAtPatch(incidence.status, nextStatus),
+                },
+            })
+
+            if (targetTicketStatus) {
+                await tx.ticketQA.updateMany({
+                    where: {
+                        incidenceId,
+                        status: { notIn: [TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED] },
+                    },
+                    data: {
+                        status: targetTicketStatus,
+                        hasUnreadUpdates: true,
+                    },
+                })
+            }
+        })
+
+        revalidatePath('/incidences')
+        revalidatePath(`/incidences/${incidenceId}`)
+        revalidatePath('/tracklists')
+        return { success: true, status: nextStatus }
+    } catch (error) {
+        console.error('Error resuming deferred incidence:', error)
         return { success: false, error: t(locale, 'errors.updateError') }
     }
 }
