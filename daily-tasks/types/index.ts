@@ -112,6 +112,7 @@ export interface GanttIncidence {
   priority: string
   startedAt: Date | null
   completedAt: Date | null
+  deferredAt: Date | null
   estimatedTime: number | null
   createdAt: Date
   externalWorkItem: { id: number; type: string; externalId: number; color: string | null }
@@ -137,6 +138,7 @@ export interface IncidenceGanttData {
   status: TaskStatus
   startedAt: Date | null
   completedAt: Date | null
+  deferredAt: Date | null
   estimatedTime: number | null
   totalAssignedHours: number
 }

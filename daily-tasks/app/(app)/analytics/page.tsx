@@ -19,12 +19,13 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string }> = {
   [TaskStatus.REVIEW]: { label: 'En Revisión', color: '#f59e0b' },
   [TaskStatus.DONE]: { label: 'Completado', color: '#22c55e' },
   [TaskStatus.DISMISSED]: { label: 'Desestimado', color: '#ef4444' },
+  [TaskStatus.DEFERRED]: { label: 'Diferida', color: '#71717a' },
 }
 
 export default async function AnalyticsPage() {
   const incidences = await db.incidence.findMany({
     where: {
-      status: { notIn: [TaskStatus.DONE, TaskStatus.DISMISSED] }
+      status: { notIn: [TaskStatus.DONE, TaskStatus.DISMISSED, TaskStatus.DEFERRED] }
     },
     include: {
       assignments: {

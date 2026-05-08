@@ -767,7 +767,7 @@ export async function getGanttData() {
                             where: { status: { notIn: [TaskStatus.DISMISSED, TaskStatus.BACKLOG] } },
                             select: {
                                 id: true, description: true, status: true, priority: true,
-                                startedAt: true, completedAt: true, estimatedTime: true, createdAt: true,
+                                startedAt: true, completedAt: true, deferredAt: true, estimatedTime: true, createdAt: true,
                                 externalWorkItem: { select: externalWorkItemBaseSelect },
                                 technology: { select: { name: true } },
                                 assignments: {

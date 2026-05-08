@@ -18,6 +18,7 @@ export const ticketDetailsInclude = {
       status: true,
       startedAt: true,
       completedAt: true,
+      deferredAt: true,
       estimatedTime: true,
       assignments: {
         where: { isAssigned: true },
@@ -40,6 +41,7 @@ export function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     status: incidence.status as import('@/types/enums').TaskStatus,
     startedAt: incidence.startedAt,
     completedAt: incidence.completedAt,
+    deferredAt: incidence.deferredAt,
     estimatedTime: incidence.estimatedTime,
     totalAssignedHours: incidence.assignments.reduce((sum, assignment) => sum + (assignment.assignedHours ?? 0), 0),
   } : null

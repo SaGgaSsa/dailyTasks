@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { EllipsisVertical, CheckCircle, BarChart3, FileText, Trash2, Eye } from 'lucide-react'
+import { EllipsisVertical, CheckCircle, BarChart3, FileText, Trash2, Eye, PauseCircle, PlayCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { IncidenceWithDetails } from '@/types'
 import { TaskStatus } from '@/types/enums'
-import { completeIncidence, deleteIncidence } from '@/app/actions/incidence-actions'
+import { completeIncidence, deferIncidence, deleteIncidence, resumeDeferredIncidence } from '@/app/actions/incidence-actions'
 import { toast } from 'sonner'
 
 interface IncidenceActionsMenuProps {
@@ -40,10 +41,14 @@ export function IncidenceActionsMenu({
   const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
+  const [isDeferDialogOpen, setIsDeferDialogOpen] = useState(false)
+  const [deferReason, setDeferReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const canComplete = (task.status === TaskStatus.REVIEW || task.status === TaskStatus.IN_PROGRESS) && (task.qaTickets?.length ?? 0) === 0
-  const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW && task.status !== TaskStatus.DISMISSED
+  const canDiscard = task.status !== TaskStatus.DONE && task.status !== TaskStatus.REVIEW && task.status !== TaskStatus.DISMISSED && task.status !== TaskStatus.DEFERRED
+  const canDefer = task.status === TaskStatus.TODO || task.status === TaskStatus.IN_PROGRESS
+  const canResume = task.status === TaskStatus.DEFERRED
 
   const handleOpenDialog = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -58,6 +63,7 @@ export function IncidenceActionsMenu({
 
     if (result.success) {
       toast.success('Incidencia completada correctamente')
+      router.refresh()
     } else {
       toast.error(result.error || 'Error al completar la incidencia')
     }
@@ -71,8 +77,43 @@ export function IncidenceActionsMenu({
 
     if (result.success) {
       toast.success('Incidencia descartada')
+      router.refresh()
     } else {
       toast.error(result.error || 'Error al descartar la incidencia')
+    }
+  }
+
+  const handleConfirmDefer = async () => {
+    if (!deferReason.trim()) {
+      toast.error('El motivo del diferimiento es obligatorio')
+      return
+    }
+
+    setIsLoading(true)
+    const result = await deferIncidence(task.id, deferReason)
+    setIsLoading(false)
+
+    if (result.success) {
+      toast.success('Incidencia diferida')
+      setIsDeferDialogOpen(false)
+      setDeferReason('')
+      router.refresh()
+    } else {
+      toast.error(result.error || 'Error al diferir la incidencia')
+    }
+  }
+
+  const handleResume = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsLoading(true)
+    const result = await resumeDeferredIncidence(task.id)
+    setIsLoading(false)
+
+    if (result.success) {
+      toast.success('Incidencia reanudada')
+      router.refresh()
+    } else {
+      toast.error(result.error || 'Error al reanudar la incidencia')
     }
   }
 
@@ -99,6 +140,8 @@ export function IncidenceActionsMenu({
 
   const showComplete = !isDev && canComplete
   const showDiscard = !isDev && canDiscard
+  const showDefer = !isDev && canDefer
+  const showResume = !isDev && canResume
 
   return (
     <>
@@ -119,6 +162,25 @@ export function IncidenceActionsMenu({
             <DropdownMenuItem onClick={handleOpenDialog}>
               <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
               Completar Incidencia
+            </DropdownMenuItem>
+          )}
+
+          {showDefer && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsDeferDialogOpen(true)
+              }}
+            >
+              <PauseCircle className="mr-2 h-4 w-4 text-zinc-500" />
+              Diferir Incidencia
+            </DropdownMenuItem>
+          )}
+
+          {showResume && (
+            <DropdownMenuItem onClick={handleResume} disabled={isLoading}>
+              <PlayCircle className="mr-2 h-4 w-4 text-blue-500" />
+              Reanudar Incidencia
             </DropdownMenuItem>
           )}
 
@@ -198,6 +260,41 @@ export function IncidenceActionsMenu({
             </Button>
             <Button onClick={handleConfirmComplete} disabled={isLoading}>
               {isLoading ? 'Completando...' : 'Confirmar Completado'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeferDialogOpen} onOpenChange={setIsDeferDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>
+              Diferir Incidencia {task.externalWorkItem?.type ?? ''} {task.externalWorkItem?.externalId ?? ''}
+            </DialogTitle>
+            <DialogDescription>
+              {task.description}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-2">
+            <label className="text-sm font-medium" htmlFor={`defer-reason-${task.id}`}>
+              Motivo
+            </label>
+            <Textarea
+              id={`defer-reason-${task.id}`}
+              value={deferReason}
+              onChange={(event) => setDeferReason(event.target.value)}
+              placeholder="Indica por qué se difiere esta incidencia"
+              rows={4}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeferDialogOpen(false)} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmDefer} disabled={isLoading || !deferReason.trim()}>
+              {isLoading ? 'Difiriendo...' : 'Confirmar Diferimiento'}
             </Button>
           </DialogFooter>
         </DialogContent>

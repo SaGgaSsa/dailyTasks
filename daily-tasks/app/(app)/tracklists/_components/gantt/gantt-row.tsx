@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
-import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG, type BarSegment } from '@/lib/gantt-utils'
+import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG } from '@/lib/gantt-utils'
 import { getBarColorClasses, STATUS_STYLES } from './gantt-status-colors'
 import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
@@ -28,6 +28,7 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
   const { startDate, endDate, isEstimated } = computeGanttDates({
     startedAt: incidence.startedAt,
     completedAt: incidence.completedAt,
+    deferredAt: incidence.deferredAt,
     estimatedTime: incidence.estimatedTime,
     ticketCreatedAt: incidence.ticket?.createdAt ?? incidence.createdAt,
     nonWorkingDays,
@@ -170,6 +171,7 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
                   {formatDate(startDate)} → {formatDate(endDate)}
                   {isEstimated && ' (estimado)'}
                 </p>
+                {incidence.status === 'DEFERRED' && <p className="text-zinc-400 font-medium">Diferida</p>}
                 {delayed && <p className="text-red-400 font-medium">Retrasado</p>}
               </div>
             </TooltipContent>

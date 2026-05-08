@@ -3,6 +3,7 @@
 import { TicketsGrid as TicketsGridComponent } from '@/components/tracklists/TicketsGrid'
 import { TicketKanbanBoard } from '@/components/tracklists/TicketKanbanBoard'
 import { TicketQAWithDetails } from '@/types'
+import { TicketQAStatus } from '@/types/enums'
 import { AssignableUser } from '@/app/actions/user-actions'
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
 
 export function TicketsGrid({ initialTickets, assignableUsers, view, selectedStatus, selectedUser, selectedTech, search, readOnly }: Props) {
   const filteredTickets = initialTickets.filter((t) => {
+    if (selectedStatus.length === 0 && t.status === TicketQAStatus.DEFERRED) return false
     if (selectedStatus.length > 0 && !selectedStatus.includes(t.status)) return false
     if (selectedUser.length > 0 && !selectedUser.includes(String(t.assignedToId ?? ''))) return false
     if (selectedTech.length > 0 && !selectedTech.includes(t.module.technology.name)) return false
