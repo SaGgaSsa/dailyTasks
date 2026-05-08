@@ -34,6 +34,10 @@ INGEST_SECRET=
 EXTERNAL_API_SECRET=
 NEXTAUTH_SECRET=
 NEXT_PUBLIC_UPLOADS_PATH=/uploads
+TICKET_IMAGE_MAX_BYTES=2097152
+NEXT_PUBLIC_TICKET_IMAGE_MAX_BYTES=2097152
+NEXT_PUBLIC_TICKET_IMAGE_MAX_DIMENSION=1600
+NEXT_PUBLIC_TICKET_IMAGE_QUALITY=0.82
 ```
 
 Variables recomendadas para despliegue:
@@ -78,6 +82,7 @@ npm run start
 ```
 
 Los tests de integración requieren `DATABASE_URL_TEST` y usan una base separada de la de desarrollo.
+Las imágenes pegadas en observaciones de tickets se guardan en `public/uploads/tickets`; `npm run cleanup:ticket-images` elimina registros y archivos abandonados.
 
 ## Estructura de despliegue objetivo en Docker
 

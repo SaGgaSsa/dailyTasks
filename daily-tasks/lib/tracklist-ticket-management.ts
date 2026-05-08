@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { TicketType, TicketQAStatus } from '@/types/enums'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
+import { sanitizeObservationHtml } from '@/lib/ticket-images'
 
 export const ticketDetailsInclude = {
   reportedBy: { select: { id: true, name: true, username: true } },
@@ -129,7 +130,7 @@ async function assignTicketToNewIncidenceCore(
   await client.task.create({
     data: {
       title: taskTitle,
-      description: ticket.observations?.trim() || null,
+      description: sanitizeObservationHtml(ticket.observations),
       assignmentId: assignment.id,
     },
   })

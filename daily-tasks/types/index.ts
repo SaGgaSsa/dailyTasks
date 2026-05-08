@@ -211,6 +211,7 @@ const ticketSchemaBase = z.object({
   externalWorkItemId: z.number().optional(),
   observations: z.string().optional(),
   assignedToId: z.number().optional(),
+  draftId: z.string().optional(),
 })
 
 export const createTicketSchema = ticketSchemaBase

@@ -69,6 +69,8 @@ interface Props {
 
 export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenChange, rejectMode, editMode, viewMode }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [isImageUploading, setIsImageUploading] = useState(false)
+  const [draftId, setDraftId] = useState<string | null>(null)
   const [resolvedViewMode, setResolvedViewMode] = useState<TicketQAWithDetails | null>(null)
   const [type, setType] = useState<TicketType>(TicketType.BUG)
   const [description, setDescription] = useState('')
@@ -96,6 +98,10 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   useEffect(() => {
     if (!open || rejectMode || viewMode) {
       return
+    }
+
+    if (!editMode) {
+      setDraftId(crypto.randomUUID())
     }
 
     async function loadData() {
@@ -237,7 +243,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     : []
 
   const handleSubmit = async () => {
-    if (!description.trim() || description.trim().length < 3) return
+    if (!description.trim() || description.trim().length < 3 || isImageUploading) return
 
     setIsPending(true)
     if (rejectMode) {
@@ -262,7 +268,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         priority: selectedPriority,
         observations: observations.trim() || undefined,
         assignedToId: selectedAssignee?.id,
-        externalWorkItemId: selectedWorkItem?.id
+        externalWorkItemId: selectedWorkItem?.id,
+        draftId: draftId ?? undefined
       })
       setIsPending(false)
       if (result.success) {
@@ -299,6 +306,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setSelectedAssignee(null)
     setSelectedWorkItem(null)
     setWorkItemsList([])
+    setDraftId(null)
+    setIsImageUploading(false)
     onOpenChange(false)
   }
 
@@ -311,6 +320,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setSelectedAssignee(null)
       setSelectedWorkItem(null)
       setWorkItemsList([])
+      setDraftId(null)
+      setIsImageUploading(false)
     }
     onOpenChange(newOpen)
   }
@@ -341,6 +352,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               onChange={setObservations}
               placeholder={rejectMode ? 'Observación del rechazo (opcional)' : 'Observación'}
               disabled={!!effectiveViewMode}
+              tracklistId={tracklistId}
+              ticketId={rejectMode?.id ?? editMode?.id}
+              draftId={draftId ?? undefined}
+              enableImagePaste={!effectiveViewMode}
+              onImageUploadStateChange={setIsImageUploading}
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -653,9 +669,11 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               <Button
                 variant={rejectMode ? 'destructive' : 'default'}
                 onClick={handleSubmit}
-                disabled={!description.trim() || description.trim().length < 3 || isPending}
+                disabled={!description.trim() || description.trim().length < 3 || isPending || isImageUploading}
               >
-                {isPending
+                {isImageUploading
+                  ? 'Subiendo imagen...'
+                  : isPending
                   ? (rejectMode ? 'Rechazando...' : 'Guardando...')
                   : (rejectMode ? 'Rechazar' : editMode ? 'Guardar' : 'Agregar')}
               </Button>

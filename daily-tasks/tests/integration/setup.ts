@@ -86,6 +86,7 @@ beforeEach(async () => {
     TRUNCATE TABLE
       "user_environment_favorites",
       "environment_log_entries",
+      "ticket_images",
       "tickets_qa",
       "tasks",
       "assignments",

@@ -22,6 +22,16 @@ import {
     ticketDetailsInclude,
 } from '@/lib/tracklist-ticket-management'
 import { canManageTracklists, getAuthenticatedUser } from '@/lib/authorization'
+import {
+    deleteTicketImageFile,
+    getAllowedTicketImageExtensions,
+    getTicketImageMaxBytes,
+    hasValidTicketImageMagicBytes,
+    isAllowedTicketImageMimeType,
+    reconcileTicketImages,
+    sanitizeObservationHtml,
+    writeTicketImageFile,
+} from '@/lib/ticket-images'
 
 interface CreateTracklistData {
     title: string
@@ -46,6 +56,7 @@ interface CreateTicketData {
     externalWorkItemId?: number
     observations?: string
     assignedToId?: number
+    draftId?: string
 }
 
 async function requireTracklistManager(locale: Locale) {
@@ -104,6 +115,92 @@ async function getLatestQaTask(ticket: {
             description: true,
         },
     })
+}
+
+export async function uploadTicketImage(formData: FormData, locale: Locale = 'es') {
+    const user = await getAuthenticatedUser()
+    if (!user) {
+        return { success: false, error: 'No autorizado' } as const
+    }
+
+    const file = formData.get('file')
+    const tracklistId = Number(formData.get('tracklistId'))
+    const ticketIdValue = formData.get('ticketId')
+    const ticketId = ticketIdValue ? Number(ticketIdValue) : null
+    const draftId = String(formData.get('draftId') ?? '').trim() || null
+
+    if (!(file instanceof File)) {
+        return { success: false, error: 'Archivo inválido' } as const
+    }
+    if (!Number.isInteger(tracklistId) || tracklistId <= 0) {
+        return { success: false, error: 'Tracklist inválido' } as const
+    }
+    if (ticketId && (!Number.isInteger(ticketId) || ticketId <= 0)) {
+        return { success: false, error: 'Ticket inválido' } as const
+    }
+    if (!ticketId && !draftId) {
+        return { success: false, error: 'El borrador es obligatorio para subir imágenes' } as const
+    }
+
+    if (!isAllowedTicketImageMimeType(file.type)) {
+        return { success: false, error: 'Solo se permiten imágenes JPEG, PNG o WebP' } as const
+    }
+
+    const allowedExtensions = getAllowedTicketImageExtensions(file.type)
+    const originalExtension = file.name ? `.${file.name.split('.').pop()?.toLowerCase() ?? ''}` : ''
+    if (!allowedExtensions || !(allowedExtensions as readonly string[]).includes(originalExtension)) {
+        return { success: false, error: 'Solo se permiten imágenes JPEG, PNG o WebP' } as const
+    }
+
+    const maxBytes = getTicketImageMaxBytes()
+    if (file.size > maxBytes) {
+        return { success: false, error: `La imagen supera el tamaño máximo permitido (${maxBytes} bytes)` } as const
+    }
+
+    try {
+        const [tracklist, ticket] = await Promise.all([
+            db.tracklist.findUnique({ where: { id: tracklistId }, select: { id: true } }),
+            ticketId
+                ? db.ticketQA.findUnique({ where: { id: ticketId, tracklistId }, select: { id: true } })
+                : Promise.resolve(null),
+        ])
+
+        if (!tracklist) {
+            return { success: false, error: 'Tracklist no encontrado' } as const
+        }
+        if (ticketId && !ticket) {
+            return { success: false, error: 'Ticket no encontrado' } as const
+        }
+
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        if (!hasValidTicketImageMagicBytes(bytes, file.type)) {
+            return { success: false, error: 'El archivo no parece ser una imagen válida' } as const
+        }
+
+        const { url } = await writeTicketImageFile(bytes, allowedExtensions[0])
+
+        try {
+            const image = await db.ticketImage.create({
+                data: {
+                    ticketId: ticketId ?? null,
+                    draftId: ticketId ? null : draftId,
+                    url,
+                    size: file.size,
+                    mimeType: file.type,
+                    uploadedById: user.id,
+                },
+                select: { id: true, url: true },
+            })
+
+            return { success: true, data: image } as const
+        } catch (error) {
+            await deleteTicketImageFile(url)
+            throw error
+        }
+    } catch (error) {
+        console.error('Error uploading ticket image:', error)
+        return { success: false, error: t(locale, 'errors.saveError') } as const
+    }
 }
 
 export async function assignTicket(
@@ -402,6 +499,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         }
 
         const sessionUserId = access.user.id
+        const sanitizedObservations = sanitizeObservationHtml(data.observations)
 
         const lastTicket = await db.ticketQA.findFirst({
             where: { tracklistId: tracklistId },
@@ -419,9 +517,15 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                     description: data.description,
                     priority: data.priority,
                     externalWorkItemId: data.externalWorkItemId,
-                    observations: data.observations,
+                    observations: sanitizedObservations,
                     reportedById: sessionUserId,
                 }
+            })
+
+            await reconcileTicketImages(tx, {
+                ticketId: createdTicket.id,
+                draftId: data.draftId,
+                html: sanitizedObservations,
             })
 
             if (data.assignedToId) {
@@ -607,6 +711,8 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
             return { success: false, error: 'Solo se pueden editar tickets todavía no asignados' }
         }
 
+        const sanitizedObservations = sanitizeObservationHtml(data.observations)
+
         await db.$transaction(async (tx) => {
             await tx.ticketQA.update({
                 where: { id: ticketId },
@@ -616,9 +722,15 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
                     description: data.description,
                     priority: data.priority,
                     externalWorkItemId: data.externalWorkItemId ?? null,
-                    observations: data.observations ?? null,
+                    observations: sanitizedObservations,
                     assignedToId: data.assignedToId ?? null,
                 }
+            })
+
+            await reconcileTicketImages(tx, {
+                ticketId,
+                draftId: data.draftId,
+                html: sanitizedObservations,
             })
 
             if (data.assignedToId) {

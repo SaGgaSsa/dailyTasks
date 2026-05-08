@@ -25,6 +25,7 @@ import {
     syncAssignments,
     syncLinkedTickets,
 } from '@/lib/incidence-management'
+import { reconcileTicketImages, sanitizeObservationHtml } from '@/lib/ticket-images'
 
 const getIncidenceCached = cache(async (id: number) => {
     const incidence = await db.incidence.findUnique({
@@ -1505,7 +1506,7 @@ export async function rejectTicket({ ticketId, description, observations, trackl
             return { success: false, error: 'No se encontró la asignación del DEV responsable' }
 
         const rejectionTitle = description.trim()
-        const rejectionObservations = observations?.trim() || null
+        const rejectionObservations = sanitizeObservationHtml(observations)
 
         await db.$transaction(async (tx) => {
             await tx.task.create({
@@ -1520,6 +1521,10 @@ export async function rejectTicket({ ticketId, description, observations, trackl
             await tx.incidence.update({
                 where: { id: ticket.incidenceId! },
                 data: { status: TaskStatus.IN_PROGRESS }
+            })
+            await reconcileTicketImages(tx, {
+                ticketId,
+                html: rejectionObservations,
             })
         })
 

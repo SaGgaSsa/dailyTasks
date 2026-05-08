@@ -9,6 +9,7 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { MarkdownText } from '@/components/ui/markdown-text'
 import { INBOX_MESSAGE_TYPE_LABELS } from '@/types/enums'
 import { cn } from '@/lib/utils'
+import { sanitizeObservationHtml } from '@/lib/observation-html'
 import type { InboxMessageWithContext } from '@/types'
 
 interface InboxMessageDetailProps {
@@ -91,7 +92,7 @@ export function InboxMessageDetail({
                             '[&_code]:rounded [&_code]:bg-zinc-800/80 [&_code]:px-1 [&_code]:py-0.5',
                             '[&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5'
                         )}
-                        dangerouslySetInnerHTML={{ __html: body }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeObservationHtml(body) ?? '' }}
                     />
                 ) : (
                     <MarkdownText content={body} className="text-foreground" />
