@@ -1,11 +1,12 @@
 'use client'
 
-import { Check, ClipboardCopy } from 'lucide-react'
+import { Check, ClipboardCopy, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
 
 import {
+  getEnvironmentDeployBatchReleaseNotes,
   getEnvironmentDeployBatchSql,
   validateEnvironmentConfigurationLog,
 } from '@/app/actions/environment-log'
@@ -52,6 +53,35 @@ export function DeployLogActions({ environmentId, batch, canValidateConfiguratio
         toast.success('SQL copiado')
       } catch {
         toast.error('No se pudo copiar el SQL')
+      }
+    })
+  }
+
+  function handleCopyReleaseNotes() {
+    if (batch.type !== 'DEPLOY') return
+
+    startTransition(async () => {
+      const result = await getEnvironmentDeployBatchReleaseNotes({
+        environmentId,
+        batchId: batch.batchId,
+        entryId: batch.legacyEntryId,
+      })
+
+      if (!result.success) {
+        toast.error(result.error || 'No se pudieron preparar las release notes')
+        return
+      }
+
+      if (!result.data?.hasNotes || !result.data.notes) {
+        toast.info('El deploy no tiene release notes para copiar')
+        return
+      }
+
+      try {
+        await navigator.clipboard.writeText(result.data.notes)
+        toast.success('Release notes copiadas')
+      } catch {
+        toast.error('No se pudieron copiar las release notes')
       }
     })
   }
@@ -134,7 +164,7 @@ export function DeployLogActions({ environmentId, batch, canValidateConfiguratio
   }
 
   return (
-    <div className="flex items-start justify-end pt-1">
+    <div className="flex items-start justify-end gap-1 pt-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -150,6 +180,22 @@ export function DeployLogActions({ environmentId, batch, canValidateConfiguratio
           </Button>
         </TooltipTrigger>
         <TooltipContent>Copiar SQL</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCopyReleaseNotes}
+            disabled={isPending}
+            aria-label="Copiar release notes"
+          >
+            <FileText className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Copiar release notes</TooltipContent>
       </Tooltip>
     </div>
   )

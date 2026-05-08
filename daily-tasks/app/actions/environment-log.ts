@@ -206,6 +206,20 @@ function sortEnvironmentLogEntryViews(entries: EnvironmentLogEntryView[]) {
   })
 }
 
+function formatReleaseNotesDate(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const hours = String(date.getUTCHours()).padStart(2, '0')
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+function normalizeReleaseNotesText(text: string) {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
 async function requireAuthenticatedUser() {
   const user = await getAuthenticatedUser()
   if (!user) {
@@ -898,6 +912,84 @@ export async function getEnvironmentDeployBatchSql(
   } catch (error) {
     console.error('Error building environment deploy SQL:', error)
     return { success: false, error: 'Error al preparar SQL del deploy' }
+  }
+}
+
+export async function getEnvironmentDeployBatchReleaseNotes(
+  input: DeployBatchSqlInput
+): Promise<ActionResult<{ notes: string; hasNotes: boolean }>> {
+  const access = await requireAuthenticatedUser()
+  if (!access.success) return withoutData(access)
+
+  const environment = await getEnabledEnvironment(input.environmentId)
+  if (!environment) {
+    return { success: false, error: 'Ambiente no encontrado' }
+  }
+
+  if (!input.batchId && !input.entryId) {
+    return { success: false, error: 'Batch no encontrado' }
+  }
+
+  try {
+    const entries = await db.environmentLogEntry.findMany({
+      where: {
+        environmentId: input.environmentId,
+        type: EnvironmentLogEntryType.DEPLOY,
+        ...(input.batchId
+          ? { batchId: input.batchId }
+          : { id: input.entryId ?? undefined, batchId: null }),
+      },
+      orderBy: { id: 'asc' },
+      include: {
+        createdBy: { select: { name: true, username: true } },
+        ticket: { select: { ticketNumber: true } },
+        incidence: {
+          include: {
+            externalWorkItem: {
+              include: {
+                workItemType: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const validEntries = sortDeployEntriesByWorkItem(entries).filter((entry) => entry.incidence)
+    if (validEntries.length === 0) {
+      return { success: true, data: { notes: '', hasNotes: false } }
+    }
+
+    const occurredAt = new Date(Math.max(...validEntries.map((entry) => entry.occurredAt.getTime())))
+    const authorEntry = entries.find((entry) => entry.incidence) ?? validEntries[0]
+    const author = authorEntry.createdBy.name?.trim() || authorEntry.createdBy.username
+    const bullets = validEntries.map((entry) => {
+      const incidence = entry.incidence
+      if (!incidence) return ''
+
+      const workItem = incidence.externalWorkItem
+      const ticketLabel = entry.ticket ? ` / Ticket #${entry.ticket.ticketNumber}` : ''
+      return `- ${workItem.workItemType.name} ${workItem.externalId}${ticketLabel}: ${normalizeReleaseNotesText(incidence.description)}`
+    }).filter(Boolean)
+
+    return {
+      success: true,
+      data: {
+        notes: [
+          `# Release ${environment.name} - ${formatReleaseNotesDate(occurredAt)}`,
+          '',
+          `Autor: ${author}`,
+          '',
+          '## Cambios',
+          '',
+          ...bullets,
+        ].join('\n'),
+        hasNotes: true,
+      },
+    }
+  } catch (error) {
+    console.error('Error building environment deploy release notes:', error)
+    return { success: false, error: 'Error al preparar release notes del deploy' }
   }
 }
 

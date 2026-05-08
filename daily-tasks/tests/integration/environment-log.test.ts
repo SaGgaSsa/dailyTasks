@@ -6,6 +6,7 @@ import {
   createEnvironmentScriptLog,
   getEnvironmentAvailability,
   getEnvironmentLogEntries,
+  getEnvironmentDeployBatchReleaseNotes,
   getPendingEnvironmentDeployItems,
   getEnvironmentDeployBatchSql,
   getSidebarFavoriteEnvironments,
@@ -631,6 +632,133 @@ describe('environment log', () => {
       '',
       'select 1;',
     ].join('\n'))
+  })
+
+  it('builds deploy batch release notes with environment, date, author, tickets and direct incidences', async () => {
+    const dev = await createUser(UserRole.DEV, { name: 'Ana Deploy', username: 'adeploy' })
+    actAs(dev)
+    const environment = await createEnabledEnvironment('QA')
+    const { technology, module } = await createTechnologyModule()
+    const ticketWorkItem = await createExternalWorkItem('I_MODAPL')
+    const directWorkItem = await createExternalWorkItem('I_CONS')
+    const ticketIncidence = await createIncidenceFixture({
+      externalWorkItemId: ticketWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    const directIncidence = await createIncidenceFixture({
+      externalWorkItemId: directWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    const tracklist = await createTracklist(dev.id)
+    const ticket = await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: module.id,
+      reportedById: dev.id,
+      externalWorkItemId: ticketWorkItem.id,
+      incidenceId: ticketIncidence.incidence.id,
+    })
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [
+        { incidenceId: ticketIncidence.incidence.id },
+        { incidenceId: directIncidence.incidence.id },
+      ],
+    })
+    const [{ batchId }] = await db.environmentLogEntry.findMany({ select: { batchId: true }, take: 1 })
+    await db.environmentLogEntry.updateMany({
+      where: { batchId },
+      data: { occurredAt: new Date('2026-05-05T09:30:00.000Z') },
+    })
+
+    const result = await getEnvironmentDeployBatchReleaseNotes({ environmentId: environment.id, batchId })
+
+    expect(result.success).toBe(true)
+    expect(result.data).toEqual({
+      hasNotes: true,
+      notes: [
+        '# Release QA - 2026-05-05 09:30',
+        '',
+        'Autor: Ana Deploy',
+        '',
+        '## Cambios',
+        '',
+        `- I_CONS ${directWorkItem.externalId}: ${directIncidence.incidence.description}`,
+        `- I_MODAPL ${ticketWorkItem.externalId} / Ticket #${ticket.ticketNumber}: ${ticketIncidence.incidence.description}`,
+      ].join('\n'),
+    })
+  })
+
+  it('orders deploy batch release notes by work item type and external number', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const lowerWorkItem = await createExternalWorkItem('I_MODAPL')
+    const higherWorkItem = await createExternalWorkItem('I_MODAPL')
+    const { technology } = await createTechnologyModule()
+    const lower = await createIncidenceFixture({
+      externalWorkItemId: lowerWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    const higher = await createIncidenceFixture({
+      externalWorkItemId: higherWorkItem.id,
+      technologyId: technology.id,
+      status: TaskStatus.REVIEW,
+      assignees: [{ userId: dev.id, assignedHours: 1 }],
+      tasks: [{ userId: dev.id, title: 'Lista', isCompleted: true }],
+    })
+    await registerEnvironmentDeploys({
+      environmentId: environment.id,
+      items: [
+        { incidenceId: higher.incidence.id },
+        { incidenceId: lower.incidence.id },
+      ],
+    })
+    const [{ batchId }] = await db.environmentLogEntry.findMany({ select: { batchId: true }, take: 1 })
+
+    const result = await getEnvironmentDeployBatchReleaseNotes({ environmentId: environment.id, batchId })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.notes).toContain([
+      `- I_MODAPL ${lowerWorkItem.externalId}: ${lower.incidence.description}`,
+      `- I_MODAPL ${higherWorkItem.externalId}: ${higher.incidence.description}`,
+    ].join('\n'))
+  })
+
+  it('returns empty release notes for missing batches or deploys without valid items', async () => {
+    const dev = await createUser(UserRole.DEV)
+    actAs(dev)
+    const environment = await createEnabledEnvironment()
+    const missing = await getEnvironmentDeployBatchReleaseNotes({
+      environmentId: environment.id,
+      batchId: '00000000-0000-0000-0000-000000000000',
+    })
+
+    await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.DEPLOY,
+        environmentId: environment.id,
+        createdById: dev.id,
+      },
+    })
+    const invalidEntry = await db.environmentLogEntry.findFirstOrThrow()
+    const invalid = await getEnvironmentDeployBatchReleaseNotes({
+      environmentId: environment.id,
+      entryId: invalidEntry.id,
+    })
+
+    expect(missing.success).toBe(true)
+    expect(missing.data).toEqual({ notes: '', hasNotes: false })
+    expect(invalid.success).toBe(true)
+    expect(invalid.data).toEqual({ notes: '', hasNotes: false })
   })
 
   it('stores favorite environments per user', async () => {
