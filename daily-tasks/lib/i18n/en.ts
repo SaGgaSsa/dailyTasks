@@ -99,11 +99,6 @@ export const en = {
     ANGULAR: 'Angular',
     SPRING: 'Spring',
   },
-  taskTypes: {
-    I_MODAPL: 'Modification Request',
-    I_CASO: 'Case',
-    I_CONS: 'Consultation',
-  },
   roles: {
     ADMIN: 'Administrator',
     DEV: 'Developer',

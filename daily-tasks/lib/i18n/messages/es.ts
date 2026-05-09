@@ -98,11 +98,6 @@ export default {
     ANGULAR: 'Angular',
     SPRING: 'Spring',
   },
-  taskTypes: {
-    I_MODAPL: 'Solicitud de Modificación',
-    I_CASO: 'Caso',
-    I_CONS: 'Consulta',
-  },
   roles: {
     ADMIN: 'Administrador',
     DEV: 'Desarrollador',

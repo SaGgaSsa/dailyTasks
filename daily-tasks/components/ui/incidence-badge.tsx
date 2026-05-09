@@ -4,9 +4,6 @@ import { getWorkItemTypeColorOption, workItemTypeColorMap } from '@/lib/work-ite
 const legacyTypeColors: Record<string, string> = {
     BUG: workItemTypeColorMap.red.badgeClassName,
     FEATURE: workItemTypeColorMap.green.badgeClassName,
-    I_MODAPL: workItemTypeColorMap.blue.badgeClassName,
-    I_CASO: workItemTypeColorMap.orange.badgeClassName,
-    I_CONS: workItemTypeColorMap.purple.badgeClassName,
 }
 
 interface IncidenceBadgeProps {

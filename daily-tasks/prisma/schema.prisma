@@ -54,12 +54,6 @@ enum TaskStatus {
   DEFERRED
 }
 
-enum TaskType {
-  I_CASO
-  I_CONS
-  I_MODAPL
-}
-
 model Technology {
   id            Int           @id @default(autoincrement())
   name          String        @unique

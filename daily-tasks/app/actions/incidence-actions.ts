@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority as PrismaPriority, TaskStatus, TaskType, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
+import { Priority as PrismaPriority, TaskStatus, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
 import { Priority, InboxMessageType } from '@/types/enums'
 import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
@@ -52,7 +52,7 @@ const getUsersCached = cache(async () => {
 })
 
 interface CreateIncidenceData {
-    type: TaskType
+    type: string
     externalId: number
     description: string
     comment?: string
@@ -319,7 +319,7 @@ export async function getIncidencePageData(id: number): Promise<{
     }
 }
 
-export async function getIncidenceWithUsers(type: TaskType, externalId: number): Promise<GetIncidenceWithUsersResult> {
+export async function getIncidenceWithUsers(type: string, externalId: number): Promise<GetIncidenceWithUsersResult> {
     try {
         const workItemType = await db.workItemType.findUnique({
             where: { name: type },

@@ -1,4 +1,4 @@
-import type { Priority, TaskStatus, TaskType, TicketQAStatus, TicketType } from '@prisma/client'
+import type { Priority, TaskStatus, TicketQAStatus, TicketType } from '@prisma/client'
 import { ExternalWorkItemStatus } from '.prisma/client'
 import { UserRole } from '@prisma/client'
 
@@ -80,19 +80,20 @@ export async function createTechnologyModule() {
 }
 
 export async function createExternalWorkItem(
-  type: TaskType = 'I_MODAPL',
+  type: string = 'I_MODAPL',
   status: ExternalWorkItemStatus = ExternalWorkItemStatus.ACTIVE
 ) {
-  const typeColors: Record<TaskType, WorkItemTypeColor> = {
+  const typeColors: Partial<Record<string, WorkItemTypeColor>> = {
     I_MODAPL: 'blue',
     I_CASO: 'orange',
     I_CONS: 'purple',
   }
+  const color = typeColors[type] ?? null
 
   const workItemType = await db.workItemType.upsert({
     where: { name: type },
-    update: { color: typeColors[type] },
-    create: { name: type, color: typeColors[type] },
+    update: { color },
+    create: { name: type, color },
   })
 
   return db.externalWorkItem.create({

@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { IncidenceWithDetails, Task } from '@/types'
-import { TaskType } from '@/types/enums'
 import { FormSheet } from '@/components/ui/form-sheet'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -18,7 +17,7 @@ interface IncidenceFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     initialData?: IncidenceWithDetails | null
-    type?: TaskType
+    type?: string
     externalId?: number
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     onIncidenceCreated?: () => void

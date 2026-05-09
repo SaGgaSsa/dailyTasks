@@ -557,7 +557,7 @@ describe('environment log', () => {
     expect(pending.data?.map((item) => item.incidenceId)).toEqual([incidence.id])
   })
 
-  it('builds deploy batch SQL ordered by work item type and number', async () => {
+  it('builds deploy batch SQL ordered by work item type name and number', async () => {
     const dev = await createUser(UserRole.DEV)
     actAs(dev)
     const environment = await createEnabledEnvironment()
@@ -597,13 +597,13 @@ describe('environment log', () => {
 
     expect(result.success).toBe(true)
     expect(result.data?.sql).toBe([
-      `--I_MODAPL ${modaplWorkItem.externalId} ${modapl.incidence.description}`,
-      '',
-      'select 1;',
-      '',
       `--I_CONS ${consWorkItem.externalId} ${cons.incidence.description}`,
       '',
       'select 2;',
+      '',
+      `--I_MODAPL ${modaplWorkItem.externalId} ${modapl.incidence.description}`,
+      '',
+      'select 1;',
     ].join('\n'))
   })
 

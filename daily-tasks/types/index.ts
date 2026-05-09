@@ -1,9 +1,9 @@
 import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Tracklist, TicketQA, Technology, Module as ModulePrisma, WorkItemType, ExternalWorkItemStatus, ScriptType, InboxMessage as PrismaInboxMessage } from '.prisma/client'
-import { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
+import { TaskStatus, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 import { normalizeUsername } from '@/lib/usernames'
 
-export type { TaskStatus, TaskType, Priority, AttachmentType, TicketType, TicketQAStatus }
+export type { TaskStatus, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology, WorkItemType, ExternalWorkItemStatus }
 export type { Task, Attachment, IncidencePage }
 

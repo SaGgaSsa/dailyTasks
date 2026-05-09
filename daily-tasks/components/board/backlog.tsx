@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CheckCircle2, Inbox, Clock, User, List, CheckCircle, GripVertical } from 'lucide-react'
-import { TaskStatus, TaskType } from '@/types/enums'
+import { TaskStatus } from '@/types/enums'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import {

@@ -219,7 +219,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
                         if (!open) setSelectedTask(null)
                     }}
                     initialData={selectedTask}
-                    type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
+                    type={selectedTask?.externalWorkItem?.type}
                     externalId={selectedTask?.externalWorkItem?.externalId}
                     onTaskUpdate={handleTaskUpdate}
                     isDev={true}
@@ -360,7 +360,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
                     if (!open) setSelectedTask(null)
                 }}
                 initialData={selectedTask}
-                type={selectedTask?.externalWorkItem?.type as import('@/types/enums').TaskType | undefined}
+                type={selectedTask?.externalWorkItem?.type}
                 externalId={selectedTask?.externalWorkItem?.externalId}
                 onTaskUpdate={handleTaskUpdate}
                 onIncidenceCreated={handleTaskUpdate}

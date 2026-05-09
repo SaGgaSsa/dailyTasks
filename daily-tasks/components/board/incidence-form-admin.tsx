@@ -18,8 +18,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { IncidenceWithDetails, Task, ExternalWorkItemSummary } from '@/types'
-import { TaskType, TaskStatus, Priority } from '@/types/enums'
+import { IncidenceWithDetails, Task, ExternalWorkItemSummary, WorkItemTypeOption } from '@/types'
+import { TaskStatus, Priority } from '@/types/enums'
 import { PRIORITY_OPTIONS } from '@/lib/ticket-sort'
 import { Priority as PrismaPriority, TaskStatus as PrismaTaskStatus } from '@prisma/client'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
@@ -28,7 +28,7 @@ import { TaskListSection } from '@/components/board/task-list-section'
 
 import { createIncidence, getIncidenceWithUsers, saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
 import { getCachedTechsWithModules } from '@/app/actions/tech'
-import { getCachedExternalWorkItems } from '@/app/actions/external-work-items'
+import { getCachedExternalWorkItems, getCachedWorkItemTypes } from '@/app/actions/external-work-items'
 import { User } from '@prisma/client'
 import { toast } from 'sonner'
 
@@ -36,20 +36,13 @@ interface IncidenceFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     initialData?: IncidenceWithDetails | null
-    type?: TaskType
+    type?: string
     externalId?: number
     onTaskUpdate?: (updatedTask: IncidenceWithDetails) => void
     onIncidenceCreated?: () => void
     isDev?: boolean
     isKanban?: boolean
 }
-
-const typeOptions = [
-    { value: TaskType.I_MODAPL, label: 'I_MODAPL' },
-    { value: TaskType.I_CASO, label: 'I_CASO' },
-    { value: TaskType.I_CONS, label: 'I_CONS' },
-]
-
 
 interface AssigneeFormData {
     userId: number
@@ -65,7 +58,7 @@ interface DraftTask {
 }
 
 interface FormData {
-    type: TaskType
+    type: string
     externalId: string
     description: string
     comment: string
@@ -85,7 +78,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const isAdmin = session?.user?.role === 'ADMIN'
 
     const [formData, setFormData] = useState<FormData>({
-        type: TaskType.I_MODAPL,
+        type: '',
         externalId: '',
         description: '',
         comment: '',
@@ -99,6 +92,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [users, setUsers] = useState<User[]>([])
     const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
     const [externalWorkItems, setExternalWorkItems] = useState<ExternalWorkItemSummary[]>([])
+    const [workItemTypes, setWorkItemTypes] = useState<WorkItemTypeOption[]>([])
     const [isDescriptionManuallyEdited, setIsDescriptionManuallyEdited] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -120,6 +114,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
     const [draftTaskEdits, setDraftTaskEdits] = useState<Record<string, string>>({})
     const [tasksToPinToggle, setTasksToPinToggle] = useState<Set<number>>(new Set())
     const [pinnedDraftIds, setPinnedDraftIds] = useState<Set<string>>(new Set())
+    const typeOptions = workItemTypes.map((item) => ({ value: item.name, label: item.name }))
 
     const hasHours = (fullIncidenceData?.estimatedTime ?? 0) > 0
     const hasAssignees = (fullIncidenceData?.assignments?.filter(a => a.isAssigned).length ?? 0) > 0
@@ -152,10 +147,16 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 const items = await getCachedExternalWorkItems()
                 setExternalWorkItems(items)
             }
+            let loadedWorkItemTypes = workItemTypes
+            if (open && workItemTypes.length === 0) {
+                loadedWorkItemTypes = await getCachedWorkItemTypes()
+                setWorkItemTypes(loadedWorkItemTypes)
+            }
+            const defaultType = loadedWorkItemTypes[0]?.name ?? ''
             if (open && initialData?.id && type && externalId) {
                 setIsLoading(true)
                 setFormData({
-                    type: TaskType.I_MODAPL,
+                    type: defaultType,
                     externalId: '',
                     description: '',
                     comment: '',
@@ -191,7 +192,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                         const allAssignments = incidence.assignments
                         const activeAssignments = allAssignments.filter(a => a.isAssigned)
                         const data = {
-                            type: (incidence.externalWorkItem?.type as TaskType) || TaskType.I_MODAPL,
+                            type: incidence.externalWorkItem?.type || defaultType,
                             externalId: incidence.externalWorkItem?.externalId?.toString() || '',
                             description: incidence.description || '',
                             comment: incidence.comment || '',
@@ -224,7 +225,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 // Creating new incidence - just load users
                 setIsDescriptionManuallyEdited(false)
                 setFormData({
-                    type: TaskType.I_MODAPL,
+                    type: defaultType,
                     externalId: '',
                     description: '',
                     comment: '',
@@ -247,7 +248,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                 
                 // Load users for new incidence form
                 try {
-                    const userList = await getIncidenceWithUsers(TaskType.I_MODAPL, 0)
+                    const userList = await getIncidenceWithUsers(defaultType, 0)
                     const sortedUsers = sortUsers(userList.users as User[], new Set())
                     setUsers(sortedUsers)
                 } catch (error) {
@@ -825,7 +826,7 @@ export function IncidenceFormAdmin({ open, onOpenChange, initialData, type, exte
                     id="type"
                     label="Tipo"
                     value={formData.type}
-                    onValueChange={(value) => updateFormData({ type: value as TaskType })}
+                    onValueChange={(value) => updateFormData({ type: value })}
                     options={typeOptions}
                     disabled={isEditMode}
                 />

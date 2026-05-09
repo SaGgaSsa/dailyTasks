@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EnvironmentLogEntryType, TaskStatus, TicketQAStatus } from '@prisma/client'
 
-import { getEnvironmentAvailability } from '@/app/actions/environment-log'
 import { createTicket, getTicketById, getTicketsByTracklist, updateTicket } from '@/app/actions/tracklists'
 import { db } from '@/lib/db'
 import { Priority, TicketType } from '@/types/enums'
@@ -91,7 +90,7 @@ describe('ticket environment reference integration', () => {
     })
   })
 
-  it('keeps the reference environment separate from environment availability', async () => {
+  it('keeps the reference environment separate from the list deployment summary', async () => {
     const qa = await createUser('QA')
     const dev = await createUser('DEV')
     const { technology, module: moduleRecord } = await createTechnologyModule()
@@ -104,6 +103,10 @@ describe('ticket environment reference integration', () => {
       externalWorkItemId: workItem.id,
       status: TaskStatus.REVIEW,
       assignees: [{ userId: dev.id }],
+    })
+    await db.incidence.update({
+      where: { id: incidence.id },
+      data: { readyForDeployAt: new Date('2026-05-09T09:00:00Z') },
     })
     const ticket = await createTicketFixture({
       tracklistId: tracklist.id,
@@ -128,11 +131,13 @@ describe('ticket environment reference integration', () => {
     })
 
     actAs(qa)
-    const availability = await getEnvironmentAvailability({ ticketId: ticket.id })
+    const tickets = await getTicketsByTracklist(tracklist.id)
+    const listedTicket = tickets.data?.find((item) => item.id === ticket.id)
 
-    expect(availability.success).toBe(true)
-    expect(availability.data?.find((item) => item.environmentId === referenceEnvironment.id)?.isAvailable).toBe(false)
-    expect(availability.data?.find((item) => item.environmentId === deployedEnvironment.id)?.isAvailable).toBe(true)
+    expect(tickets.success).toBe(true)
+    expect(listedTicket?.referenceEnvironment).toEqual({ id: referenceEnvironment.id, name: 'QA' })
+    expect(listedTicket?.deploymentSummary.isCurrentlyDeployed).toBe(true)
+    expect(listedTicket?.deploymentSummary.deployedEnvironmentCount).toBe(1)
   })
 
   it('summarizes current deployment only when the latest deploy is newer than readyForDeployAt', async () => {
@@ -147,6 +152,10 @@ describe('ticket environment reference integration', () => {
       externalWorkItemId: workItem.id,
       status: TaskStatus.REVIEW,
       assignees: [{ userId: dev.id }],
+    })
+    await db.incidence.update({
+      where: { id: incidence.id },
+      data: { readyForDeployAt: new Date('2026-05-09T09:00:00Z') },
     })
     const ticket = await createTicketFixture({
       tracklistId: tracklist.id,

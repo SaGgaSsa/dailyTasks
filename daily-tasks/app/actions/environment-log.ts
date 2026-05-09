@@ -13,12 +13,6 @@ type ActionResult<T = undefined> = {
   data?: T
 }
 
-const WORK_ITEM_TYPE_ORDER = new Map([
-  ['I_MODAPL', 0],
-  ['I_CASO', 1],
-  ['I_CONS', 2],
-])
-
 export interface EnvironmentLogEnvironment {
   id: number
   name: string
@@ -141,8 +135,7 @@ interface DeployBatchSqlInput {
 }
 
 interface AvailabilityInput {
-  incidenceId?: number
-  ticketId?: number
+  incidenceId: number
 }
 
 function isValidId(id: number) {
@@ -194,9 +187,7 @@ function sortDeployEntriesByWorkItem<T extends {
   return [...entries].sort((a, b) => {
     const typeA = a.incidence?.externalWorkItem.workItemType.name ?? ''
     const typeB = b.incidence?.externalWorkItem.workItemType.name ?? ''
-    const typeComparison = (WORK_ITEM_TYPE_ORDER.get(typeA) ?? Number.MAX_SAFE_INTEGER) -
-      (WORK_ITEM_TYPE_ORDER.get(typeB) ?? Number.MAX_SAFE_INTEGER) ||
-      typeA.localeCompare(typeB, 'es')
+    const typeComparison = typeA.localeCompare(typeB, 'es')
     if (typeComparison !== 0) return typeComparison
 
     const numberA = a.incidence?.externalWorkItem.externalId ?? 0
@@ -209,9 +200,7 @@ function sortEnvironmentLogEntryViews(entries: EnvironmentLogEntryView[]) {
   return [...entries].sort((a, b) => {
     const typeA = a.incidence?.workItem.type ?? ''
     const typeB = b.incidence?.workItem.type ?? ''
-    const typeComparison = (WORK_ITEM_TYPE_ORDER.get(typeA) ?? Number.MAX_SAFE_INTEGER) -
-      (WORK_ITEM_TYPE_ORDER.get(typeB) ?? Number.MAX_SAFE_INTEGER) ||
-      typeA.localeCompare(typeB, 'es')
+    const typeComparison = typeA.localeCompare(typeB, 'es')
     if (typeComparison !== 0) return typeComparison
 
     return (a.incidence?.workItem.externalId ?? 0) - (b.incidence?.workItem.externalId ?? 0)
@@ -1009,46 +998,27 @@ export async function getEnvironmentAvailability(input: AvailabilityInput): Prom
   const access = await requireAuthenticatedUser()
   if (!access.success) return withoutData(access)
 
-  if (!input.ticketId && !input.incidenceId) {
-    return { success: false, error: 'Debe indicar ticket o incidencia' }
+  if (!input.incidenceId) {
+    return { success: false, error: 'Debe indicar incidencia' }
   }
 
   try {
-    const ticket = input.ticketId
-      ? await db.ticketQA.findUnique({
-          where: { id: input.ticketId },
-          select: {
-            id: true,
-            incidence: { select: { id: true, readyForDeployAt: true, updatedAt: true } },
-          },
-        })
-      : null
+    const incidence = await db.incidence.findUnique({
+      where: { id: input.incidenceId },
+      select: {
+        id: true,
+        readyForDeployAt: true,
+        updatedAt: true,
+        qaTickets: { select: { id: true }, take: 1 },
+      },
+    })
 
-    const incidence = !ticket && input.incidenceId
-      ? await db.incidence.findUnique({
-          where: { id: input.incidenceId },
-          select: {
-            id: true,
-            readyForDeployAt: true,
-            updatedAt: true,
-            qaTickets: { select: { id: true }, take: 1 },
-          },
-        })
-      : null
-
-    if (input.ticketId && !ticket) {
-      return { success: false, error: 'Ticket no encontrado' }
-    }
-
-    if (!ticket && input.incidenceId && !incidence) {
+    if (!incidence) {
       return { success: false, error: 'Incidencia no encontrada' }
     }
 
-    const governingTicketId = ticket?.id ?? incidence?.qaTickets[0]?.id ?? null
-    const governingIncidence = ticket?.incidence ?? incidence
-    const readyForDeployAt = governingIncidence
-      ? governingIncidence.readyForDeployAt ?? governingIncidence.updatedAt
-      : null
+    const governingTicketId = incidence.qaTickets[0]?.id ?? null
+    const readyForDeployAt = incidence.readyForDeployAt ?? incidence.updatedAt
 
     const environments = await db.environment.findMany({
       where: { isEnabled: true },
@@ -1063,9 +1033,7 @@ export async function getEnvironmentAvailability(input: AvailabilityInput): Prom
         environmentId: { in: environments.map((environment) => environment.id) },
         ...(governingTicketId
           ? { ticketId: governingTicketId }
-          : governingIncidence
-            ? { ticketId: null, incidenceId: governingIncidence.id }
-            : { ticketId: input.ticketId }),
+          : { ticketId: null, incidenceId: incidence.id }),
       },
       _max: { occurredAt: true },
     })

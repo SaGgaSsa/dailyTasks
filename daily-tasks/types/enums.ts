@@ -8,12 +8,6 @@ export enum TaskStatus {
     DEFERRED = "DEFERRED",
 }
 
-export enum TaskType {
-    I_MODAPL = "I_MODAPL",
-    I_CASO = "I_CASO",
-    I_CONS = "I_CONS",
-}
-
 export enum Priority {
     LOW = "LOW",
     MEDIUM = "MEDIUM",
