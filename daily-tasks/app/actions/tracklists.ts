@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, unstable_cache } from 'next/cache'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { auth } from '@/auth'
 import { t, Locale } from '@/lib/i18n'
@@ -17,6 +17,7 @@ import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/wor
 import {
     assignTicketToNewIncidence,
     assignTicketToNewIncidenceCore,
+    addTicketDeploymentSummaries,
     enrichTicketScripts,
     ExternalWorkItemStatus,
     ticketDetailsInclude,
@@ -54,10 +55,21 @@ interface CreateTicketData {
     description: string
     priority: Priority
     externalWorkItemId?: number
+    environmentId?: number | null
     observations?: string
     assignedToId?: number
     draftId?: string
 }
+
+export const getCachedActiveEnvironments = unstable_cache(
+    async () => db.environment.findMany({
+        where: { isEnabled: true },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+    }),
+    ['active-environments-for-ticket-form'],
+    { tags: ['environments'] }
+)
 
 async function requireTracklistManager(locale: Locale) {
     const user = await getAuthenticatedUser()
@@ -88,6 +100,25 @@ async function ensureActiveExternalWorkItem(
 
     if (!isExternalWorkItemActive(workItem)) {
         return { success: false, error: t(locale, 'business.inactiveExternalWorkItem') }
+    }
+
+    return { success: true }
+}
+
+async function ensureActiveEnvironment(
+    environmentId: number | null | undefined
+): Promise<{ success: true } | { success: false; error: string }> {
+    if (environmentId === undefined || environmentId === null) {
+        return { success: true }
+    }
+
+    const environment = await db.environment.findUnique({
+        where: { id: environmentId },
+        select: { id: true, isEnabled: true },
+    })
+
+    if (!environment?.isEnabled) {
+        return { success: false, error: 'El ambiente seleccionado no es válido' }
     }
 
     return { success: true }
@@ -440,7 +471,8 @@ export async function getTicketsByTracklist(tracklistId: number, locale: Locale 
             where: { tracklistId: tracklistId },
             include: ticketDetailsInclude,
         })
-        const sorted = sortTicketsByPriorityAndNumber(tickets.map(enrichTicketScripts))
+        const enriched = await addTicketDeploymentSummaries(tickets.map(enrichTicketScripts))
+        const sorted = sortTicketsByPriorityAndNumber(enriched)
         return { success: true, data: sorted }
     } catch (error) {
         console.error('Error fetching tickets:', error)
@@ -465,7 +497,7 @@ export async function getTicketById(ticketId: number, locale: Locale = 'es') {
         }
 
         const [enrichedTicket, latestQaTask] = await Promise.all([
-            Promise.resolve(enrichTicketScripts(ticket)),
+            addTicketDeploymentSummaries([enrichTicketScripts(ticket)]).then((tickets) => tickets[0]),
             getLatestQaTask(ticket),
         ])
 
@@ -497,6 +529,13 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
         if (!workItemCheck.success) {
             return workItemCheck
         }
+        const environmentCheck = await ensureActiveEnvironment(data.environmentId)
+        if (!environmentCheck.success) {
+            return environmentCheck
+        }
+        if (data.environmentId && data.assignedToId) {
+            return { success: false, error: 'Solo se puede indicar ambiente en tickets no asignados' }
+        }
 
         const sessionUserId = access.user.id
         const sanitizedObservations = sanitizeObservationHtml(data.observations)
@@ -517,6 +556,7 @@ export async function createTicket(tracklistId: number, data: CreateTicketData, 
                     description: data.description,
                     priority: data.priority,
                     externalWorkItemId: data.externalWorkItemId,
+                    environmentId: data.environmentId ?? null,
                     observations: sanitizedObservations,
                     reportedById: sessionUserId,
                 }
@@ -667,8 +707,9 @@ export async function getTicketFormData(tracklistId: number) {
     try {
         const [techsResult, workItemsResult] = await Promise.all([
             getCachedTechsWithModules(),
-            getTracklistExternalWorkItems(tracklistId)
+            getTracklistExternalWorkItems(tracklistId),
         ])
+        const environments = await getCachedActiveEnvironments()
 
         return {
             success: true,
@@ -677,7 +718,8 @@ export async function getTicketFormData(tracklistId: number) {
                 allModules: techsResult.allModules,
                 defaultTech: techsResult.defaultTech,
                 defaultModules: techsResult.defaultModules,
-                externalWorkItems: workItemsResult.success ? workItemsResult.data : []
+                externalWorkItems: workItemsResult.success ? workItemsResult.data : [],
+                environments,
             }
         }
     } catch (error) {
@@ -701,6 +743,10 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
         if (!workItemCheck.success) {
             return workItemCheck
         }
+        const environmentCheck = await ensureActiveEnvironment(data.environmentId)
+        if (!environmentCheck.success) {
+            return environmentCheck
+        }
 
         const ticket = await db.ticketQA.findUnique({ where: { id: ticketId, tracklistId } })
         if (!ticket) return { success: false, error: 'Ticket no encontrado' }
@@ -709,6 +755,9 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
         }
         if (ticket.assignedToId || ticket.incidenceId) {
             return { success: false, error: 'Solo se pueden editar tickets todavía no asignados' }
+        }
+        if (data.environmentId && data.assignedToId) {
+            return { success: false, error: 'Solo se puede indicar ambiente en tickets no asignados' }
         }
 
         const sanitizedObservations = sanitizeObservationHtml(data.observations)
@@ -722,6 +771,7 @@ export async function updateTicket(ticketId: number, tracklistId: number, data: 
                     description: data.description,
                     priority: data.priority,
                     externalWorkItemId: data.externalWorkItemId ?? null,
+                    environmentId: data.environmentId ?? null,
                     observations: sanitizedObservations,
                     assignedToId: data.assignedToId ?? null,
                 }
@@ -767,10 +817,10 @@ export async function getAllTracklistsWithTickets(locale: Locale = 'es') {
             },
         })
 
-        const sorted = tracklists.map((tl) => ({
+        const sorted = await Promise.all(tracklists.map(async (tl) => ({
             ...tl,
-            tickets: sortTicketsByPriorityAndNumber(tl.tickets.map(enrichTicketScripts)),
-        }))
+            tickets: sortTicketsByPriorityAndNumber(await addTicketDeploymentSummaries(tl.tickets.map(enrichTicketScripts))),
+        })))
 
         return { success: true, data: sorted } as const
     } catch (error) {

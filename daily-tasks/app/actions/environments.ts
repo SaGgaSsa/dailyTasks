@@ -1,6 +1,7 @@
 'use server'
 
 import { Environment, Prisma, UserRole } from '@prisma/client'
+import { revalidateTag } from 'next/cache'
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
@@ -96,6 +97,7 @@ export async function createEnvironment(data: EnvironmentInput): Promise<ActionR
       },
     })
 
+    revalidateTag('environments', 'default')
     return { success: true, data: environment }
   } catch (error) {
     if (isPrismaError(error, 'P2002')) {
@@ -134,6 +136,7 @@ export async function updateEnvironment(data: UpdateEnvironmentInput): Promise<A
       },
     })
 
+    revalidateTag('environments', 'default')
     return { success: true, data: environment }
   } catch (error) {
     if (isPrismaError(error, 'P2002')) {
@@ -171,6 +174,7 @@ export async function setEnvironmentEnabled(data: EnvironmentEnabledInput): Prom
       },
     })
 
+    revalidateTag('environments', 'default')
     return { success: true, data: environment }
   } catch {
     return { success: false, error: 'Error al actualizar el ambiente' }

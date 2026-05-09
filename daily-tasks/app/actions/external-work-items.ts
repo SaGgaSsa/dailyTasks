@@ -66,7 +66,7 @@ export const getCachedExternalWorkItems = unstable_cache(
     const items = await db.externalWorkItem.findMany({
       where: activeWorkItemWhere,
       select: externalWorkItemBaseSelect,
-      orderBy: [{ workItemType: { name: 'asc' } }, { externalId: 'asc' }],
+      orderBy: [{ externalId: 'asc' }, { workItemType: { name: 'asc' } }],
     })
 
     return items.map(serializeExternalWorkItem)
@@ -139,7 +139,7 @@ export async function getExternalWorkItemsManagementData(
     const items = await db.externalWorkItem.findMany({
       where,
       select: externalWorkItemBaseSelect,
-      orderBy: [{ workItemType: { name: 'asc' } }, { externalId: 'asc' }],
+      orderBy: [{ externalId: 'asc' }, { workItemType: { name: 'asc' } }],
       skip: (page - 1) * EXTERNAL_WORK_ITEMS_PAGE_SIZE,
       take: EXTERNAL_WORK_ITEMS_PAGE_SIZE,
     })
@@ -323,7 +323,7 @@ export async function createWorkItemType(data: CreateWorkItemTypeData): Promise<
 
     const totalTypes = await db.workItemType.count()
     if (totalTypes >= WORK_ITEM_TYPE_COLOR_LIMIT) {
-      return { success: false, error: 'Solo se permiten 5 tipos de trámite' }
+      return { success: false, error: `Solo se permiten ${WORK_ITEM_TYPE_COLOR_LIMIT} tipos de trámite` }
     }
 
     const workItemType = await db.workItemType.create({
@@ -339,6 +339,62 @@ export async function createWorkItemType(data: CreateWorkItemTypeData): Promise<
       return { success: false, error: 'El nombre o color del tipo de trámite ya existe' }
     }
     return { success: false, error: 'Error al crear el tipo de trámite' }
+  }
+}
+
+export async function updateWorkItemTypeColor(
+  id: number,
+  color: WorkItemTypeColor | null | string
+): Promise<ActionResult<WorkItemTypeOption>> {
+  const access = await requireExternalWorkItemManager()
+  if (!access.success) return access
+
+  try {
+    if (!isPositiveInteger(id)) {
+      return { success: false, error: 'El tipo de trámite no existe' }
+    }
+
+    if (color !== null && !allowedColors.has(color)) {
+      return { success: false, error: 'El color seleccionado no es válido' }
+    }
+
+    const existing = await db.workItemType.findUnique({
+      where: { id },
+      select: workItemTypeSelect,
+    })
+
+    if (!existing) {
+      return { success: false, error: 'El tipo de trámite no existe' }
+    }
+
+    if (color && color !== existing.color) {
+      const usedByOtherType = await db.workItemType.findFirst({
+        where: {
+          color,
+          id: { not: id },
+        },
+        select: { id: true },
+      })
+
+      if (usedByOtherType) {
+        return { success: false, error: 'El color seleccionado ya está en uso' }
+      }
+    }
+
+    const workItemType = await db.workItemType.update({
+      where: { id },
+      data: { color },
+      select: workItemTypeSelect,
+    })
+
+    revalidateTag('work-item-types', 'default')
+    revalidateExternalWorkItems()
+    return { success: true, data: serializeWorkItemType(workItemType) }
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2002') {
+      return { success: false, error: 'El color seleccionado ya está en uso' }
+    }
+    return { success: false, error: 'Error al actualizar el color del tipo de trámite' }
   }
 }
 

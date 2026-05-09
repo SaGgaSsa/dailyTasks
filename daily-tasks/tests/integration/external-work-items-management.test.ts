@@ -7,6 +7,7 @@ import {
   deleteExternalWorkItem,
   deleteWorkItemType,
   getExternalWorkItemsManagementData,
+  updateWorkItemTypeColor,
   updateExternalWorkItemStatus,
 } from '@/app/actions/external-work-items'
 import { db } from '@/lib/db'
@@ -201,6 +202,40 @@ describe('external work item management', () => {
     await expect(deleteWorkItemType(createdType.data!.id)).resolves.toEqual({
       success: false,
       error: 'Solo administradores y QA pueden modificar trámites',
+    })
+  })
+
+  it('updates work item type colors with free colors, null, and the current color only', async () => {
+    const qa = await createUser(UserRole.QA)
+    const first = await db.workItemType.create({ data: { name: 'I_MODAPL', color: 'blue' } })
+    const second = await db.workItemType.create({ data: { name: 'I_CONS', color: 'purple' } })
+
+    actAs(qa)
+
+    const freeColor = await updateWorkItemTypeColor(first.id, 'green')
+    expect(freeColor.success).toBe(true)
+    expect(freeColor.data).toMatchObject({ id: first.id, color: 'green' })
+
+    const sameColor = await updateWorkItemTypeColor(first.id, 'green')
+    expect(sameColor.success).toBe(true)
+    expect(sameColor.data).toMatchObject({ id: first.id, color: 'green' })
+
+    await expect(updateWorkItemTypeColor(first.id, 'purple')).resolves.toEqual({
+      success: false,
+      error: 'El color seleccionado ya está en uso',
+    })
+
+    await expect(updateWorkItemTypeColor(first.id, 'invalid')).resolves.toEqual({
+      success: false,
+      error: 'El color seleccionado no es válido',
+    })
+
+    const noColor = await updateWorkItemTypeColor(first.id, null)
+    expect(noColor.success).toBe(true)
+    expect(noColor.data).toMatchObject({ id: first.id, color: null })
+
+    await expect(db.workItemType.findUniqueOrThrow({ where: { id: second.id } })).resolves.toMatchObject({
+      color: 'purple',
     })
   })
 

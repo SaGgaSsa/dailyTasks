@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect } from 'react'
-import { createTicket, updateTicket, getTicketFormData, clearTicketUnreadUpdates, getTicketById } from '@/app/actions/tracklists'
+import { createTicket, updateTicket, getTicketFormData, clearTicketUnreadUpdates } from '@/app/actions/tracklists'
 import { getEnvironmentAvailability, type EnvironmentAvailabilityItem } from '@/app/actions/environment-log'
 import { rejectTicket } from '@/app/actions/incidence-actions'
 import { AssignableUser } from '@/app/actions/user-actions'
@@ -25,7 +25,7 @@ import {
   CommandItem,
 } from '@/components/ui/command'
 import { toast } from 'sonner'
-import { Check, ChevronDown, User, X } from 'lucide-react'
+import { Check, ChevronDown, Cloud, Server, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
@@ -57,6 +57,11 @@ interface ExternalWorkItem {
   color: string | null
 }
 
+interface EnvironmentOption {
+  id: number
+  name: string
+}
+
 interface Props {
   tracklistId: number
   assignableUsers: AssignableUser[]
@@ -71,7 +76,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [isPending, setIsPending] = useState(false)
   const [isImageUploading, setIsImageUploading] = useState(false)
   const [draftId, setDraftId] = useState<string | null>(null)
-  const [resolvedViewMode, setResolvedViewMode] = useState<TicketQAWithDetails | null>(null)
   const [type, setType] = useState<TicketType>(TicketType.BUG)
   const [description, setDescription] = useState('')
   const [observations, setObservations] = useState('')
@@ -89,11 +93,14 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
   const [workItemOpen, setWorkItemOpen] = useState(false)
+  const [environmentOpen, setEnvironmentOpen] = useState(false)
   const [selectedWorkItem, setSelectedWorkItem] = useState<ExternalWorkItem | null>(null)
   const [workItemsList, setWorkItemsList] = useState<ExternalWorkItem[]>([])
+  const [selectedEnvironment, setSelectedEnvironment] = useState<EnvironmentOption | null>(null)
+  const [environmentsList, setEnvironmentsList] = useState<EnvironmentOption[]>([])
   const [environmentAvailability, setEnvironmentAvailability] = useState<EnvironmentAvailabilityItem[]>([])
 
-  const effectiveViewMode = resolvedViewMode ?? viewMode ?? null
+  const effectiveViewMode = viewMode ?? null
 
   useEffect(() => {
     if (!open || rejectMode || viewMode) {
@@ -119,11 +126,13 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       })))
 
       setWorkItemsList(formData.externalWorkItems ?? [])
+      setEnvironmentsList(formData.environments ?? [])
 
       if (editMode) {
         const matchingTech = formData.techs.find(t => t.modules.some(m => m.id === editMode.module.id)) || null
         setSelectedTech(matchingTech)
         setSelectedModule({ id: editMode.module.id, name: editMode.module.name })
+        setSelectedEnvironment(editMode.referenceEnvironment)
       } else if (formData.defaultTech) {
         const defaultTechWithModules = formData.techs.find(t => t.id === formData.defaultTech!.id) || null
         setSelectedTech(defaultTechWithModules)
@@ -137,27 +146,6 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
   }, [open, rejectMode, editMode, tracklistId, viewMode])
 
   useEffect(() => {
-    if (!open || !viewMode) return
-
-    let isActive = true
-
-    const loadTicket = async () => {
-      const result = await getTicketById(viewMode.id)
-      if (!isActive || !result.success || !result.data) {
-        return
-      }
-
-      setResolvedViewMode(result.data)
-    }
-
-    void loadTicket()
-
-    return () => {
-      isActive = false
-    }
-  }, [open, viewMode])
-
-  useEffect(() => {
     if (!rejectMode) return
     setType(rejectMode.type as TicketType)
     setSelectedTech({ id: -1, name: rejectMode.module.technology.name, modules: [] })
@@ -167,6 +155,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       ? assignableUsers.find(u => u.id === rejectMode.assignedTo!.id) ?? null
       : null)
     setSelectedWorkItem(rejectMode.externalWorkItem ?? null)
+    setSelectedEnvironment(rejectMode.referenceEnvironment)
     setDescription('')
     setObservations('')
   }, [assignableUsers, rejectMode])
@@ -181,6 +170,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       ? assignableUsers.find(u => u.id === effectiveViewMode.assignedTo!.id) ?? null
       : null)
     setSelectedWorkItem(effectiveViewMode.externalWorkItem ?? null)
+    setSelectedEnvironment(effectiveViewMode.referenceEnvironment)
     setDescription(effectiveViewMode.latestQaTask?.title ?? effectiveViewMode.description)
     setObservations(effectiveViewMode.latestQaTask?.description ?? effectiveViewMode.observations ?? '')
   }, [assignableUsers, effectiveViewMode])
@@ -221,6 +211,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       ? assignableUsers.find(u => u.id === editMode.assignedTo!.id) ?? null
       : null)
     setSelectedWorkItem(editMode.externalWorkItem ?? null)
+    setSelectedEnvironment(editMode.referenceEnvironment)
     setDescription(editMode.description)
     setObservations(editMode.observations ?? '')
   }, [assignableUsers, editMode])
@@ -269,6 +260,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         observations: observations.trim() || undefined,
         assignedToId: selectedAssignee?.id,
         externalWorkItemId: selectedWorkItem?.id,
+        environmentId: selectedEnvironment?.id ?? null,
         draftId: draftId ?? undefined
       })
       setIsPending(false)
@@ -286,7 +278,8 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
         priority: selectedPriority,
         observations: observations.trim() || undefined,
         assignedToId: selectedAssignee?.id,
-        externalWorkItemId: selectedWorkItem?.id
+        externalWorkItemId: selectedWorkItem?.id,
+        environmentId: selectedEnvironment?.id ?? null
       })
       setIsPending(false)
       if (result.success) {
@@ -305,7 +298,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
     setSelectedPriority(Priority.MEDIUM)
     setSelectedAssignee(null)
     setSelectedWorkItem(null)
+    setSelectedEnvironment(null)
     setWorkItemsList([])
+    setEnvironmentsList([])
     setDraftId(null)
     setIsImageUploading(false)
     onOpenChange(false)
@@ -319,7 +314,9 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
       setSelectedPriority(Priority.MEDIUM)
       setSelectedAssignee(null)
       setSelectedWorkItem(null)
+      setSelectedEnvironment(null)
       setWorkItemsList([])
+      setEnvironmentsList([])
       setDraftId(null)
       setIsImageUploading(false)
     }
@@ -524,6 +521,61 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
               </PopoverContent>
             </Popover>
 
+            <Popover open={environmentOpen} onOpenChange={setEnvironmentOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-full border-dashed"
+                  disabled={!!rejectMode || !!effectiveViewMode || !!selectedAssignee}
+                  title="Ambiente referencial"
+                >
+                  <Server className="mr-1 h-3 w-3 text-muted-foreground" />
+                  {selectedEnvironment ? (
+                    <span className="text-xs">{selectedEnvironment.name}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Ambiente</span>
+                  )}
+                  {!rejectMode && !effectiveViewMode && !selectedAssignee && <ChevronDown className="ml-1 h-3 w-3 opacity-50" />}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar ambiente..." />
+                  <CommandEmpty>No encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => {
+                        setSelectedEnvironment(null)
+                        setEnvironmentOpen(false)
+                      }}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Sin ambiente
+                    </CommandItem>
+                    {environmentsList.map((environment) => (
+                      <CommandItem
+                        key={environment.id}
+                        value={environment.name}
+                        onSelect={() => {
+                          setSelectedEnvironment(environment)
+                          setEnvironmentOpen(false)
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedEnvironment?.id === environment.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {environment.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
             <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -563,6 +615,7 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                         value={user.username}
                         onSelect={() => {
                           setSelectedAssignee(user)
+                          setSelectedEnvironment(null)
                           setAssigneeOpen(false)
                         }}
                       >
@@ -635,11 +688,26 @@ export function CreateTicketDialog({ tracklistId, assignableUsers, open, onOpenC
                 </Command>
               </PopoverContent>
             </Popover>
+
           </div>
 
           {effectiveViewMode && environmentAvailability.length > 0 ? (
             <div className="space-y-2 rounded-lg border p-3">
-              <div className="text-sm font-medium">Disponibilidad por ambiente</div>
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                <span>Disponibilidad por ambiente</span>
+                {effectiveViewMode.referenceEnvironment ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                    <Server className="h-3 w-3" />
+                    Ref. {effectiveViewMode.referenceEnvironment.name}
+                  </span>
+                ) : null}
+                {effectiveViewMode.deploymentSummary.isCurrentlyDeployed ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-normal text-emerald-600 dark:text-emerald-300">
+                    <Cloud className="h-3 w-3" />
+                    Deployado
+                  </span>
+                ) : null}
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {environmentAvailability.map((environment) => (
                   <div key={environment.environmentId} className="flex items-center justify-between gap-3 text-sm">

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { TaskStatus, TicketQAStatus, TicketType } from '@prisma/client'
+import { EnvironmentLogEntryType, TaskStatus, TicketQAStatus, TicketType } from '@prisma/client'
 
 import { rejectTicket } from '@/app/actions/incidence-actions'
+import { getTicketsByTracklist } from '@/app/actions/tracklists'
 import { db } from '@/lib/db'
 import {
   actAs,
@@ -72,4 +73,67 @@ describe('ticket rejection automation integration', () => {
     expect(tasks[1]?.description).toBe('Falla todavia en QA')
     expect(tasks[1]?.title).toBe(longDescription)
   })
+
+  it('marks a previously deployed ticket as pending again when QA rejects it', async () => {
+    const qa = await createUser('QA')
+    const dev = await createUser('DEV')
+    const { technology, module: moduleRecord } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklist(qa.id)
+    const environment = await db.environment.create({ data: { name: 'QA' } })
+    const readyForDeployAt = new Date('2026-05-08T10:00:00Z')
+    const deployedAt = new Date('2026-05-08T11:00:00Z')
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.REVIEW,
+      estimatedTime: 2,
+      assignees: [{ userId: dev.id, assignedHours: 2 }],
+      tasks: [{ userId: dev.id, title: 'Implementado', isCompleted: true }],
+    })
+    await db.incidence.update({
+      where: { id: incidence.id },
+      data: { readyForDeployAt },
+    })
+    const ticket = await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: moduleRecord.id,
+      reportedById: qa.id,
+      assignedToId: dev.id,
+      incidenceId: incidence.id,
+      externalWorkItemId: workItem.id,
+      status: TicketQAStatus.TEST,
+      type: TicketType.BUG,
+      description: 'Bug deployado',
+    })
+    await db.environmentLogEntry.create({
+      data: {
+        type: EnvironmentLogEntryType.DEPLOY,
+        environmentId: environment.id,
+        ticketId: ticket.id,
+        incidenceId: incidence.id,
+        createdById: qa.id,
+        occurredAt: deployedAt,
+      },
+    })
+
+    actAs(qa)
+    const deployed = await getTicketsByTracklist(tracklist.id)
+    expect(deployed.success).toBe(true)
+    expect(deployed.data?.[0]?.deploymentSummary.isCurrentlyDeployed).toBe(true)
+
+    const result = await rejectTicket({
+      ticketId: ticket.id,
+      tracklistId: tracklist.id,
+      description: 'Falla de QA',
+    })
+
+    expect(result.success).toBe(true)
+
+    const pending = await getTicketsByTracklist(tracklist.id)
+    expect(pending.success).toBe(true)
+    expect(pending.data?.[0]?.status).toBe(TicketQAStatus.IN_DEVELOPMENT)
+    expect(pending.data?.[0]?.deploymentSummary.isCurrentlyDeployed).toBe(false)
+    expect(pending.data?.[0]?.incidence?.readyForDeployAt?.getTime()).toBeGreaterThan(deployedAt.getTime())
+  }, 10_000)
 })

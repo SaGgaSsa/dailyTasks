@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketActionsMenu } from './TicketActionsMenu'
-import { FileCode2 } from 'lucide-react'
+import { Cloud, FileCode2, Server } from 'lucide-react'
 
 interface Props {
   ticket: TicketQAWithDetails
@@ -51,6 +51,20 @@ export function TicketKanbanCard({ ticket, assignableUsers, readOnly = false }: 
         <Badge variant="outline" className="text-xs font-normal">
           {ticket.module.name}
         </Badge>
+        <div className="flex min-w-0 flex-1 justify-end gap-1">
+          {ticket.referenceEnvironment ? (
+            <Badge variant="outline" className="h-6 gap-1 px-1.5 text-[10px] font-normal">
+              <Server className="h-3 w-3" />
+              <span className="truncate">{ticket.referenceEnvironment.name}</span>
+            </Badge>
+          ) : null}
+          {ticket.deploymentSummary.isCurrentlyDeployed ? (
+            <Badge variant="outline" className="h-6 gap-1 border-emerald-500/20 bg-emerald-500/10 px-1.5 text-[10px] font-normal text-emerald-600 dark:text-emerald-300">
+              <Cloud className="h-3 w-3" />
+              <span>Deployado</span>
+            </Badge>
+          ) : null}
+        </div>
         {ticket.assignedTo && (
           <UserAvatar username={ticket.assignedTo.username} size="sm" />
         )}

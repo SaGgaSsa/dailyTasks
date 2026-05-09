@@ -91,6 +91,7 @@ model Environment {
   isEnabled     Boolean       @default(true)
   logEntries    EnvironmentLogEntry[]
   favorites     UserEnvironmentFavorite[]
+  referencedTickets TicketQA[] @relation("TicketReferenceEnvironment")
 
   @@map("environments")
 }
@@ -325,6 +326,8 @@ model TicketQA {
   priority            Priority
   externalWorkItemId  Int?
   externalWorkItem    ExternalWorkItem? @relation(fields: [externalWorkItemId], references: [id])
+  environmentId       Int?
+  referenceEnvironment Environment? @relation("TicketReferenceEnvironment", fields: [environmentId], references: [id])
   reportedById        Int
   reportedBy          User      @relation("ReportedBy", fields: [reportedById], references: [id])
   assignedToId        Int?
@@ -344,6 +347,7 @@ model TicketQA {
   updatedAt           DateTime  @updatedAt
 
   @@unique([tracklistId, ticketNumber])
+  @@index([environmentId])
   @@map("tickets_qa")
 }
 

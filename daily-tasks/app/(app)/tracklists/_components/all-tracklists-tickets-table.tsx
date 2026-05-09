@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, User, MoreVertical, Eye, BarChart3, Ban, Layers, FileCode2 } from 'lucide-react'
+import { Cloud, Inbox, Server, User, MoreVertical, Eye, BarChart3, Ban, Layers, FileCode2 } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,6 +13,7 @@ import { IncidenceBadge } from '@/components/ui/incidence-badge'
 import { PriorityBadge } from '@/components/ui/priority-badge'
 import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS, TicketQAStatus } from '@/types/enums'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -152,6 +153,22 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                       <div className="flex-1 min-w-0 truncate" title={ticket.description}>
                         {ticket.description}
                       </div>
+                      {(ticket.referenceEnvironment || ticket.deploymentSummary.isCurrentlyDeployed) && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {ticket.referenceEnvironment ? (
+                            <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px] font-normal">
+                              <Server className="h-3 w-3" />
+                              {ticket.referenceEnvironment.name}
+                            </Badge>
+                          ) : null}
+                          {ticket.deploymentSummary.isCurrentlyDeployed ? (
+                            <Badge variant="outline" className="h-5 gap-1 border-emerald-500/20 bg-emerald-500/10 px-1.5 text-[10px] font-normal text-emerald-600 dark:text-emerald-300">
+                              <Cloud className="h-3 w-3" />
+                              Deployado
+                            </Badge>
+                          ) : null}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="w-24 px-2 py-3 text-center">
                       <PriorityBadge priority={ticket.priority} className="text-xs" />

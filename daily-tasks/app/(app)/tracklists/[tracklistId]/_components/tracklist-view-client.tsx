@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useTransition } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ListTodo, LayoutDashboard, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,6 @@ import { TicketsGrid } from './tickets-grid'
 import { TicketQAWithDetails } from '@/types'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { useNavbarBreadcrumbs } from '@/components/providers/navbar-breadcrumb-provider'
-import { getTicketById } from '@/app/actions/tracklists'
 import { toast } from 'sonner'
 
 interface Props {
@@ -38,7 +37,6 @@ export function TracklistViewClient({
   const router = useRouter()
   const pathname = usePathname()
   const { setBreadcrumbs } = useNavbarBreadcrumbs()
-  const [, startTransition] = useTransition()
 
   useEffect(() => {
     setBreadcrumbs([
@@ -68,23 +66,15 @@ export function TracklistViewClient({
     }
 
     hasHandledInitialOpen.current = true
-    startTransition(async () => {
-      const result = await getTicketById(initialOpenTicketId)
-      if (!result.success || !result.data) {
-        toast.error(result.error || 'No se pudo abrir el ticket')
-        router.replace(pathname, { scroll: false })
-        return
-      }
+    const ticket = initialTickets.find((item) => item.id === initialOpenTicketId) ?? null
+    if (!ticket) {
+      toast.error('No se pudo abrir el ticket')
+      router.replace(pathname, { scroll: false })
+      return
+    }
 
-      if (result.data.tracklistId !== currentId) {
-        toast.error('El ticket no pertenece a este tracklist')
-        router.replace(pathname, { scroll: false })
-        return
-      }
-
-      setLinkedTicket(result.data)
-    })
-  }, [currentId, initialOpenTicketId, initialTicketMode, pathname, router, startTransition])
+    setLinkedTicket(ticket)
+  }, [initialOpenTicketId, initialTicketMode, initialTickets, pathname, router])
 
   const handleLinkedTicketOpenChange = (open: boolean) => {
     if (open) {

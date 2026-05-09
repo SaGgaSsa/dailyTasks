@@ -1507,6 +1507,7 @@ export async function rejectTicket({ ticketId, description, observations, trackl
 
         const rejectionTitle = description.trim()
         const rejectionObservations = sanitizeObservationHtml(observations)
+        const rejectedAt = new Date()
 
         await db.$transaction(async (tx) => {
             await tx.task.create({
@@ -1520,7 +1521,7 @@ export async function rejectTicket({ ticketId, description, observations, trackl
             })
             await tx.incidence.update({
                 where: { id: ticket.incidenceId! },
-                data: { status: TaskStatus.IN_PROGRESS }
+                data: { status: TaskStatus.IN_PROGRESS, readyForDeployAt: rejectedAt }
             })
             await reconcileTicketImages(tx, {
                 ticketId,

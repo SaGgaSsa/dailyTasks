@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 import type { EnvironmentLogBatchView } from '@/app/actions/environment-log'
@@ -52,17 +53,29 @@ export function DeployLogContent({ batch }: DeployLogContentProps) {
                 <div key={item.id} className="rounded-md bg-muted/40 px-3 py-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {item.incidence ? (
-                      <Badge variant="outline">
-                        {item.incidence.workItem.type} {item.incidence.workItem.externalId}
+                      <Badge variant="outline" asChild>
+                        <Link href={`/incidences/${item.incidence.id}`}>
+                          {item.incidence.workItem.type} {item.incidence.workItem.externalId}
+                        </Link>
                       </Badge>
                     ) : null}
                     {item.ticket ? (
-                      <Badge variant="secondary">Ticket #{item.ticket.ticketNumber}</Badge>
+                      <Badge variant="secondary" asChild>
+                        <Link href={`/tracklists/${item.ticket.tracklistId}?ticketId=${item.ticket.id}&ticketMode=view`}>
+                          Ticket #{item.ticket.ticketNumber}
+                        </Link>
+                      </Badge>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-sm text-card-foreground">
-                    {item.incidence?.description ?? item.ticket?.description ?? 'Sin descripción'}
-                  </p>
+                  {item.incidence ? (
+                    <Link href={`/incidences/${item.incidence.id}`} className="mt-1 block text-sm text-card-foreground hover:underline">
+                      {item.incidence.description}
+                    </Link>
+                  ) : (
+                    <p className="mt-1 text-sm text-card-foreground">
+                      {item.ticket?.description ?? 'Sin descripción'}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

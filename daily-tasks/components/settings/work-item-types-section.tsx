@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createWorkItemType, deleteWorkItemType } from '@/app/actions/external-work-items'
+import { createWorkItemType, deleteWorkItemType, updateWorkItemTypeColor } from '@/app/actions/external-work-items'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -49,6 +49,8 @@ export function WorkItemTypesSection({ items, onRefresh, canManage }: WorkItemTy
   const usedColors = new Set(items.map((item) => item.color))
   const availableColors = WORK_ITEM_TYPE_COLOR_OPTIONS.filter((option) => !usedColors.has(option.value))
   const limitReached = items.length >= WORK_ITEM_TYPE_COLOR_LIMIT
+  const getEditableColorOptions = (item: WorkItemTypeOption) =>
+    WORK_ITEM_TYPE_COLOR_OPTIONS.filter((option) => option.value === item.color || !usedColors.has(option.value))
 
   const handleCreate = async () => {
     setError(null)
@@ -58,7 +60,7 @@ export function WorkItemTypesSection({ items, onRefresh, canManage }: WorkItemTy
     }
 
     if (limitReached) {
-      setError('Solo se permiten 5 tipos de trámite')
+      setError(`Solo se permiten ${WORK_ITEM_TYPE_COLOR_LIMIT} tipos de trámite`)
       return
     }
 
@@ -92,6 +94,20 @@ export function WorkItemTypesSection({ items, onRefresh, canManage }: WorkItemTy
     toast.error(result.error || 'Error al eliminar el tipo de trámite')
   }
 
+  const handleUpdateColor = async (id: number, nextColor: WorkItemTypeColor | null) => {
+    setIsPending(true)
+    const result = await updateWorkItemTypeColor(id, nextColor)
+    setIsPending(false)
+
+    if (result.success) {
+      toast.success('Color actualizado correctamente')
+      await onRefresh()
+      return
+    }
+
+    toast.error(result.error || 'Error al actualizar el color')
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -118,16 +134,41 @@ export function WorkItemTypesSection({ items, onRefresh, canManage }: WorkItemTy
               <TableRow key={item.id}>
                 <TableCell className="py-1.5 px-2 font-mono text-xs">{item.name}</TableCell>
                 <TableCell className="py-1.5 px-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    {getWorkItemTypeColorOption(item.color) ? (
-                      <>
-                        <span className={`h-2.5 w-2.5 rounded-full ${getWorkItemTypeColorOption(item.color)!.indicatorClassName}`} />
-                        <span>{getWorkItemTypeColorOption(item.color)!.label}</span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Sin color</span>
-                    )}
-                  </div>
+                  {canManage ? (
+                    <Select
+                      value={item.color ?? NO_WORK_ITEM_TYPE_COLOR_VALUE}
+                      onValueChange={(value) => handleUpdateColor(item.id, value === NO_WORK_ITEM_TYPE_COLOR_VALUE ? null : value as WorkItemTypeColor)}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="h-8 w-full text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_WORK_ITEM_TYPE_COLOR_VALUE}>
+                          <span className="text-muted-foreground">Sin color</span>
+                        </SelectItem>
+                        {getEditableColorOptions(item).map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <span className="flex items-center gap-2">
+                              <span className={`h-2.5 w-2.5 rounded-full ${option.indicatorClassName}`} />
+                              <span>{option.label}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs">
+                      {getWorkItemTypeColorOption(item.color) ? (
+                        <>
+                          <span className={`h-2.5 w-2.5 rounded-full ${getWorkItemTypeColorOption(item.color)!.indicatorClassName}`} />
+                          <span>{getWorkItemTypeColorOption(item.color)!.label}</span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Sin color</span>
+                      )}
+                    </div>
+                  )}
                 </TableCell>
                 {canManage && (
                   <TableCell className="py-1.5 px-2">
@@ -199,7 +240,7 @@ export function WorkItemTypesSection({ items, onRefresh, canManage }: WorkItemTy
       </div>
 
       {limitReached && (
-        <p className="text-sm text-muted-foreground">Ya se alcanzó el máximo de 5 tipos de trámite.</p>
+        <p className="text-sm text-muted-foreground">Ya se alcanzó el máximo de {WORK_ITEM_TYPE_COLOR_LIMIT} tipos de trámite.</p>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -13,6 +13,12 @@ type ActionResult<T = undefined> = {
   data?: T
 }
 
+const WORK_ITEM_TYPE_ORDER = new Map([
+  ['I_MODAPL', 0],
+  ['I_CASO', 1],
+  ['I_CONS', 2],
+])
+
 export interface EnvironmentLogEnvironment {
   id: number
   name: string
@@ -188,7 +194,9 @@ function sortDeployEntriesByWorkItem<T extends {
   return [...entries].sort((a, b) => {
     const typeA = a.incidence?.externalWorkItem.workItemType.name ?? ''
     const typeB = b.incidence?.externalWorkItem.workItemType.name ?? ''
-    const typeComparison = typeA.localeCompare(typeB, 'es')
+    const typeComparison = (WORK_ITEM_TYPE_ORDER.get(typeA) ?? Number.MAX_SAFE_INTEGER) -
+      (WORK_ITEM_TYPE_ORDER.get(typeB) ?? Number.MAX_SAFE_INTEGER) ||
+      typeA.localeCompare(typeB, 'es')
     if (typeComparison !== 0) return typeComparison
 
     const numberA = a.incidence?.externalWorkItem.externalId ?? 0
@@ -199,7 +207,11 @@ function sortDeployEntriesByWorkItem<T extends {
 
 function sortEnvironmentLogEntryViews(entries: EnvironmentLogEntryView[]) {
   return [...entries].sort((a, b) => {
-    const typeComparison = (a.incidence?.workItem.type ?? '').localeCompare(b.incidence?.workItem.type ?? '', 'es')
+    const typeA = a.incidence?.workItem.type ?? ''
+    const typeB = b.incidence?.workItem.type ?? ''
+    const typeComparison = (WORK_ITEM_TYPE_ORDER.get(typeA) ?? Number.MAX_SAFE_INTEGER) -
+      (WORK_ITEM_TYPE_ORDER.get(typeB) ?? Number.MAX_SAFE_INTEGER) ||
+      typeA.localeCompare(typeB, 'es')
     if (typeComparison !== 0) return typeComparison
 
     return (a.incidence?.workItem.externalId ?? 0) - (b.incidence?.workItem.externalId ?? 0)

@@ -1,4 +1,4 @@
-import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus } from '.prisma/client'
+import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus, EnvironmentLogEntryType } from '.prisma/client'
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/lib/db'
@@ -11,12 +11,15 @@ export const ticketDetailsInclude = {
   reportedBy: { select: { id: true, name: true, username: true } },
   assignedTo: { select: { id: true, name: true, username: true } },
   externalWorkItem: { select: externalWorkItemBaseSelect },
+  referenceEnvironment: { select: { id: true, name: true } },
   dismissedBy: { select: { id: true, name: true, username: true } },
   module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
   incidence: {
     select: {
       id: true,
       status: true,
+      readyForDeployAt: true,
+      updatedAt: true,
       startedAt: true,
       completedAt: true,
       deferredAt: true,
@@ -33,6 +36,12 @@ export const ticketDetailsInclude = {
 } satisfies Prisma.TicketQAInclude
 
 type TicketWithScripts = Prisma.TicketQAGetPayload<{ include: typeof ticketDetailsInclude }>
+
+export interface TicketDeploymentSummary {
+  isCurrentlyDeployed: boolean
+  deployedEnvironmentCount: number
+  latestDeployedAt: Date | null
+}
 
 export function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
   const incidence = ticket.incidence
@@ -51,8 +60,73 @@ export function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     ...ticket,
     externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
     hasScripts: (incidence?._count?.scripts ?? 0) > 0,
+    deploymentSummary: {
+      isCurrentlyDeployed: false,
+      deployedEnvironmentCount: 0,
+      latestDeployedAt: null,
+    } satisfies TicketDeploymentSummary,
     incidenceGantt,
   }
+}
+
+export async function addTicketDeploymentSummaries<T extends {
+  id: number
+  incidence?: { readyForDeployAt: Date | null; updatedAt: Date } | null
+}>(
+  tickets: T[]
+): Promise<Array<T & { deploymentSummary: TicketDeploymentSummary }>> {
+  if (tickets.length === 0) {
+    return []
+  }
+
+  const [environments, deploys] = await Promise.all([
+    db.environment.findMany({
+      where: { isEnabled: true },
+      select: { id: true },
+    }),
+    db.environmentLogEntry.groupBy({
+      by: ['ticketId', 'environmentId'],
+      where: {
+        type: EnvironmentLogEntryType.DEPLOY,
+        ticketId: { in: tickets.map((ticket) => ticket.id) },
+      },
+      _max: { occurredAt: true },
+    }),
+  ])
+
+  const activeEnvironmentIds = new Set(environments.map((environment) => environment.id))
+  const latestDeploysByTicket = new Map<number, Date[]>()
+
+  for (const deploy of deploys) {
+    if (!deploy.ticketId || !activeEnvironmentIds.has(deploy.environmentId) || !deploy._max.occurredAt) {
+      continue
+    }
+
+    const values = latestDeploysByTicket.get(deploy.ticketId) ?? []
+    values.push(deploy._max.occurredAt)
+    latestDeploysByTicket.set(deploy.ticketId, values)
+  }
+
+  return tickets.map((ticket) => {
+    const readyForDeployAt = ticket.incidence
+      ? ticket.incidence.readyForDeployAt ?? ticket.incidence.updatedAt
+      : null
+    const availableDeploys = (latestDeploysByTicket.get(ticket.id) ?? [])
+      .filter((lastDeployedAt) => !readyForDeployAt || lastDeployedAt >= readyForDeployAt)
+    const latestDeployedAt = availableDeploys.reduce<Date | null>(
+      (latest, deployedAt) => (!latest || deployedAt > latest ? deployedAt : latest),
+      null
+    )
+
+    return {
+      ...ticket,
+      deploymentSummary: {
+        isCurrentlyDeployed: availableDeploys.length > 0,
+        deployedEnvironmentCount: availableDeploys.length,
+        latestDeployedAt,
+      },
+    }
+  })
 }
 
 const PRIORITY_MAP: Record<string, PrismaPriority> = {

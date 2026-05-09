@@ -4,7 +4,7 @@ import { getCachedTechsWithModules } from '@/app/actions/tech'
 import { getCachedAssignableUsers } from '@/app/actions/user-actions'
 import { sortTicketsByPriorityAndNumber } from '@/lib/ticket-sort'
 import { TracklistViewClient } from './_components/tracklist-view-client'
-import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
+import { addTicketDeploymentSummaries, enrichTicketScripts, ticketDetailsInclude } from '@/lib/tracklist-ticket-management'
 
 interface Props {
   params: Promise<{ tracklistId: string }>
@@ -25,48 +25,8 @@ export default async function TracklistDetailPage({ params, searchParams }: Prop
     }),
     db.ticketQA.findMany({
       where: { tracklistId: numericId },
-      include: {
-        reportedBy: { select: { id: true, name: true, username: true } },
-        assignedTo: { select: { id: true, name: true, username: true } },
-        externalWorkItem: { select: externalWorkItemBaseSelect },
-        dismissedBy: { select: { id: true, name: true, username: true } },
-        module: { select: { id: true, name: true, slug: true, technology: { select: { name: true } } } },
-        incidence: {
-          select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            completedAt: true,
-            deferredAt: true,
-            estimatedTime: true,
-            assignments: {
-              where: { isAssigned: true },
-              select: { assignedHours: true }
-            },
-            _count: {
-              select: { scripts: true },
-            },
-          },
-        },
-      }
-    }).then((tickets) => sortTicketsByPriorityAndNumber(tickets.map((ticket) => {
-      const inc = ticket.incidence
-
-      return {
-        ...ticket,
-        externalWorkItem: ticket.externalWorkItem ? serializeExternalWorkItem(ticket.externalWorkItem) : null,
-        hasScripts: (inc?._count?.scripts ?? 0) > 0,
-        incidenceGantt: inc ? {
-          id: inc.id,
-          status: inc.status as import('@/types/enums').TaskStatus,
-          startedAt: inc.startedAt,
-          completedAt: inc.completedAt,
-          deferredAt: inc.deferredAt,
-          estimatedTime: inc.estimatedTime,
-          totalAssignedHours: inc.assignments.reduce((sum: number, a: { assignedHours: number | null }) => sum + (a.assignedHours ?? 0), 0),
-        } : null,
-      }
-    }))),
+      include: ticketDetailsInclude,
+    }).then(async (tickets) => sortTicketsByPriorityAndNumber(await addTicketDeploymentSummaries(tickets.map(enrichTicketScripts)))),
     getCachedAssignableUsers(),
     getCachedTechsWithModules(),
   ])

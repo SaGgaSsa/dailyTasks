@@ -187,6 +187,7 @@ interface CreateTicketFixtureOptions {
   moduleId: number
   reportedById: number
   externalWorkItemId?: number | null
+  environmentId?: number | null
   assignedToId?: number | null
   incidenceId?: number | null
   status?: TicketQAStatus
@@ -208,6 +209,7 @@ export async function createTicketFixture(options: CreateTicketFixtureOptions) {
       moduleId: options.moduleId,
       reportedById: options.reportedById,
       externalWorkItemId: options.externalWorkItemId ?? null,
+      environmentId: options.environmentId ?? null,
       assignedToId: options.assignedToId ?? null,
       incidenceId: options.incidenceId ?? null,
       status: options.status ?? 'NEW',

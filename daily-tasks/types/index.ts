@@ -147,10 +147,16 @@ export type TicketQAWithDetails = TicketQA & {
   reportedBy: Pick<User, 'id' | 'name' | 'username'>
   assignedTo: Pick<User, 'id' | 'name' | 'username'> | null
   externalWorkItem: Pick<ExternalWorkItemSummary, 'id' | 'type' | 'externalId' | 'color'> | null
+  referenceEnvironment: { id: number; name: string } | null
   dismissedBy: Pick<User, 'id' | 'name' | 'username'> | null
   module: Pick<ModulePrisma, 'id' | 'name' | 'slug'> & { technology: { name: string } }
   hasUnreadUpdates: boolean
   hasScripts: boolean
+  deploymentSummary: {
+    isCurrentlyDeployed: boolean
+    deployedEnvironmentCount: number
+    latestDeployedAt: Date | null
+  }
   incidenceGantt: IncidenceGanttData | null
   latestQaTask?: {
     title: string
@@ -209,6 +215,7 @@ const ticketSchemaBase = z.object({
   description: z.string().min(1, 'Descripción requerida').max(500, 'Máximo 500 caracteres'),
   priority: z.nativeEnum(Priority),
   externalWorkItemId: z.number().optional(),
+  environmentId: z.number().int().positive().nullable().optional(),
   observations: z.string().optional(),
   assignedToId: z.number().optional(),
   draftId: z.string().optional(),
