@@ -13,6 +13,75 @@ import { Priority, TicketType } from '@/types/enums'
 import { actAs, createExternalWorkItem, createIncidenceFixture, createTechnologyModule, createTicketFixture, createTracklist as createTracklistFixture, createUser } from '@/tests/integration/helpers'
 
 describe('access control integration', () => {
+  it('blocks dev users from reassigning tasks through bulk incidence changes', async () => {
+    const assignedDev = await createUser(UserRole.DEV)
+    const targetDev = await createUser(UserRole.DEV)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [
+        { userId: assignedDev.id, assignedHours: 2 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      tasks: [{ userId: assignedDev.id, title: 'Pendiente', isCompleted: false }],
+    })
+
+    actAs(assignedDev)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      reassignedTasks: [{ taskId: tasks[0].id, targetUserId: targetDev.id }],
+    })
+
+    expect(result.success).toBe(false)
+  }, 15000)
+
+  it('rejects QA users as reassignment targets', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const assignedDev = await createUser(UserRole.DEV)
+    const targetQa = await createUser(UserRole.QA)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: assignedDev.id, assignedHours: 2 }],
+      tasks: [{ userId: assignedDev.id, title: 'Pendiente', isCompleted: false }],
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [
+        { userId: assignedDev.id, assignedHours: 2 },
+        { userId: targetQa.id, assignedHours: null },
+      ],
+      reassignedTasks: [{ taskId: tasks[0].id, targetUserId: targetQa.id }],
+    })
+
+    expect(result.success).toBe(false)
+  }, 15000)
+
+  it('rejects QA users as incidence task assignees', async () => {
+    const admin = await createUser(UserRole.ADMIN)
+    const targetQa = await createUser(UserRole.QA)
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [{ userId: targetQa.id, assignedHours: 2 }],
+    })
+
+    expect(result.success).toBe(false)
+  }, 15000)
+
   it('restricts page creation and editing by role, assignment, and authorship', async () => {
     const assignedDev = await createUser(UserRole.DEV)
     const otherDev = await createUser(UserRole.DEV)

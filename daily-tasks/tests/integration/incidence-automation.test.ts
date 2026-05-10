@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TaskStatus, TicketQAStatus } from '@prisma/client'
 
-import { createTask, saveIncidenceTaskChanges, toggleTask } from '@/app/actions/incidence-actions'
+import { createTask, getIncidencePageData, saveIncidenceTaskChanges, toggleTask } from '@/app/actions/incidence-actions'
 import { db } from '@/lib/db'
 import {
   actAs,
@@ -16,6 +16,187 @@ import {
 } from '@/tests/integration/helpers'
 
 describe('incidence automation integration', () => {
+  it('returns only admin and dev users for incidence task assignment lists', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const qa = await createUser('QA')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      assignees: [{ userId: qa.id, assignedHours: 2 }],
+    })
+
+    actAs(admin)
+    const pageData = await getIncidencePageData(incidence.id)
+
+    expect(pageData.users.map((user) => user.id).sort()).toEqual([admin.id, dev.id].sort())
+  }, 15000)
+
+  it('reassigns pending tasks to an existing assignee and keeps completed tasks with the source assignee', async () => {
+    const admin = await createUser('ADMIN')
+    const sourceDev = await createUser('DEV')
+    const targetDev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.IN_PROGRESS,
+      estimatedTime: 6,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 3 },
+        { userId: targetDev.id, assignedHours: 3 },
+      ],
+      tasks: [
+        { userId: sourceDev.id, title: 'Pendiente origen', isCompleted: false },
+        { userId: sourceDev.id, title: 'Completada origen', isCompleted: true },
+        { userId: targetDev.id, title: 'Pendiente destino', isCompleted: false },
+      ],
+    })
+    const sourcePendingTask = tasks.find((task) => task.title === 'Pendiente origen')
+    const sourceCompletedTask = tasks.find((task) => task.title === 'Completada origen')
+    if (!sourcePendingTask || !sourceCompletedTask) throw new Error('Expected fixture tasks')
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 3 },
+        { userId: targetDev.id, assignedHours: 3 },
+      ],
+      reassignedTasks: [{ taskId: sourcePendingTask.id, targetUserId: targetDev.id }],
+    })
+
+    expect(result.success).toBe(true)
+
+    const assignments = await db.assignment.findMany({
+      where: { incidenceId: incidence.id },
+      include: { tasks: true },
+    })
+    const sourceAssignment = assignments.find((assignment) => assignment.userId === sourceDev.id)
+    const targetAssignment = assignments.find((assignment) => assignment.userId === targetDev.id)
+
+    expect(sourceAssignment?.isAssigned).toBe(true)
+    expect(sourceAssignment?.tasks.map((task) => task.id)).toContain(sourceCompletedTask.id)
+    expect(sourceAssignment?.tasks.map((task) => task.id)).not.toContain(sourcePendingTask.id)
+    expect(targetAssignment?.tasks.map((task) => task.id)).toContain(sourcePendingTask.id)
+  }, 15000)
+
+  it('reassigns all pending tasks to a new assignee and deactivates the source assignee without completed tasks', async () => {
+    const admin = await createUser('ADMIN')
+    const sourceDev = await createUser('DEV')
+    const targetAdmin = await createUser('ADMIN')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.IN_PROGRESS,
+      estimatedTime: 4,
+      assignees: [{ userId: sourceDev.id, assignedHours: 4 }],
+      tasks: [
+        { userId: sourceDev.id, title: 'Pendiente A', isCompleted: false },
+        { userId: sourceDev.id, title: 'Pendiente B', isCompleted: false },
+      ],
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [{ userId: targetAdmin.id, assignedHours: null }],
+      reassignedTasks: tasks.map((task) => ({ taskId: task.id, targetUserId: targetAdmin.id })),
+    })
+
+    expect(result.success).toBe(true)
+
+    const assignments = await db.assignment.findMany({
+      where: { incidenceId: incidence.id },
+      include: { tasks: true },
+    })
+    const sourceAssignment = assignments.find((assignment) => assignment.userId === sourceDev.id)
+    const targetAssignment = assignments.find((assignment) => assignment.userId === targetAdmin.id)
+
+    expect(sourceAssignment?.isAssigned).toBe(false)
+    expect(targetAssignment?.isAssigned).toBe(true)
+    expect(targetAssignment?.tasks.map((task) => task.id).sort()).toEqual(tasks.map((task) => task.id).sort())
+  }, 15000)
+
+  it('does not reassign tasks that are completed after pending state updates are applied', async () => {
+    const admin = await createUser('ADMIN')
+    const sourceDev = await createUser('DEV')
+    const targetDev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, assignments, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.IN_PROGRESS,
+      estimatedTime: 4,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 2 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      tasks: [{ userId: sourceDev.id, title: 'Pendiente a completar', isCompleted: false }],
+    })
+    const task = tasks[0]
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 2 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      updatedTasks: [{ taskId: task.id, title: task.title, isCompleted: true }],
+      reassignedTasks: [{ taskId: task.id, targetUserId: targetDev.id }],
+    })
+
+    expect(result.success).toBe(false)
+
+    const unchangedTask = await db.task.findUniqueOrThrow({ where: { id: task.id } })
+    expect(unchangedTask.assignmentId).toBe(assignments.get(sourceDev.id)?.id)
+  }, 15000)
+
+  it('reassigns QA reported tasks when they remain pending', async () => {
+    const admin = await createUser('ADMIN')
+    const sourceDev = await createUser('DEV')
+    const targetDev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.IN_PROGRESS,
+      estimatedTime: 4,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 2 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      tasks: [{ userId: sourceDev.id, title: 'Reportada QA', isCompleted: false, isQaReported: true }],
+    })
+    const qaReportedTask = tasks[0]
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 2 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      reassignedTasks: [{ taskId: qaReportedTask.id, targetUserId: targetDev.id }],
+    })
+
+    expect(result.success).toBe(true)
+
+    const targetAssignment = await db.assignment.findUniqueOrThrow({
+      where: { incidenceId_userId: { incidenceId: incidence.id, userId: targetDev.id } },
+      include: { tasks: true },
+    })
+    expect(targetAssignment.tasks.map((task) => task.id)).toContain(qaReportedTask.id)
+  }, 15000)
+
   it('moves BACKLOG to TODO when hours and assignee are defined without tasks', async () => {
     const admin = await createUser('ADMIN')
     const dev = await createUser('DEV')

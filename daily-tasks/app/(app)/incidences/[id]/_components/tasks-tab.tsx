@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { IncidenceWithDetails } from '@/types'
 import { saveIncidenceTaskChanges } from '@/app/actions/incidence-actions'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, Shuffle } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskListSection } from '@/components/board/task-list-section'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface TasksTabProps {
     incidence: IncidenceWithDetails
@@ -47,23 +49,45 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
     const [draftRemovedAssignees, setDraftRemovedAssignees] = useState<Set<number>>(new Set())
     const [tasksToPinToggle, setTasksToPinToggle] = useState<Set<number>>(new Set())
     const [pinnedDraftIds, setPinnedDraftIds] = useState<Set<string>>(new Set())
+    const [taskReassignments, setTaskReassignments] = useState<Record<number, number>>({})
+    const [reassignPopoverUserId, setReassignPopoverUserId] = useState<number | null>(null)
 
-    const assignedUserIds = new Set(incidence.assignments.map(a => a.userId))
+    const assignableUsers = useMemo(
+        () => allUsers.filter((user) => user.role === 'ADMIN' || user.role === 'DEV'),
+        [allUsers]
+    )
+    const isTaskAssignableRole = (role: string) => role === 'ADMIN' || role === 'DEV'
+    const assignedUserIds = useMemo(() => new Set(incidence.assignments.map(a => a.userId)), [incidence.assignments])
+    const activePersistedUserIds = useMemo(
+        () => new Set(incidence.assignments.filter(a => !draftRemovedAssignees.has(a.userId)).map(a => a.userId)),
+        [incidence.assignments, draftRemovedAssignees]
+    )
+    const taskOriginUserIds = useMemo(() => Object.fromEntries(
+        incidence.assignments.flatMap((assignment) =>
+            assignment.tasks.map((task) => [task.id, assignment.userId])
+        )
+    ), [incidence.assignments])
+    const allExistingTasks = useMemo(() => incidence.assignments.flatMap((assignment) =>
+        assignment.tasks.map((task) => ({
+            ...task,
+            effectiveUserId: taskReassignments[task.id] ?? assignment.userId,
+        }))
+    ), [incidence.assignments, taskReassignments])
 
     const sortedAssignedUsers = [...incidence.assignments]
-        .filter(a => !draftRemovedAssignees.has(a.userId))
+        .filter(a => !draftRemovedAssignees.has(a.userId) && isTaskAssignableRole(a.user.role))
         .sort((a, b) => {
             if (a.user.role === 'DEV' && b.user.role !== 'DEV') return -1
             if (a.user.role !== 'DEV' && b.user.role === 'DEV') return 1
             return (a.user.name || a.user.username).localeCompare(b.user.name || b.user.username)
         })
 
-    const newAssignees = allUsers.filter(u => draftAssignees.has(u.id))
+    const newAssignees = assignableUsers.filter(u => draftAssignees.has(u.id) && !activePersistedUserIds.has(u.id))
 
-    const unassignedUsers = allUsers
+    const unassignedUsers = assignableUsers
         .filter(u =>
-            (!assignedUserIds.has(u.id) || draftRemovedAssignees.has(u.id)) &&
-            !draftAssignees.has(u.id)
+            !activePersistedUserIds.has(u.id) &&
+            !newAssignees.some(assignee => assignee.id === u.id)
         )
         .sort((a, b) => {
             if (a.role === 'DEV' && b.role !== 'DEV') return -1
@@ -283,6 +307,88 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
         })
     }
 
+    const handleToggleVisibleAssignee = (userId: number, isNewAssignee: boolean, hasAnyTasks: boolean) => {
+        if (hasAnyTasks) return
+
+        if (isNewAssignee) {
+            handleToggleDraftAssignee(userId)
+            return
+        }
+
+        handleToggleRemoveAssignee(userId)
+    }
+
+    const getEffectiveCompleted = (task: { id: number; isCompleted: boolean }) => {
+        return tasksToToggle.has(task.id) ? !task.isCompleted : task.isCompleted
+    }
+
+    const getVisibleTasksForUser = (userId: number) => {
+        return allExistingTasks.filter((task) => task.effectiveUserId === userId && !tasksToDelete.has(task.id))
+    }
+
+    const hasVisibleTasksForUser = (userId: number, nextReassignments: Record<number, number>, nextDraftTasks: DraftTask[]) => {
+        const existingTasks = incidence.assignments
+            .flatMap((assignment) => assignment.tasks.map((task) => ({
+                ...task,
+                effectiveUserId: nextReassignments[task.id] ?? assignment.userId,
+            })))
+            .some((task) => task.effectiveUserId === userId && !tasksToDelete.has(task.id))
+
+        return existingTasks || nextDraftTasks.some((draft) => draft.userId === userId)
+    }
+
+    const handleReassignPendingTasks = (sourceUserId: number, targetUserId: number) => {
+        if (sourceUserId === targetUserId) return
+
+        const visiblePendingTaskIds = allExistingTasks
+            .filter((task) => task.effectiveUserId === sourceUserId && !tasksToDelete.has(task.id) && !getEffectiveCompleted(task))
+            .map((task) => task.id)
+
+        const nextReassignments = { ...taskReassignments }
+        for (const taskId of visiblePendingTaskIds) {
+            const originUserId = taskOriginUserIds[taskId]
+            if (originUserId === targetUserId) {
+                delete nextReassignments[taskId]
+            } else {
+                nextReassignments[taskId] = targetUserId
+            }
+        }
+
+        const nextDraftTasks = draftTasks.map((draft) =>
+            draft.userId === sourceUserId && !draft.isCompleted
+                ? { ...draft, userId: targetUserId, assignmentId: assignedUserIds.has(targetUserId) ? draft.assignmentId : -targetUserId }
+                : draft
+        )
+
+        setTaskReassignments(nextReassignments)
+        setDraftTasks(nextDraftTasks)
+        setReassignPopoverUserId(null)
+        setExpandedAssignees(prev => new Set(prev).add(targetUserId))
+        const sourceHasVisibleTasks = hasVisibleTasksForUser(sourceUserId, nextReassignments, nextDraftTasks)
+        setDraftRemovedAssignees(prev => {
+            const next = new Set(prev)
+            next.delete(targetUserId)
+            if (!sourceHasVisibleTasks && assignedUserIds.has(sourceUserId)) {
+                next.add(sourceUserId)
+            }
+            return next
+        })
+        setDraftAssignees(prev => {
+            const next = new Set(prev)
+            if (!assignedUserIds.has(targetUserId)) {
+                next.add(targetUserId)
+            } else {
+                next.delete(targetUserId)
+            }
+
+            if (!sourceHasVisibleTasks && !assignedUserIds.has(sourceUserId)) {
+                next.delete(sourceUserId)
+            }
+
+            return next
+        })
+    }
+
     const getEffectivePinned = (task: { id: number; isPinned: boolean }) => {
         const toggled = tasksToPinToggle.has(task.id)
         return toggled ? !task.isPinned : task.isPinned
@@ -323,17 +429,21 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 })
                 .filter((task): task is NonNullable<typeof task> => task !== null)
 
-            const assigneeData = [
-                ...incidence.assignments
-                    .filter(a => !draftRemovedAssignees.has(a.userId))
-                    .map(a => ({
-                        userId: a.userId,
-                        assignedHours: assigneeHours[a.userId] === '' ? null : (parseInt(assigneeHours[a.userId]) || a.assignedHours)
-                    })),
-                ...[...draftAssignees].map(userId => ({
-                    userId,
-                    assignedHours: assigneeHours[userId] === '' ? null : parseInt(assigneeHours[userId]) || null
+            const activePersistedAssignees = incidence.assignments
+                .filter(a => !draftRemovedAssignees.has(a.userId))
+                .map(a => ({
+                    userId: a.userId,
+                    assignedHours: assigneeHours[a.userId] === '' ? null : (parseInt(assigneeHours[a.userId]) || a.assignedHours)
                 }))
+            const activePersistedPayloadUserIds = new Set(activePersistedAssignees.map(assignee => assignee.userId))
+            const assigneeData = [
+                ...activePersistedAssignees,
+                ...[...draftAssignees]
+                    .filter(userId => !activePersistedPayloadUserIds.has(userId))
+                    .map(userId => ({
+                        userId,
+                        assignedHours: assigneeHours[userId] === '' ? null : parseInt(assigneeHours[userId]) || null
+                    }))
             ]
 
             const hasAssigneeChanges =
@@ -345,6 +455,9 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                     const originalHours = assignment?.assignedHours?.toString() || ''
                     return assigneeHours[numUid] !== originalHours
                 })
+            const reassignedTasks = Object.entries(taskReassignments)
+                .map(([taskId, targetUserId]) => ({ taskId: Number(taskId), targetUserId }))
+                .filter(({ taskId, targetUserId }) => !tasksToDelete.has(taskId) && taskOriginUserIds[taskId] !== targetUserId)
 
             const result = await saveIncidenceTaskChanges({
                 incidenceId: incidence.id,
@@ -357,6 +470,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 })),
                 updatedTasks,
                 deletedTaskIds: [...tasksToDelete],
+                reassignedTasks: reassignedTasks.length > 0 ? reassignedTasks : undefined,
             })
 
             if (!result.success) {
@@ -375,6 +489,8 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             setTaskEdits({})
             setTasksToPinToggle(new Set())
             setPinnedDraftIds(new Set())
+            setTaskReassignments({})
+            setReassignPopoverUserId(null)
 
             if (result.autoTransitionedToReview) {
                 toast.success('Todas las tareas completadas. Incidencia en revision.')
@@ -386,7 +502,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
             toast.error('Error al guardar cambios')
             throw error
         }
-    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, tasksToPinToggle, pinnedDraftIds, assigneeHours, draftAssignees, draftRemovedAssignees, incidence, onIncidenceUpdate])
+    }, [draftTasks, tasksToToggle, tasksToDelete, taskEdits, tasksToPinToggle, pinnedDraftIds, assigneeHours, draftAssignees, draftRemovedAssignees, taskReassignments, taskOriginUserIds, incidence, onIncidenceUpdate])
 
     const hasChanges = draftTasks.length > 0
         || tasksToToggle.size > 0
@@ -394,6 +510,7 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
         || Object.keys(taskEdits).length > 0
         || tasksToPinToggle.size > 0
         || pinnedDraftIds.size > 0
+        || Object.keys(taskReassignments).length > 0
         || draftAssignees.size > 0
         || draftRemovedAssignees.size > 0
         || Object.keys(assigneeHours).some(uid => {
@@ -422,22 +539,20 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                     assignedHours: assigneeHours[user.id] ? parseInt(assigneeHours[user.id]) : null
                 }
             })].map((assignment) => {
-                const isNewAssignee = assignment.userId < 0
-                const realUserId = isNewAssignee ? -assignment.userId : assignment.userId
-                const user = isNewAssignee ? (assignment as { user: typeof allUsers[0] }).user : assignment.user
+                const isNewAssignee = assignment.id < 0
+                const realUserId = assignment.userId
+                const user = isNewAssignee ? (assignment as { user: typeof assignableUsers[0] }).user : assignment.user
 
                 const allUserTasks = isNewAssignee
-                    ? []
-                    : assignment.tasks.filter(t => !tasksToDelete.has(t.id))
+                    ? getVisibleTasksForUser(realUserId)
+                    : getVisibleTasksForUser(realUserId)
                 const pendingTasks = allUserTasks.filter(t => {
-                    const isToggled = tasksToToggle.has(t.id)
-                    return isToggled ? t.isCompleted : !t.isCompleted
+                    return !getEffectiveCompleted(t)
                 })
                 const completedTasks = allUserTasks.filter(t => {
-                    const isToggled = tasksToToggle.has(t.id)
-                    return isToggled ? !t.isCompleted : t.isCompleted
+                    return getEffectiveCompleted(t)
                 })
-                const userDraftTasks = draftTasks.filter(d => d.userId === realUserId || d.assignmentId === assignment.id)
+                const userDraftTasks = draftTasks.filter(d => d.userId === realUserId)
                 const pendingDrafts = userDraftTasks.filter(d => !d.isCompleted)
                 const completedDrafts = userDraftTasks.filter(d => d.isCompleted)
 
@@ -447,6 +562,13 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                 const total = totalPending + totalCompleted
                 const isExpanded = expandedAssignees.has(realUserId)
                 const hasAnyTasks = allUserTasks.length > 0 || userDraftTasks.length > 0
+                const reassignTargets = assignableUsers
+                    .filter((candidate) => candidate.id !== realUserId)
+                    .sort((a, b) => {
+                        if (a.role === 'DEV' && b.role !== 'DEV') return -1
+                        if (a.role !== 'DEV' && b.role === 'DEV') return 1
+                        return (a.name || a.username).localeCompare(b.name || b.username)
+                    })
 
                 return (
                     <div key={assignment.id} className="border-b border-border last:border-b-0">
@@ -455,14 +577,12 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                             onClick={() => toggleAssigneeExpanded(realUserId)}
                         >
                             <Checkbox
-                                checked={!draftRemovedAssignees.has(realUserId)}
+                                checked={isNewAssignee || !draftRemovedAssignees.has(realUserId)}
                                 onCheckedChange={() => {
-                                    if (!hasAnyTasks && !isNewAssignee) {
-                                        handleToggleRemoveAssignee(realUserId)
-                                    }
+                                    handleToggleVisibleAssignee(realUserId, isNewAssignee, hasAnyTasks)
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                disabled={hasAnyTasks || isNewAssignee}
+                                disabled={hasAnyTasks}
                                 className="border-input"
                             />
                             <span className="text-card-foreground/80 text-sm">
@@ -474,6 +594,50 @@ export function TasksTab({ incidence, allUsers, currentUserId, isAdmin, onIncide
                                 </span>
                             )}
                             <div className="flex-1" />
+                            {isAdmin && totalPending > 0 && (
+                                <Popover
+                                    open={reassignPopoverUserId === realUserId}
+                                    onOpenChange={(open) => setReassignPopoverUserId(open ? realUserId : null)}
+                                >
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="h-6 w-6 text-muted-foreground/70 hover:text-card-foreground/80"
+                                                        aria-label="Reasignar pendientes"
+                                                    >
+                                                        <Shuffle className="h-3 w-3" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Reasignar pendientes</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <PopoverContent align="end" className="w-56 p-1" onClick={(e) => e.stopPropagation()}>
+                                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                                            Reasignar a
+                                        </div>
+                                        <div className="space-y-1">
+                                            {reassignTargets.map((target) => (
+                                                <button
+                                                    key={target.id}
+                                                    type="button"
+                                                    className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                                                    onClick={() => handleReassignPendingTasks(realUserId, target.id)}
+                                                >
+                                                    <span className="truncate">{target.name || target.username}</span>
+                                                    <span className="ml-2 text-xs text-muted-foreground">{target.role}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
                             <div className={`flex items-center gap-2 ${!isAdmin ? 'opacity-60' : ''}`}>
                                 <span className="text-muted-foreground/70 text-xs">Horas:</span>
                                 <Input

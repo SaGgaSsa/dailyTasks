@@ -39,12 +39,18 @@ export interface IncidenceTaskUpdateInput {
   isPinned?: boolean
 }
 
+export interface IncidenceTaskReassignmentInput {
+  taskId: number
+  targetUserId: number
+}
+
 export interface SaveIncidenceTaskChangesInput {
   incidenceId: number
   assignees?: AssigneeWithHours[]
   createdTasks?: IncidenceTaskCreateInput[]
   updatedTasks?: IncidenceTaskUpdateInput[]
   deletedTaskIds?: number[]
+  reassignedTasks?: IncidenceTaskReassignmentInput[]
   incidencePatch?: {
     description?: string
     comment?: string

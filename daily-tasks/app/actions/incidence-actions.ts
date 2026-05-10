@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { Priority as PrismaPriority, TaskStatus, TicketQAStatus, Prisma, ExternalWorkItemStatus } from '.prisma/client'
+import { Priority as PrismaPriority, TaskStatus, TicketQAStatus, Prisma, ExternalWorkItemStatus, UserRole } from '.prisma/client'
 import { Priority, InboxMessageType } from '@/types/enums'
 import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { IncidenceWithDetails, AssigneeWithHours, SaveIncidenceTaskChangesInput } from '@/types'
@@ -36,8 +36,13 @@ const getIncidenceCached = cache(async (id: number) => {
     return incidence ? serializeIncidence(incidence) : null
 })
 
+const TASK_ASSIGNABLE_ROLES = [UserRole.ADMIN, UserRole.DEV] as const
+
 const getUsersCached = cache(async () => {
     return db.user.findMany({
+        where: {
+            role: { in: [...TASK_ASSIGNABLE_ROLES] },
+        },
         select: {
             id: true,
             name: true,
@@ -50,6 +55,21 @@ const getUsersCached = cache(async () => {
         ]
     })
 })
+
+async function areTaskAssignableUsers(userIds: number[]) {
+    const uniqueUserIds = [...new Set(userIds)]
+    if (uniqueUserIds.length === 0) return true
+
+    const users = await db.user.findMany({
+        where: {
+            id: { in: uniqueUserIds },
+            role: { in: [...TASK_ASSIGNABLE_ROLES] },
+        },
+        select: { id: true },
+    })
+
+    return users.length === uniqueUserIds.length
+}
 
 interface CreateIncidenceData {
     type: string
@@ -725,12 +745,13 @@ export async function saveIncidenceTaskChanges(
         }
 
         const isAssignedToIncidence = currentIncidence.assignments.some(a => a.isAssigned && a.userId === userId)
+        const hasTaskReassignments = (input.reassignedTasks?.length ?? 0) > 0
         const hasTaskChanges =
             (input.createdTasks?.length ?? 0) > 0 ||
             (input.updatedTasks?.length ?? 0) > 0 ||
             (input.deletedTaskIds?.length ?? 0) > 0
 
-        if (input.assignees && !isAdmin) {
+        if ((input.assignees || hasTaskReassignments) && !isAdmin) {
             return { success: false, error: t(locale, 'business.adminOnly') }
         }
 
@@ -754,11 +775,52 @@ export async function saveIncidenceTaskChanges(
             return { success: false, error: 'Tecnología no válida' }
         }
 
+        if (input.assignees && !(await areTaskAssignableUsers(input.assignees.map((assignee) => assignee.userId)))) {
+            return { success: false, error: 'Usuario asignado no válido' }
+        }
+
         const taskMap = new Map(
             currentIncidence.assignments.flatMap((assignment) =>
                 assignment.tasks.map((task) => [task.id, { task, assignment }])
             )
         )
+        const updatedTaskCompletion = new Map(
+            (input.updatedTasks ?? []).map((taskChange) => [taskChange.taskId, taskChange.isCompleted])
+        )
+        const deletedTaskIds = new Set(input.deletedTaskIds ?? [])
+
+        if (hasTaskReassignments) {
+            const targetUserIds = [...new Set((input.reassignedTasks ?? []).map((task) => task.targetUserId))]
+            const targets = await db.user.findMany({
+                where: {
+                    id: { in: targetUserIds },
+                    role: { in: [...TASK_ASSIGNABLE_ROLES] },
+                },
+                select: { id: true, role: true }
+            })
+            const targetById = new Map(targets.map((target) => [target.id, target]))
+
+            for (const reassignment of input.reassignedTasks ?? []) {
+                const taskEntry = taskMap.get(reassignment.taskId)
+                if (!taskEntry) {
+                    return { success: false, error: `Tarea ${reassignment.taskId} no encontrada` }
+                }
+
+                if (deletedTaskIds.has(reassignment.taskId)) {
+                    return { success: false, error: 'No puede reasignar tareas eliminadas' }
+                }
+
+                const target = targetById.get(reassignment.targetUserId)
+                if (!target) {
+                    return { success: false, error: 'Usuario destino no válido' }
+                }
+
+                const finalIsCompleted = updatedTaskCompletion.get(reassignment.taskId) ?? taskEntry.task.isCompleted
+                if (finalIsCompleted) {
+                    return { success: false, error: 'Solo puede reasignar tareas pendientes' }
+                }
+            }
+        }
 
         const completionChanged = (input.updatedTasks ?? []).some((taskChange) => {
             const currentTask = taskMap.get(taskChange.taskId)?.task
@@ -872,6 +934,36 @@ export async function saveIncidenceTaskChanges(
                         isQaReported: false
                     }
                 })
+            }
+
+            if (hasTaskReassignments) {
+                const activeAssignmentsAfterSync = await tx.assignment.findMany({
+                    where: { incidenceId: input.incidenceId, isAssigned: true }
+                })
+                const targetAssignmentByUserId = new Map(
+                    activeAssignmentsAfterSync.map((assignment) => [assignment.userId, assignment])
+                )
+
+                for (const reassignment of input.reassignedTasks ?? []) {
+                    const taskEntry = taskMap.get(reassignment.taskId)
+                    if (!taskEntry) {
+                        throw new Error(`Tarea ${reassignment.taskId} no encontrada`)
+                    }
+
+                    const targetAssignment = targetAssignmentByUserId.get(reassignment.targetUserId)
+                    if (!targetAssignment) {
+                        throw new Error(`No se encontró asignación para el usuario ${reassignment.targetUserId}`)
+                    }
+
+                    if (taskEntry.assignment.userId === reassignment.targetUserId) {
+                        continue
+                    }
+
+                    await tx.task.update({
+                        where: { id: reassignment.taskId },
+                        data: { assignmentId: targetAssignment.id }
+                    })
+                }
             }
 
             const incidencePatch: Prisma.IncidenceUpdateInput = {}
