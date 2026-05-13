@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils'
 import { GanttIncidence } from '@/types'
 import { computeGanttDates, getBarSegments, isDelayed, isBusinessDay, buildNonWorkingDaySet, NON_WORKING_DAY_BG } from '@/lib/gantt-utils'
+import { formatPlanningWarnings } from '@/lib/planning-warning-labels'
 import { getBarColorClasses, STATUS_STYLES } from './gantt-status-colors'
-import { ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, CheckSquare, Square, User } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -36,6 +37,8 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
 
   const segments = getBarSegments(startDate, endDate, weekDays, nonWorkingDays, isEstimated)
   const delayed = isDelayed(endDate, incidence.status, isEstimated)
+  const planningWarnings = incidence.planningWarnings ?? []
+  const planningWarningTitle = formatPlanningWarnings(planningWarnings)
 
   const isBefore = endDate < weekStart
   const isAfter = startDate > weekEnd
@@ -69,6 +72,12 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
         <span className="text-xs truncate flex-1" title={incidence.description}>
           {incidence.description}
         </span>
+        {planningWarnings.length > 0 && (
+          <AlertTriangle
+            className="h-4 w-4 shrink-0 text-amber-500"
+            aria-label={planningWarningTitle}
+          />
+        )}
         {(() => {
           const count = incidence.assignments.length
           if (count === 0) return null
@@ -137,8 +146,9 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
 
                       {/* Bar content on widest segment */}
                       {isWidest && seg.widthPercent > 8 && (
-                        <span className="text-[9px] font-medium truncate opacity-80">
-                          {formatDate(endDate)}
+                        <span className="text-[9px] font-medium truncate opacity-80 flex items-center gap-1">
+                          {planningWarnings.length > 0 && <AlertTriangle className="h-2.5 w-2.5 shrink-0" />}
+                          <span>{formatDate(endDate)}</span>
                         </span>
                       )}
 
@@ -173,6 +183,9 @@ export function GanttRow({ incidence, weekStart, weekEnd, weekDays, nonWorkingDa
                 </p>
                 {incidence.status === 'DEFERRED' && <p className="text-zinc-400 font-medium">Diferida</p>}
                 {delayed && <p className="text-red-400 font-medium">Retrasado</p>}
+                {planningWarnings.length > 0 && (
+                  <p className="text-amber-500 font-medium">{planningWarningTitle}</p>
+                )}
               </div>
             </TooltipContent>
           </Tooltip>

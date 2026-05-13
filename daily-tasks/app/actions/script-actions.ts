@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { TaskStatus } from '@prisma/client'
 import type { ScriptType } from '@prisma/client'
+import { syncLinkedTickets } from '@/lib/incidence-management'
 import {
     canCreateScript,
     canDeleteScript,
@@ -73,16 +74,31 @@ export async function createScript(data: {
             return { success: false, error: 'No tiene permisos para crear scripts en esta incidencia' }
         }
 
-        const script = await db.script.create({
-            data: {
-                content: data.content,
-                type: data.type,
-                incidenceId: data.incidenceId,
-                createdById: user.id,
+        const script = await db.$transaction(async (tx) => {
+            const created = await tx.script.create({
+                data: {
+                    content: data.content,
+                    type: data.type,
+                    incidenceId: data.incidenceId,
+                    createdById: user.id,
+                }
+            })
+
+            if (accessContext.status === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: data.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS },
+                })
             }
+
+            return created
         })
 
         revalidatePath('/incidences')
+        revalidatePath('/tracklists')
+        if (accessContext.status === TaskStatus.TODO) {
+            await syncLinkedTickets(data.incidenceId, TaskStatus.IN_PROGRESS)
+        }
         return { success: true, data: script }
     } catch (error) {
         console.error('Error creating script:', error)
@@ -116,15 +132,30 @@ export async function updateScript(
             return { success: false, error: 'No tiene permisos para editar este script' }
         }
 
-        const updated = await db.script.update({
-            where: { id: scriptId },
-            data: {
-                content: data.content,
-                type: data.type,
+        const updated = await db.$transaction(async (tx) => {
+            const script = await tx.script.update({
+                where: { id: scriptId },
+                data: {
+                    content: data.content,
+                    type: data.type,
+                }
+            })
+
+            if (accessContext.status === TaskStatus.TODO) {
+                await tx.incidence.update({
+                    where: { id: accessContext.incidenceId },
+                    data: { status: TaskStatus.IN_PROGRESS },
+                })
             }
+
+            return script
         })
 
         revalidatePath('/incidences')
+        revalidatePath('/tracklists')
+        if (accessContext.status === TaskStatus.TODO) {
+            await syncLinkedTickets(accessContext.incidenceId, TaskStatus.IN_PROGRESS)
+        }
         return { success: true, data: updated }
     } catch (error) {
         console.error('Error updating script:', error)

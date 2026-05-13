@@ -8,7 +8,8 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { AssignableUser } from '@/app/actions/user-actions'
 import { TicketActionsMenu } from './TicketActionsMenu'
-import { Cloud, FileCode2, Server } from 'lucide-react'
+import { AlertTriangle, Cloud, FileCode2, Server } from 'lucide-react'
+import { formatPlanningWarnings } from '@/lib/planning-warning-labels'
 
 interface Props {
   ticket: TicketQAWithDetails
@@ -17,6 +18,8 @@ interface Props {
 }
 
 export function TicketKanbanCard({ ticket, assignableUsers, readOnly = false }: Props) {
+  const planningWarnings = ticket.incidenceGantt?.planningWarnings ?? []
+
   return (
     <div className="bg-card border border-border rounded-lg p-3 space-y-2 relative">
       {ticket.hasUnreadUpdates && (
@@ -32,6 +35,12 @@ export function TicketKanbanCard({ ticket, assignableUsers, readOnly = false }: 
             )}
             {ticket.hasScripts && (
               <FileCode2 className="h-3.5 w-3.5 text-amber-500" aria-label="Tiene scripts" />
+            )}
+            {planningWarnings.length > 0 && (
+              <AlertTriangle
+                className="h-3.5 w-3.5 text-amber-500"
+                aria-label={formatPlanningWarnings(planningWarnings)}
+              />
             )}
           </div>
         </div>

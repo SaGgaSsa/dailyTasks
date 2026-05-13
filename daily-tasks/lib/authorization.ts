@@ -20,6 +20,7 @@ interface PageAccessContext extends AccessContext {
 }
 
 interface ScriptAccessContext extends AccessContext {
+  incidenceId: number
   createdById: number
 }
 
@@ -204,6 +205,7 @@ export async function getScriptAccessContext(
       createdById: true,
       incidence: {
         select: {
+          id: true,
           status: true,
           assignments: {
             where: { userId, isAssigned: true },
@@ -220,6 +222,7 @@ export async function getScriptAccessContext(
   }
 
   return {
+    incidenceId: script.incidence.id,
     createdById: script.createdById,
     status: script.incidence.status,
     isAssigned: script.incidence.assignments.length > 0,

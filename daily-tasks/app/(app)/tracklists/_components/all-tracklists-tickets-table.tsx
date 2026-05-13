@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Cloud, Inbox, Server, User, MoreVertical, Eye, BarChart3, Ban, Layers, FileCode2 } from 'lucide-react'
+import { AlertTriangle, Cloud, Inbox, Server, User, MoreVertical, Eye, BarChart3, Ban, Layers, FileCode2 } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -24,6 +24,7 @@ import {
 import { DismissTicketDialog } from '@/components/tracklists/DismissTicketDialog'
 import { CreateTicketDialog } from '@/components/tracklists/create-ticket-dialog'
 import { completeTicket, uncompleteTicket } from '@/app/actions/tracklists'
+import { formatPlanningWarnings } from '@/lib/planning-warning-labels'
 import { toast } from 'sonner'
 
 interface Props {
@@ -125,6 +126,7 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
               tickets.map((ticket) => {
                 const isTest = ticket.status === TicketQAStatus.TEST
                 const isCompleted = ticket.status === TicketQAStatus.COMPLETED
+                const planningWarnings = ticket.incidenceGantt?.planningWarnings ?? []
                 return (
                   <TableRow key={ticket.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => setOpenTicketId(ticket.id)}>
                     <TableCell className="w-8 px-2 py-3 text-center" onClick={(event) => event.stopPropagation()}>
@@ -153,8 +155,18 @@ export function AllTracklistsTicketsTable({ tickets, assignableUsers }: Props) {
                       <div className="flex-1 min-w-0 truncate" title={ticket.description}>
                         {ticket.description}
                       </div>
-                      {(ticket.referenceEnvironment || ticket.deploymentSummary.isCurrentlyDeployed) && (
+                      {(ticket.referenceEnvironment || ticket.deploymentSummary.isCurrentlyDeployed || planningWarnings.length > 0) && (
                         <div className="mt-1 flex flex-wrap gap-1">
+                          {planningWarnings.length > 0 ? (
+                            <Badge
+                              variant="outline"
+                              className="h-5 gap-1 border-amber-500/20 bg-amber-500/10 px-1.5 text-[10px] font-normal text-amber-600 dark:text-amber-300"
+                              title={formatPlanningWarnings(planningWarnings)}
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                              Plan
+                            </Badge>
+                          ) : null}
                           {ticket.referenceEnvironment ? (
                             <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px] font-normal">
                               <Server className="h-3 w-3" />

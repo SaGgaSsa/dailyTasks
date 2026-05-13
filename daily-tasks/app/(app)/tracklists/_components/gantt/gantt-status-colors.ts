@@ -8,9 +8,9 @@ interface StatusColorClasses {
 
 export const STATUS_STYLES: Record<string, StatusColorClasses> = {
   [TaskStatus.TODO]: {
-    bar: 'border-l-4 border-l-zinc-400 bg-zinc-100 dark:bg-zinc-800',
-    badge: 'border-l-4 border-l-zinc-400 bg-zinc-100 dark:bg-zinc-800',
-    label: 'Pendiente',
+    bar: 'border-l-4 border-l-cyan-500 bg-cyan-50 dark:bg-cyan-950/70',
+    badge: 'border-l-4 border-l-cyan-500 bg-cyan-50 dark:bg-cyan-950/70',
+    label: 'Planificado',
   },
   [TaskStatus.IN_PROGRESS]: {
     bar: 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950',

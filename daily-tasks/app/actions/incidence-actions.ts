@@ -822,9 +822,13 @@ export async function saveIncidenceTaskChanges(
             }
         }
 
-        const completionChanged = (input.updatedTasks ?? []).some((taskChange) => {
+        const updatedTasksChanged = (input.updatedTasks ?? []).some((taskChange) => {
             const currentTask = taskMap.get(taskChange.taskId)?.task
-            return currentTask ? currentTask.isCompleted !== taskChange.isCompleted : false
+            return currentTask
+                ? currentTask.isCompleted !== taskChange.isCompleted ||
+                    currentTask.title !== taskChange.title ||
+                    (taskChange.isPinned !== undefined && currentTask.isPinned !== taskChange.isPinned)
+                : false
         })
 
         const createdTasksCount = input.createdTasks?.length ?? 0
@@ -1015,7 +1019,8 @@ export async function saveIncidenceTaskChanges(
                 totalTasks,
                 allTasksCompleted,
                 createdTasksCount,
-                completionChanged,
+                updatedTasksChanged,
+                reassignedTasksCount: input.reassignedTasks?.length ?? 0,
                 deletedTasksCount,
             })
 

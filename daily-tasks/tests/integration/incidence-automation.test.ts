@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { TaskStatus, TicketQAStatus } from '@prisma/client'
+import { ScriptType, TaskStatus, TicketQAStatus } from '@prisma/client'
 
 import { createTask, getIncidencePageData, saveIncidenceTaskChanges, toggleTask } from '@/app/actions/incidence-actions'
+import { createScript, deleteScript, updateScript } from '@/app/actions/script-actions'
+import { getGanttData } from '@/app/actions/tracklists'
+import { computeGanttDates } from '@/lib/gantt-utils'
 import { db } from '@/lib/db'
 import {
   actAs,
@@ -233,7 +236,7 @@ describe('incidence automation integration', () => {
 
     expect(updatedIncidence.status).toBe(TaskStatus.TODO)
     expect(updatedIncidence.startedAt).not.toBeNull()
-    expect(updatedTicket.status).toBe(TicketQAStatus.IN_DEVELOPMENT)
+    expect(updatedTicket.status).toBe(TicketQAStatus.ASSIGNED)
   })
 
   it('moves BACKLOG to IN_PROGRESS when hours and assignee are defined with pending tasks', async () => {
@@ -419,6 +422,195 @@ describe('incidence automation integration', () => {
 
     const updatedIncidence = await getIncidenceState(incidence.id)
     expect(updatedIncidence.status).toBe(TaskStatus.IN_PROGRESS)
+  })
+
+  it('moves TODO to IN_PROGRESS when a task title is edited', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const qa = await createUser('QA')
+    const { technology, module: moduleRecord } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklist(qa.id)
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 5,
+      assignees: [{ userId: dev.id, assignedHours: 5 }],
+      tasks: [{ userId: dev.id, title: 'Pendiente', isCompleted: false }],
+    })
+    const ticket = await createTicketFixture({
+      tracklistId: tracklist.id,
+      moduleId: moduleRecord.id,
+      reportedById: qa.id,
+      assignedToId: dev.id,
+      incidenceId: incidence.id,
+      externalWorkItemId: workItem.id,
+      status: TicketQAStatus.ASSIGNED,
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      updatedTasks: [{ taskId: tasks[0].id, title: 'Pendiente editada', isCompleted: false }],
+    })
+
+    expect(result.success).toBe(true)
+
+    expect((await getIncidenceState(incidence.id)).status).toBe(TaskStatus.IN_PROGRESS)
+    expect((await getTicketState(ticket.id)).status).toBe(TicketQAStatus.IN_DEVELOPMENT)
+  })
+
+  it('moves TODO to IN_PROGRESS when a pending task is reassigned', async () => {
+    const admin = await createUser('ADMIN')
+    const sourceDev = await createUser('DEV')
+    const targetDev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 5,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 3 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      tasks: [{ userId: sourceDev.id, title: 'Pendiente', isCompleted: false }],
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      assignees: [
+        { userId: sourceDev.id, assignedHours: 3 },
+        { userId: targetDev.id, assignedHours: 2 },
+      ],
+      reassignedTasks: [{ taskId: tasks[0].id, targetUserId: targetDev.id }],
+    })
+
+    expect(result.success).toBe(true)
+    expect((await getIncidenceState(incidence.id)).status).toBe(TaskStatus.IN_PROGRESS)
+  })
+
+  it('moves TODO to IN_PROGRESS when a task is deleted', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const { incidence, tasks } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 5,
+      assignees: [{ userId: dev.id, assignedHours: 5 }],
+      tasks: [
+        { userId: dev.id, title: 'Eliminar', isCompleted: false },
+        { userId: dev.id, title: 'Mantener', isCompleted: false },
+      ],
+    })
+
+    actAs(admin)
+    const result = await saveIncidenceTaskChanges({
+      incidenceId: incidence.id,
+      deletedTaskIds: [tasks[0].id],
+    })
+
+    expect(result.success).toBe(true)
+    expect((await getIncidenceState(incidence.id)).status).toBe(TaskStatus.IN_PROGRESS)
+  })
+
+  it('moves TODO to IN_PROGRESS when scripts are created or edited, but not when scripts are deleted', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const first = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 4,
+      assignees: [{ userId: dev.id, assignedHours: 4 }],
+    })
+    const second = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 4,
+      assignees: [{ userId: dev.id, assignedHours: 4 }],
+    })
+
+    actAs(admin)
+    const createResult = await createScript({
+      incidenceId: first.incidence.id,
+      content: 'select 1;',
+      type: ScriptType.SQL,
+    })
+    expect(createResult.success).toBe(true)
+    expect((await getIncidenceState(first.incidence.id)).status).toBe(TaskStatus.IN_PROGRESS)
+
+    const existingScript = await db.script.create({
+      data: {
+        incidenceId: second.incidence.id,
+        createdById: admin.id,
+        content: 'select 1;',
+        type: ScriptType.SQL,
+      },
+    })
+    const updateResult = await updateScript(existingScript.id, { content: 'select 2;', type: ScriptType.SQL })
+    expect(updateResult.success).toBe(true)
+    expect((await getIncidenceState(second.incidence.id)).status).toBe(TaskStatus.IN_PROGRESS)
+
+    await db.incidence.update({ where: { id: second.incidence.id }, data: { status: TaskStatus.TODO } })
+    const deleteResult = await deleteScript(existingScript.id)
+    expect(deleteResult.success).toBe(true)
+    expect((await getIncidenceState(second.incidence.id)).status).toBe(TaskStatus.TODO)
+  })
+
+  it('returns Gantt TODO incidences with planning warnings and estimated-time dates', async () => {
+    const admin = await createUser('ADMIN')
+    const dev = await createUser('DEV')
+    const qa = await createUser('QA')
+    const { technology } = await createTechnologyModule()
+    const workItem = await createExternalWorkItem()
+    const tracklist = await createTracklist(qa.id)
+    const startedAt = new Date('2026-05-04T10:00:00.000Z')
+    const { incidence } = await createIncidenceFixture({
+      technologyId: technology.id,
+      externalWorkItemId: workItem.id,
+      status: TaskStatus.TODO,
+      estimatedTime: 40,
+      startedAt,
+      assignees: [{ userId: dev.id, assignedHours: 32 }],
+      tasks: [{ userId: dev.id, title: 'Actividad real', isCompleted: false }],
+    })
+    await db.tracklist.update({
+      where: { id: tracklist.id },
+      data: { externalWorkItems: { connect: { id: workItem.id } } },
+    })
+
+    actAs(admin)
+    const result = await getGanttData()
+
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error(result.error)
+    const ganttIncidence = result.data
+      .flatMap((item) => item.incidences)
+      .find((item) => item.id === incidence.id)
+
+    expect(ganttIncidence).toBeDefined()
+    expect(ganttIncidence?.status).toBe(TaskStatus.TODO)
+    expect(ganttIncidence?.totalAssignedHours).toBe(32)
+    expect(ganttIncidence?.planningWarnings).toEqual(['UNDER_ASSIGNED', 'TODO_WITH_ACTIVITY'])
+
+    const dates = computeGanttDates({
+      startedAt: ganttIncidence!.startedAt,
+      completedAt: ganttIncidence!.completedAt,
+      deferredAt: ganttIncidence!.deferredAt,
+      estimatedTime: ganttIncidence!.estimatedTime,
+      ticketCreatedAt: ganttIncidence!.ticket?.createdAt ?? ganttIncidence!.createdAt,
+    })
+    expect(dates.endDate.toISOString()).toBe('2026-05-08T23:59:59.999Z')
   })
 
   it('moves IN_PROGRESS to REVIEW when all tasks are completed', async () => {

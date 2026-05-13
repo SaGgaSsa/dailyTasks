@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Cloud, Inbox, Server, User, FileCode2 } from 'lucide-react'
+import { AlertTriangle, Cloud, Inbox, Server, User, FileCode2 } from 'lucide-react'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TicketQAWithDetails } from '@/types'
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { TICKET_TYPE_LABELS, TicketType, TICKET_QA_STATUS_LABELS, TicketQAStatus } from '@/types/enums'
 import { TicketActionsMenu } from './TicketActionsMenu'
 import { CreateTicketDialog } from './create-ticket-dialog'
+import { formatPlanningWarnings } from '@/lib/planning-warning-labels'
 
 
 
@@ -70,12 +71,14 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                 </TableCell>
               </TableRow>
             ) : (
-              initialTickets.map((ticket) => (
-                <TableRow
-                  key={ticket.id}
-                  className="hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => setViewTarget(ticket)}
-                >
+              initialTickets.map((ticket) => {
+                const planningWarnings = ticket.incidenceGantt?.planningWarnings ?? []
+                return (
+                  <TableRow
+                    key={ticket.id}
+                    className="hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => setViewTarget(ticket)}
+                  >
                   <TableCell className="w-12 font-mono text-xs px-2 py-3 text-center">
                     <div className="relative inline-flex items-center justify-center gap-1">
                       {ticket.ticketNumber}
@@ -93,8 +96,18 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                     <div className="flex-1 min-w-0 truncate" title={ticket.description}>
                       {ticket.description}
                     </div>
-                    {(ticket.referenceEnvironment || ticket.deploymentSummary.isCurrentlyDeployed) && (
+                    {(ticket.referenceEnvironment || ticket.deploymentSummary.isCurrentlyDeployed || planningWarnings.length > 0) && (
                       <div className="mt-1 flex flex-wrap gap-1">
+                        {planningWarnings.length > 0 ? (
+                          <Badge
+                            variant="outline"
+                            className="h-5 gap-1 border-amber-500/20 bg-amber-500/10 px-1.5 text-[10px] font-normal text-amber-600 dark:text-amber-300"
+                            title={formatPlanningWarnings(planningWarnings)}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            Plan
+                          </Badge>
+                        ) : null}
                         {ticket.referenceEnvironment ? (
                           <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px] font-normal">
                             <Server className="h-3 w-3" />
@@ -143,8 +156,9 @@ export function TicketsGrid({ initialTickets, assignableUsers, readOnly = false 
                       onOpenTicket={setViewTarget}
                     />
                   </TableCell>
-                </TableRow>
-              ))
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

@@ -6,6 +6,7 @@ import { isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { TicketType, TicketQAStatus } from '@/types/enums'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import { sanitizeObservationHtml } from '@/lib/ticket-images'
+import { getPlanningWarnings, getTotalAssignedHours } from '@/lib/planning-diagnostics'
 
 export const ticketDetailsInclude = {
   reportedBy: { select: { id: true, name: true, username: true } },
@@ -26,7 +27,10 @@ export const ticketDetailsInclude = {
       estimatedTime: true,
       assignments: {
         where: { isAssigned: true },
-        select: { assignedHours: true },
+        select: {
+          assignedHours: true,
+          tasks: { select: { id: true } },
+        },
       },
       _count: {
         select: { scripts: true },
@@ -53,7 +57,13 @@ export function enrichTicketScripts<T extends TicketWithScripts>(ticket: T) {
     completedAt: incidence.completedAt,
     deferredAt: incidence.deferredAt,
     estimatedTime: incidence.estimatedTime,
-    totalAssignedHours: incidence.assignments.reduce((sum, assignment) => sum + (assignment.assignedHours ?? 0), 0),
+    totalAssignedHours: getTotalAssignedHours(incidence.assignments),
+    planningWarnings: getPlanningWarnings({
+      status: incidence.status,
+      estimatedTime: incidence.estimatedTime,
+      assignments: incidence.assignments,
+      scriptsCount: incidence._count.scripts,
+    }),
   } : null
 
   return {

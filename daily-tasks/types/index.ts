@@ -2,6 +2,7 @@ import type { Incidence, User, Task, Assignment, Attachment, IncidencePage, Trac
 import { TaskStatus, Priority, AttachmentType, TicketType, TicketQAStatus } from './enums'
 import { z } from 'zod'
 import { normalizeUsername } from '@/lib/usernames'
+import type { PlanningWarningCode } from '@/lib/planning-diagnostics'
 
 export type { TaskStatus, Priority, AttachmentType, TicketType, TicketQAStatus }
 export type { Technology, WorkItemType, ExternalWorkItemStatus }
@@ -124,10 +125,13 @@ export interface GanttIncidence {
   externalWorkItem: { id: number; type: string; externalId: number; color: string | null }
   technology: { name: string }
   assignments: {
+    assignedHours: number | null
     user: Pick<User, 'id' | 'name' | 'username'>
     tasks: { id: number; isCompleted: boolean }[]
   }[]
   ticket: { id: number; ticketNumber: number; createdAt: Date } | null
+  totalAssignedHours: number
+  planningWarnings: PlanningWarningCode[]
 }
 
 export interface GanttTracklist {
@@ -147,6 +151,7 @@ export interface IncidenceGanttData {
   deferredAt: Date | null
   estimatedTime: number | null
   totalAssignedHours: number
+  planningWarnings: PlanningWarningCode[]
 }
 
 export type TicketQAWithDetails = TicketQA & {

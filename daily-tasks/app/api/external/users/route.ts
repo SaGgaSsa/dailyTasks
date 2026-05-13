@@ -80,8 +80,10 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(getTemporaryUserPassword(), 10)
 
-    const allTechs = await db.technology.findMany()
-    const technologies = allTechs.map(t => ({ connect: { id: t.id } }))
+    const allTechs = await db.technology.findMany({ select: { id: true } })
+    const technologies = allTechs.length > 0
+      ? { connect: allTechs.map((technology) => ({ id: technology.id })) }
+      : undefined
 
     const user = await db.user.create({
       data: {
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         mustChangePassword: true,
         role: UserRole.DEV,
-        technologies: technologies as never,
+        technologies,
       },
     })
 

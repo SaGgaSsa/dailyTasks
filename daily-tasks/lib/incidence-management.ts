@@ -71,8 +71,10 @@ export async function syncLinkedTickets(incidenceId: number, newStatus: TaskStat
   const targetTicketStatus =
     newStatus === TaskStatus.REVIEW
       ? TicketQAStatus.TEST
-      : newStatus === TaskStatus.TODO || newStatus === TaskStatus.IN_PROGRESS
+      : newStatus === TaskStatus.IN_PROGRESS
         ? TicketQAStatus.IN_DEVELOPMENT
+        : newStatus === TaskStatus.TODO
+          ? TicketQAStatus.ASSIGNED
         : newStatus === TaskStatus.DEFERRED
           ? TicketQAStatus.DEFERRED
           : null
@@ -92,7 +94,8 @@ export async function syncLinkedTickets(incidenceId: number, newStatus: TaskStat
 
 export function getResumedTicketStatus(status: TaskStatus) {
   if (status === TaskStatus.BACKLOG) return TicketQAStatus.ASSIGNED
-  if (status === TaskStatus.TODO || status === TaskStatus.IN_PROGRESS) return TicketQAStatus.IN_DEVELOPMENT
+  if (status === TaskStatus.TODO) return TicketQAStatus.ASSIGNED
+  if (status === TaskStatus.IN_PROGRESS) return TicketQAStatus.IN_DEVELOPMENT
   if (status === TaskStatus.REVIEW) return TicketQAStatus.TEST
   return null
 }
@@ -169,7 +172,8 @@ interface ComputeNextIncidenceStatusParams {
   totalTasks: number
   allTasksCompleted: boolean
   createdTasksCount: number
-  completionChanged: boolean
+  updatedTasksChanged: boolean
+  reassignedTasksCount: number
   deletedTasksCount: number
 }
 
@@ -199,13 +203,17 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
     totalTasks,
     allTasksCompleted,
     createdTasksCount,
-    completionChanged,
+    updatedTasksChanged,
+    reassignedTasksCount,
     deletedTasksCount,
   } = params
 
   const allConditionsMet = hasEstimatedTime && hasAssignees
-  const hasTaskStructureChanges = createdTasksCount > 0 || deletedTasksCount > 0
-  const hasTaskStatusChanges = completionChanged || hasTaskStructureChanges
+  const hasRealTaskActivity =
+    createdTasksCount > 0 ||
+    updatedTasksChanged ||
+    reassignedTasksCount > 0 ||
+    deletedTasksCount > 0
 
   if (initialStatus === TaskStatus.DEFERRED) {
     return TaskStatus.DEFERRED
@@ -236,11 +244,11 @@ export function computeNextIncidenceStatus(params: ComputeNextIncidenceStatusPar
     return TaskStatus.REVIEW
   }
 
-  if (initialStatus === TaskStatus.REVIEW && hasTaskStatusChanges) {
+  if (initialStatus === TaskStatus.REVIEW && hasRealTaskActivity) {
     return TaskStatus.IN_PROGRESS
   }
 
-  if (initialStatus === TaskStatus.TODO && hasTaskStatusChanges && totalTasks > 0) {
+  if (initialStatus === TaskStatus.TODO && hasRealTaskActivity) {
     return TaskStatus.IN_PROGRESS
   }
 

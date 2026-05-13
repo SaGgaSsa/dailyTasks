@@ -12,6 +12,7 @@ import { createInboxMessagesForUsers } from '@/app/actions/inbox-messages'
 import { TaskStatus } from '.prisma/client'
 import { completeIncidenceCore } from '@/app/actions/incidence-actions'
 import { getReadyForDeployAtPatch } from '@/lib/incidence-management'
+import { getPlanningWarnings, getTotalAssignedHours } from '@/lib/planning-diagnostics'
 import { getExternalWorkItemById, isExternalWorkItemActive } from '@/lib/external-work-item-guards'
 import { externalWorkItemBaseSelect, serializeExternalWorkItem } from '@/lib/work-item-types'
 import {
@@ -935,10 +936,12 @@ export async function getGanttData() {
                                 assignments: {
                                     where: { isAssigned: true },
                                     select: {
+                                        assignedHours: true,
                                         user: { select: { id: true, name: true, username: true } },
                                         tasks: { select: { id: true, isCompleted: true } }
                                     }
                                 },
+                                _count: { select: { scripts: true } },
                                 qaTickets: {
                                     select: { id: true, ticketNumber: true, createdAt: true },
                                     take: 1,
@@ -962,6 +965,13 @@ export async function getGanttData() {
                     externalWorkItem: serializeExternalWorkItem(inc.externalWorkItem),
                     status: inc.status as import('@/types/enums').TaskStatus,
                     ticket: inc.qaTickets[0] ?? null,
+                    totalAssignedHours: getTotalAssignedHours(inc.assignments),
+                    planningWarnings: getPlanningWarnings({
+                        status: inc.status,
+                        estimatedTime: inc.estimatedTime,
+                        assignments: inc.assignments,
+                        scriptsCount: inc._count.scripts,
+                    }),
                 }))
             )
             return {
