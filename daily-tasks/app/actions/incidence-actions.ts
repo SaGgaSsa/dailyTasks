@@ -42,6 +42,7 @@ const getUsersCached = cache(async () => {
     return db.user.findMany({
         where: {
             role: { in: [...TASK_ASSIGNABLE_ROLES] },
+            isEnabled: true,
         },
         select: {
             id: true,
@@ -64,6 +65,7 @@ async function areTaskAssignableUsers(userIds: number[]) {
         where: {
             id: { in: uniqueUserIds },
             role: { in: [...TASK_ASSIGNABLE_ROLES] },
+            isEnabled: true,
         },
         select: { id: true },
     })
@@ -128,6 +130,10 @@ export async function createIncidence(data: CreateIncidenceData, locale: Locale 
         })
         if (existingIncidence) {
             return { success: false, error: t(locale, 'business.alreadyExists') }
+        }
+
+        if (data.assignees && !(await areTaskAssignableUsers(data.assignees.map((assignee) => assignee.userId)))) {
+            return { success: false, error: 'Usuario asignado no válido' }
         }
 
         await db.$transaction(async (tx) => {
@@ -795,6 +801,7 @@ export async function saveIncidenceTaskChanges(
                 where: {
                     id: { in: targetUserIds },
                     role: { in: [...TASK_ASSIGNABLE_ROLES] },
+                    isEnabled: true,
                 },
                 select: { id: true, role: true }
             })

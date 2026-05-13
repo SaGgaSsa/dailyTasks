@@ -1,9 +1,8 @@
 'use server'
 
-import { unstable_cache } from 'next/cache'
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
-import { revalidatePath } from 'next/cache'
-import { UserRole } from '@prisma/client'
+import { TaskStatus, TicketQAStatus, UserRole } from '@prisma/client'
 import { createUserSchema, updateUserSchema } from '@/types'
 import bcrypt from 'bcryptjs'
 import { serializeExternalWorkItem } from '@/lib/work-item-types'
@@ -22,6 +21,7 @@ export interface AdminUserSummary {
     name: string | null
     username: string
     role: UserRole
+    isEnabled: boolean
     mustChangePassword: boolean
     createdAt: Date
     updatedAt: Date
@@ -33,6 +33,7 @@ const adminUserSelect = {
     name: true,
     username: true,
     role: true,
+    isEnabled: true,
     mustChangePassword: true,
     createdAt: true,
     updatedAt: true,
@@ -336,20 +337,95 @@ export async function changeOwnPassword(input: { newPassword: string }) {
 }
 
 export async function deleteUser(userId: number) {
-    const user = await getAuthenticatedUser()
-    if (!user || !canManageUsers(user.role)) {
+    return setUserEnabled(userId, false)
+}
+
+async function getPendingWorkBlocker(userId: number): Promise<string | null> {
+    const [pendingTickets, pendingIncidences, pendingTasks] = await Promise.all([
+        db.ticketQA.count({
+            where: {
+                assignedToId: userId,
+                status: { notIn: [TicketQAStatus.COMPLETED, TicketQAStatus.DISMISSED] },
+            },
+        }),
+        db.incidence.count({
+            where: {
+                status: { notIn: [TaskStatus.DONE, TaskStatus.DISMISSED] },
+                assignments: {
+                    some: {
+                        userId,
+                        isAssigned: true,
+                    },
+                },
+            },
+        }),
+        db.task.count({
+            where: {
+                isCompleted: false,
+                assignment: { userId },
+            },
+        }),
+    ])
+
+    if (pendingTickets > 0) return 'El colaborador tiene tickets QA pendientes'
+    if (pendingIncidences > 0) return 'El colaborador tiene incidencias pendientes'
+    if (pendingTasks > 0) return 'El colaborador tiene tareas pendientes'
+
+    return null
+}
+
+function revalidateUserAvailability() {
+    revalidatePath('/users')
+    revalidatePath('/incidences')
+    revalidatePath('/tracklists')
+    revalidateTag('assignable-users', 'default')
+}
+
+export async function setUserEnabled(userId: number, enabled: boolean) {
+    const currentUser = await getAuthenticatedUser()
+    if (!currentUser || !canManageUsers(currentUser.role)) {
         return { success: false, error: 'No autorizado' }
     }
 
     try {
-        await db.user.delete({
-            where: { id: userId }
+        const targetUser = await db.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true, isEnabled: true },
         })
-        revalidatePath('/incidences')
+
+        if (!targetUser) {
+            return { success: false, error: 'Usuario no encontrado' }
+        }
+
+        if (!enabled) {
+            if (targetUser.id === currentUser.id) {
+                return { success: false, error: 'No podés deshabilitar tu propio usuario' }
+            }
+
+            if (targetUser.role === UserRole.ADMIN && targetUser.isEnabled) {
+                const activeAdminCount = await db.user.count({
+                    where: { role: UserRole.ADMIN, isEnabled: true },
+                })
+                if (activeAdminCount <= 1) {
+                    return { success: false, error: 'No se puede deshabilitar el último admin activo' }
+                }
+            }
+
+            const pendingWorkError = await getPendingWorkBlocker(targetUser.id)
+            if (pendingWorkError) {
+                return { success: false, error: pendingWorkError }
+            }
+        }
+
+        await db.user.update({
+            where: { id: targetUser.id },
+            data: { isEnabled: enabled },
+        })
+        revalidateUserAvailability()
         return { success: true }
     } catch (error) {
-        console.error('Error deleting user:', error)
-        return { success: false, error: 'Error al eliminar el usuario' }
+        console.error('Error setting user enabled state:', error)
+        return { success: false, error: 'Error al actualizar el estado del colaborador' }
     }
 }
 
@@ -427,7 +503,7 @@ export interface AssignableUser {
 export const getCachedAssignableUsers = unstable_cache(
   async (): Promise<AssignableUser[]> => {
     return db.user.findMany({
-      where: { role: { in: ['DEV', 'ADMIN'] } },
+      where: { role: { in: ['DEV', 'ADMIN'] }, isEnabled: true },
       orderBy: [
         { role: 'asc' },
         { name: 'asc' }

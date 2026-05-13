@@ -1,4 +1,4 @@
-import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus, EnvironmentLogEntryType } from '.prisma/client'
+import { Prisma, ExternalWorkItemStatus, Priority as PrismaPriority, TaskStatus, EnvironmentLogEntryType, UserRole } from '.prisma/client'
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/lib/db'
@@ -158,7 +158,7 @@ const TICKET_TYPE_TASK_TITLE: Record<TicketType, string> = {
   [TicketType.CONSULTA]: 'Análisis',
 }
 
-type AssignmentTransactionClient = Pick<typeof db, 'incidence' | 'assignment' | 'task' | 'ticketQA' | 'externalWorkItem'>
+type AssignmentTransactionClient = Pick<typeof db, 'incidence' | 'assignment' | 'task' | 'ticketQA' | 'externalWorkItem' | 'user'>
 
 async function assignTicketToNewIncidenceCore(
   client: AssignmentTransactionClient,
@@ -187,6 +187,15 @@ async function assignTicketToNewIncidenceCore(
 
   if (!isExternalWorkItemActive(workItem)) {
     return { success: false, error: 'No se puede usar un trámite externo inactivo' }
+  }
+
+  const assignee = await client.user.findUnique({
+    where: { id: assignedToId },
+    select: { id: true, role: true, isEnabled: true },
+  })
+
+  if (!assignee?.isEnabled || (assignee.role !== UserRole.ADMIN && assignee.role !== UserRole.DEV)) {
+    return { success: false, error: 'Usuario asignado no válido' }
   }
 
   const incidencePriority = PRIORITY_MAP[ticket.priority] ?? 'MEDIUM'

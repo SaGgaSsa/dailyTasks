@@ -38,6 +38,10 @@ export const authConfig: NextAuthConfig = {
           throw new Error('Credenciales inválidas')
         }
 
+        if (!user.isEnabled) {
+          throw new Error('Usuario inactivo')
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password as string, user.password)
 
         if (!isPasswordValid) {
@@ -82,17 +86,35 @@ export const authConfig: NextAuthConfig = {
       return token
     },
     async session({ session, token }) {
+      const tokenUserId = typeof token.id === 'string' ? Number(token.id) : NaN
+      if (!Number.isInteger(tokenUserId) || tokenUserId <= 0) {
+        return { ...session, user: undefined as never }
+      }
+
+      const activeUser = await db.user.findUnique({
+        where: { id: tokenUserId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          username: true,
+          role: true,
+          mustChangePassword: true,
+          isEnabled: true,
+        },
+      })
+
+      if (!activeUser?.isEnabled) {
+        return { ...session, user: undefined as never }
+      }
+
       if (session.user) {
-        session.user.id = typeof token.id === 'string' ? token.id : ''
-        session.user.email = typeof token.email === 'string' ? token.email : ''
-        session.user.name = typeof token.name === 'string' ? token.name : ''
-        session.user.username = typeof token.username === 'string' ? token.username : ''
-        session.user.role = token.role === UserRole.ADMIN || token.role === UserRole.DEV || token.role === UserRole.QA
-          ? token.role
-          : UserRole.DEV
-        session.user.mustChangePassword = typeof token.mustChangePassword === 'boolean'
-          ? token.mustChangePassword
-          : false
+        session.user.id = String(activeUser.id)
+        session.user.email = activeUser.email
+        session.user.name = activeUser.name ?? ''
+        session.user.username = activeUser.username
+        session.user.role = activeUser.role
+        session.user.mustChangePassword = activeUser.mustChangePassword
       }
 
       return session

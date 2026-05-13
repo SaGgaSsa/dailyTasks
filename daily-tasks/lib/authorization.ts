@@ -128,12 +128,28 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return null
   }
 
+  const user = await db.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      username: true,
+      role: true,
+      isEnabled: true,
+    },
+  })
+
+  if (!user?.isEnabled) {
+    return null
+  }
+
   return {
-    id,
-    email: session.user.email,
-    name: session.user.name,
-    username: session.user.username,
-    role,
+    id: user.id,
+    email: user.email,
+    name: user.name ?? user.username,
+    username: user.username,
+    role: user.role,
   }
 }
 
