@@ -255,7 +255,7 @@ export function KanbanBoard({ initialTasks, onTaskUpdate, searchQuery = '', tech
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex h-full min-h-0 gap-6 overflow-x-auto overflow-y-hidden pb-4">
+            <div className="flex min-h-full items-start gap-6 overflow-x-auto overflow-y-visible pb-4">
                     {COLUMNS.map((col) => (
                         <BoardColumn
                             key={col.id}

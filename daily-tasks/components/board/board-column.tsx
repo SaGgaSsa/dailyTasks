@@ -30,7 +30,7 @@ export function BoardColumn({ id, title, tasks, onCardClick, canDrag = true, isD
     const sortableItems = tasks.map((t) => t.id)
 
     return (
-        <div className="flex flex-col flex-1 min-w-[300px] h-full bg-muted/30 rounded-xl overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-[300px] min-h-full bg-muted/30 rounded-xl">
             <div className="p-4 py-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                     <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wider">{title}</h3>

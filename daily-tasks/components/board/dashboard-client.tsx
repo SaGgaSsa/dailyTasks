@@ -160,7 +160,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
 
     if (!isAdmin) {
         return (
-            <div className="flex flex-col h-full space-y-4">
+            <div className="flex min-h-full flex-col space-y-4">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-4">
                         <SearchBar
@@ -229,7 +229,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
     }
 
     return (
-        <div className="flex flex-col h-full space-y-4">
+        <div className="flex min-h-full flex-col space-y-4">
             <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-4">
                     <SearchBar
@@ -319,7 +319,7 @@ export function DashboardClient({ view, backlogTasks, kanbanTasks, isAdmin, tech
                 onResetFilters={resetFilters}
             />
 
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className={view === 'BACKLOG' ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 min-h-0 overflow-visible'}>
                 {view === 'BACKLOG' ? (
                     <Backlog
                         initialTasks={backlogTasksState}
